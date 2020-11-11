@@ -1,0 +1,212 @@
+\documentclass[11pt]{article}
+
+\usepackage{sectsty}
+\usepackage{graphicx}
+\usepackage{pdflscape}
+\usepackage[table]{xcolor}
+
+% Margins
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0in
+\textwidth=6.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\title{ Possible Viewpoints on Network Flow Data in CIC-IDS2018}
+\author{ Jonas Ferdigg }
+\date{\today}
+
+% Colors used for marking visibility of attacks in features
+\definecolor{high}{HTML}{0cbf00}
+\definecolor{mid}{HTML}{49bf42}
+\definecolor{low}{HTML}{88c684}
+\definecolor{none}{HTML}{ffffff}
+
+\begin{document}
+\maketitle	
+\pagebreak
+
+% Optional TOC
+\tableofcontents
+\pagebreak
+
+%--Paper--
+
+\section{Attacks}
+
+Cyber attacks as listed on UNB CSE-CIC-IDS2018 \cite{cic_ids2018} 
+
+\begin{itemize}
+	\item \textbf{Bruteforce attack}
+	\begin{itemize}
+		\item FTP – Patator
+		\item SSH – Patator
+	\end{itemize}
+		
+	\item \textbf{DoS attack}
+	\begin{itemize}
+		\item Hulk
+		\item GoldenEye
+		\item Slowloris
+		\item Slowhttptest
+		\item Heartleech
+	\end{itemize}
+	\item \textbf{Web attack}
+	\begin{itemize}
+		\item Damn Vulnerable Web App (DVWA)
+		\item In-house selenium framework (XSS and Brute-force)
+	\end{itemize}
+
+	\item \textbf{Infiltration attack} 	
+	\begin{itemize}
+		\item First level: Dropbox download in a windows machine
+		\item Second Level: Nmap and portscan
+	\end{itemize}
+
+	\item \textbf{Botnet attack}
+	\begin{itemize}
+		\item Ares (developed by Python)
+			\subsubitem remote shell
+			\subsubitem file upload/download
+			\subsubitem capturing 
+		\item Screenshots and key logging
+	\end{itemize}
+
+	\item \textbf{DDoS attack + PortScan}
+	\begin{itemize}
+		\item Low Orbit Ion Canon (LOIC)
+			\subsubitem UDP
+			\subsubitem TCP
+			\subsubitem HTTP
+	\end{itemize}
+\end{itemize}
+
+
+\pagebreak
+\section{Viewpoints}
+
+In this section I am discussing different viewpoints on the network flow and which advantages and disadvantages they might have when detecting different kinds of attacks. This includes looking at the features available from each viewpoint, which attacks are best visible from which viewpoint and how feasible are the methods in
+terms of resource utility when training the network and when applying it for IDS.
+
+\begin{table}[h]
+	\begin{tabular}{c | l}
+		\textbf{short} & \textbf{Definition} \\
+		min & Smallest value that has been occurred \\
+		max & Biggest value that has been occurred \\
+		mean & Mean value over a specific range of values \\
+		stdev &	Standard deviation \\
+		num & Aggregated number of occurrences \\
+		one & One-hot representation \\
+		var & Variance of the feature
+	\end{tabular}
+	\caption{\label{tab:flow_prefixes} Definition of flow prefixes}
+\end{table}
+
+\subsection{SourceIP Aggregates}
+\subsubsection{Available Features}
+
+\begin{itemize}
+	\itemsep0em
+	\item num\_packetCount
+	\item var\_packetsPerChannel
+	\item num\_octetCount
+	\item var\_octetsPerChannel
+	\item num\_uniqueSourcePorts
+	\item num\_uniqueDestIpAddr
+	\item num\_uniqueDestPorts
+	\item min\_interPacketTime
+	\item max\_interPacketTime
+	\item mean\_interPacketTime
+	\item stdev\_interPacketTime
+	\item num\_tcpSyn
+	\item num\_tcpAck
+	\item num\_tcpFin
+\end{itemize}
+
+\subsection{Channel Aggregates}
+\subsubsection{Available Features}
+
+\begin{itemize}
+	\itemsep0em
+	\item num\_packetCount
+	\item var\_packetsPerDestPort
+	\item num\_octetCount
+	\item var\_octetsPerDestPort
+	\item num\_uniqueSourcePorts
+	\item num\_uniqueDestPorts
+	\item min\_interPacketTime
+	\item max\_interPacketTime
+	\item mean\_interPacketTime
+	\item stdev\_interPacketTime
+	\item num\_tcpSyn
+	\item num\_tcpAck
+	\item num\_tcpFin
+\end{itemize}
+
+\subsection{Socket Aggregates}
+\subsubsection{Available Features}
+
+\begin{itemize}
+	\itemsep0em
+	\item num\_packetCount
+	\item num\_octetCount
+	\item min\_interPacketTime
+	\item max\_interPacketTime
+	\item mean\_interPacketTime
+	\item stdev\_interPacketTime
+	\item num\_tcpSyn
+	\item num\_tcpAck
+	\item num\_tcpFin
+\end{itemize}
+
+\section{Feature-Attack Correlation}
+
+\subsection{SourceIP Aggregate Features}
+
+\begin{landscape}
+	\begin{table}
+		\begin{tabular}{r | l | l | l | l | l | l | l | l | l | l | l | l | l | l | l | l | l | l | l }
+		 & \rotatebox[origin=c]{90}{Bruteforce\_FTP\_Patator} 
+		 & \rotatebox[origin=c]{90}{Bruteforce\_SSH\_Patator}
+		 & \rotatebox[origin=c]{90}{DoS\_Hulk}
+		 & \rotatebox[origin=c]{90}{DoS\_GoldenEye}
+		 & \rotatebox[origin=c]{90}{DoS\_Slowloris}
+		 & \rotatebox[origin=c]{90}{DoS\_Slowhttptest}
+		 & \rotatebox[origin=c]{90}{DoS\_Heartleech}
+		 & \rotatebox[origin=c]{90}{Web\_DVWA}
+		 & \rotatebox[origin=c]{90}{Web\_XSS}
+		 & \rotatebox[origin=c]{90}{Web\_BruteForce}
+		 & \rotatebox[origin=c]{90}{Infiltration\_DropboxDownload}
+		 & \rotatebox[origin=c]{90}{Infiltration\_Nmap}
+		 & \rotatebox[origin=c]{90}{Botnet\_Ares\_RemoteShell}
+		 & \rotatebox[origin=c]{90}{Botnet\_Ares\_FileUpDownload}
+		 & \rotatebox[origin=c]{90}{Botnet\_Ares\_Capturing}
+		 & \rotatebox[origin=c]{90}{Botnet\_ScreenshotKeyLogging}
+		 & \rotatebox[origin=c]{90}{DDoS\_LOIC\_UDP} 
+		 & \rotatebox[origin=c]{90}{DDoS\_LOIC\_TCP}
+		 & \rotatebox[origin=c]{90}{DDoS\_LOIC\_HTTP} \\ \hline
+		num\_packetCount 		& \cellcolor{low} & \cellcolor{low} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		var\_packetsPerChannel	& \cellcolor{mid} & \cellcolor{mid} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_octetCount			& \cellcolor{low} & \cellcolor{low} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		var\_octetsPerChannel	& \cellcolor{mid} & \cellcolor{mid} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_uniqueSourcePorts	& \cellcolor{mid} & \cellcolor{mid} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_uniqueDestIpAddr	& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_uniqueDestPorts	& \cellcolor{low} & \cellcolor{low} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		min\_interPacketTime	& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		max\_interPacketTime	& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		mean\_interPacketTime	& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		stdev\_interPacketTime	& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_tcpSyn				& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_tcpAck				& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  \\ \hline
+		num\_tcpFin				& \cellcolor{none} & \cellcolor{none} &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  &  
+		\end{tabular}
+	\end{table}
+\end{landscape}
+
+%--/Paper--
+
+\bibliography{thesis_jonasf_1226597} 
+\bibliographystyle{ieeetr}
+
+\end{document}
