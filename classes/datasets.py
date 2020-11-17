@@ -97,7 +97,9 @@ class Flows(Dataset):
 
         # store in object members
         self.x = [(item-means)/stds for item in X]
-        self.y = Y
+        #self.y = [[1,0] if item[0]==1 else [0,1] for item in Y]
+        self.y = [0 if item[0]==0.0 else 1 for item in Y]
+        #self.y = Y[:,1]
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.n_samples = len(self.x)
@@ -106,5 +108,8 @@ class Flows(Dataset):
         return self.n_samples
 
     def __getitem__(self, i):
-        data, labels, categories = torch.FloatTensor(self.x[i]), torch.FloatTensor(self.y[i]), torch.FloatTensor(self.categories[i])
+        data, labels, categories = torch.FloatTensor(self.x[i]), torch.tensor(self.y[i]), torch.FloatTensor(self.categories[i])
         return data, labels, categories
+
+    def getCategories(self):
+        return self.categories
