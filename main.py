@@ -24,7 +24,7 @@ args = parser.parse_args(sys.argv[1:])
 
 # Define hyperparameters
 learning_rate = 0.0001
-batch_size = 1
+batch_size = 16
 n_epochs = 1
 training_percentage = 0.9
 
@@ -34,8 +34,16 @@ n_samples = len(dataset)
 training_size = math.floor(n_samples*training_percentage)
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
-train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12)
-val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12)
+#train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12)
+train_loader = DataLoader(dataset=train, sampler=datasets.FlowBatchSampler(dataset=train, batch_size=batch_size, drop_last=True), num_workers=0)
+#val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12)
+val_loader = DataLoader(dataset=train, sampler=datasets.FlowBatchSampler(dataset=val, batch_size=batch_size, drop_last=True), num_workers=0)
+
+sampler = datasets.FlowBatchSampler(dataset=train, batch_size=batch_size, drop_last=True)
+for (data, labels, categories) in sampler:
+    print(data.size())
+    print(labels.size())
+    print(categories.size())
 
 #data, labels, categories = dataset[0]
 #print(labels)
@@ -85,15 +93,18 @@ if not os.path.isfile(chache_file_name) or args.t:
     losses = []
     for epoch in range(n_epochs):
         loss_sum = []
-        for i, (data, labels, categories) in enumerate(train_loader):  
+        for i, (data, labels, categories) in enumerate(train_loader): 
+
+            # Pad data if batch size is greater one
+            data_padded, data_lengths = torch.nn.utils.rnn.pad_sequence(data)
 
             # Move data to selected device 
-            data = data.to(device)
+            data_padded = data_padded.to(device)
             labels = labels.to(device)
             categories = categories.to(device)
 
             # Forward pass
-            outputs = model(data)
+            outputs = model(data_padded)
             loss = criterion(outputs, labels)
             loss_sum.append(loss.item())
             
@@ -154,10 +165,13 @@ print("Validating model...")
 with torch.no_grad():
     n_correct = 0
     n_samples = 0
-    n_false_positives = 0
-    n_false_negatives = 0
+    n_false_positive = 0
+    n_false_negative = 0
     for i, (data, labels, categories) in enumerate(train_loader):
         
+        # Pad data if batch size is greater one
+        data_padded, data_lengths = torch.nn.utils.rnn.pad_sequence(data)
+
         # Move data to selected device 
         data = data.to(device)
         labels = labels.to(device)
@@ -171,24 +185,21 @@ with torch.no_grad():
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
         if predicted.item() == 0.0 and labels.item() == 1.0:
-            n_false_negatives += 1
+            n_false_negative += 1
         elif predicted.item() == 1.0 and labels.item() == 0.0:
-            n_false_positives += 1
-
-        # Output progress
-        if (i+1) % val_interval:
-            pass
+            n_false_positive += 1
 
         # Break after x for debugging
         if args.d and i == 1000:
             break
 
     acc = 100.0 * n_correct / n_samples
-    false_p = 100.0 * n_false_positives/(n_samples - n_correct)
-    false_n = 100.0 * n_false_negatives/(n_samples - n_correct)
+    false_p = 100.0 * n_false_positive/(n_samples - n_correct)
+    false_n = 100.0 * n_false_negative/(n_samples - n_correct)
     print(f"Accuracy with validation size {math.ceil(1-training_percentage)*100}% of data samples: {acc}%, False p.: {false_p}%, False n.: {false_n}%")
-    stats.n_false_negatives = n_false_negatives
-    stats.n_false_positives = n_false_positives
+    stats.n_false_negative = n_false_negative
+    stats.n_false_positive = n_false_positive
+    stats.saveStats()
     stats.saveLosses()
     stats.plotLosses()
 
