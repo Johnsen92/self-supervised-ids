@@ -14,6 +14,18 @@ def overwrite_manipulable_entries(seq, filler=-1):
     seq[wrong_direction,:][:,3:5] = filler
     return seq
 
+# Stack and compress sequences of different length in batch
+def collate_flows(seqs, things=(True, True, True)):
+    batch_data = []
+    batch_labels = []
+    batch_categories = []
+    for data, label, categorie in seqs:
+        batch_data.append(data)
+        batch_labels.append(label)
+        batch_categories.append(categorie)
+    return torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True), torch.stack(batch_labels), torch.stack(batch_categories)
+
+
 class FlowBatchSampler(Sampler):
     def __init__(self, dataset, batch_size, drop_last):
         self.dataset = dataset
@@ -77,11 +89,11 @@ class Flows(Dataset):
         super().__init__()
         print('Loading data file...', end='')
 
-        # parameters
+        # Parameters
         maxLength = 100
         removeChangeable = False
 
-        # load pickled dataset
+        # Load pickled dataset
         with open (pickle_file, "rb") as f:
             all_data = pickle.load(f)
 
@@ -90,19 +102,18 @@ class Flows(Dataset):
         categories_mapping, mapping = categories_mapping_content["categories_mapping"], categories_mapping_content["mapping"]
         assert min(mapping.values()) == 0
 
-        # a few flows have have invalid IATs due to dataset issues. Sort those out.
+        # Remove flows witch invalid IATs
         all_data = [item[:maxLength,:] for item in all_data if np.all(item[:,4]>=0)]
         if removeChangeable:
             all_data = [overwrite_manipulable_entries(item) for item in all_data]
 
-        #random.shuffle(all_data)
         X = [item[:, :-2] for item in all_data]
         Y = [item[:, -1:] for item in all_data]
         print('done')
 
         print('Normalizing data...', end='')
 
-        # normalize data
+        # Normalize data between -1 and 1
         chache_file_name = pickle_file[:-7]+"_normalization_data.pickle"
         if not os.path.isfile(chache_file_name):
             catted_x = np.concatenate(X, axis=0)
@@ -110,7 +121,7 @@ class Flows(Dataset):
             stds = np.std(catted_x, axis=0)
             stds[stds==0.0] = 1.0
             
-            # store for future use
+            # Store for future use
             with open(chache_file_name, "wb") as f:
                 f.write(pickle.dumps((means, stds)))
         else:
@@ -124,11 +135,10 @@ class Flows(Dataset):
         print('done')
         
 
-        # store in object members
+        # Store in class members
         self.x = [(item-means)/stds for item in X]
         self.y = [0 if item[0]==0.0 else 1 for item in Y]
-        #self.categories = [item[0, -2:-1] for item in all_data]
-        self.categories = [item[:, -2:-1] for item in all_data]
+        self.categories = [item[0, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.n_samples = len(self.x)
 

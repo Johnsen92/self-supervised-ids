@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from datetime import datetime
 
 def formatTime(time_s):
     time_h = float(time_s) // 3600.0
@@ -25,7 +26,8 @@ class Stats():
 
     def saveLosses(self):
         assert not self.losses == None
-        with open("losses.csv", "w") as f:
+        now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
+        with open("losses_" + now + ".csv", "w") as f:
             for item in self.losses:
                 f.write(f"{item:.6f}\n")
 
@@ -34,7 +36,8 @@ class Stats():
         n_wrong = self.n_false_negative + self.n_false_positive
         n_right = self.n_samples - n_wrong
         p_acc = float(n_right)/float(self.n_samples)*100
-        with open("stats.csv", "w") as f:
+        now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
+        with open("stats_" + now + ".csv", "w") as f:
             f.write(f"Epochs, {self.n_epochs}\n")
             f.write(f"Batch size, {self.batch_size}\n")
             f.write(f"Training percentage, {(self.training_percentage*100):.2f}\n")
@@ -55,5 +58,6 @@ class Stats():
         ax.plot(x, y)
         ax.set(xlabel="% of Training", ylabel="Loss", title="Loss progression")
         ax.grid()
-        fig.savefig("loss.png")
+        now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
+        fig.savefig("loss_" + now + ".png")
         plt.show()

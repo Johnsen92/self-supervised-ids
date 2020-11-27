@@ -1,16 +1,16 @@
 import argparse
 import sys
 import pickle
-from classes import datasets
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
 from timeit import default_timer as timer
 from datetime import timedelta
-from classes import lstm, statistics, utils
+from classes import datasets, lstm, statistics, utils
 import math
 import torchvision
 import torch
 import os.path
+
 
 # Define argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
@@ -20,12 +20,18 @@ parser.add_argument('-t', action='store_true', help='Force training even if cach
 parser.add_argument('-d', action='store_true', help='Debug flag')
 parser.add_argument('-c', default="./cache/", help='Cache folder')
 parser.add_argument('-s', default="./stats/", help='Statistics folder')
+#parser.add_argument('-f', '--dataFile', help='Pickle file containing the training data')
+#parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
+#parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
+#parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
+#parser.add_argument('-c', '--cache', default="./cache/", help='Cache folder')
+#parser.add_argument('-s', '--stats', default="./stats/", help='Statistics folder')
 args = parser.parse_args(sys.argv[1:])
 
 # Define hyperparameters
-learning_rate = 0.0001
-batch_size = 16
-n_epochs = 1
+learning_rate = 0.001
+batch_size = 64
+n_epochs = 10
 training_percentage = 0.9
 
 # Load dataset and create data loaders
@@ -34,16 +40,8 @@ n_samples = len(dataset)
 training_size = math.floor(n_samples*training_percentage)
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
-#train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12)
-train_loader = DataLoader(dataset=train, sampler=datasets.FlowBatchSampler(dataset=train, batch_size=batch_size, drop_last=True), num_workers=0)
-#val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12)
-val_loader = DataLoader(dataset=train, sampler=datasets.FlowBatchSampler(dataset=val, batch_size=batch_size, drop_last=True), num_workers=0)
-
-sampler = datasets.FlowBatchSampler(dataset=train, batch_size=batch_size, drop_last=True)
-for (data, labels, categories) in sampler:
-    print(data.size())
-    print(labels.size())
-    print(categories.size())
+train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
 #data, labels, categories = dataset[0]
 #print(labels)
@@ -61,9 +59,9 @@ else:
 # Define model
 data, labels, categories = dataset[0]
 input_size = data.size()[1]
-hidden_size = 64
+hidden_size = 512
 output_size = 2
-num_layers = 1
+num_layers = 3
 model = lstm.LSTM(input_size, hidden_size, output_size, num_layers, batch_size, device).to(device)
 
 # Train model if no cache file exists or the train flag is set, otherwise load cached model
@@ -95,16 +93,13 @@ if not os.path.isfile(chache_file_name) or args.t:
         loss_sum = []
         for i, (data, labels, categories) in enumerate(train_loader): 
 
-            # Pad data if batch size is greater one
-            data_padded, data_lengths = torch.nn.utils.rnn.pad_sequence(data)
-
             # Move data to selected device 
-            data_padded = data_padded.to(device)
+            data = data.to(device)
             labels = labels.to(device)
             categories = categories.to(device)
 
             # Forward pass
-            outputs = model(data_padded)
+            outputs = model(data)
             loss = criterion(outputs, labels)
             loss_sum.append(loss.item())
             
@@ -117,11 +112,12 @@ if not os.path.isfile(chache_file_name) or args.t:
                 avg_loss = sum(loss_sum)/len(loss_sum)
                 last_step = step
                 step = timer()
+                n_batches = len(train_loader)
                 interval_time = step - last_step
                 sample_time = float(interval_time)/float(interval)
-                time_left = sample_time * float(n_samples * n_epochs - epoch * n_samples - i)/3600
+                time_left = sample_time * float(n_batches * n_epochs - epoch * n_batches - i)/3600.0
                 time_left_h = math.floor(time_left)
-                time_left_m = math.floor((time_left - time_left_h)*60)
+                time_left_m = math.floor((time_left - time_left_h)*60.0)
                 print (f'Epoch [{epoch+1}/{n_epochs}], Step [{i+1}/{n_total_steps}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
                 losses.append(avg_loss)
                 loss_sum = []
@@ -168,9 +164,6 @@ with torch.no_grad():
     n_false_positive = 0
     n_false_negative = 0
     for i, (data, labels, categories) in enumerate(train_loader):
-        
-        # Pad data if batch size is greater one
-        data_padded, data_lengths = torch.nn.utils.rnn.pad_sequence(data)
 
         # Move data to selected device 
         data = data.to(device)
@@ -184,18 +177,23 @@ with torch.no_grad():
         _, predicted = torch.max(outputs.data, 1)
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
-        if predicted.item() == 0.0 and labels.item() == 1.0:
-            n_false_negative += 1
-        elif predicted.item() == 1.0 and labels.item() == 0.0:
-            n_false_positive += 1
+        n_false_negative += (predicted < labels).sum().item()
+        n_false_positive += (predicted > labels).sum().item()
+#        if predicted.item() == 0.0 and labels.item() == 1.0:
+#            n_false_negative += 1
+#        elif predicted.item() == 1.0 and labels.item() == 0.0:
+#            n_false_positive += 1
 
         # Break after x for debugging
         if args.d and i == 1000:
             break
 
+    # Calculate statistics
     acc = 100.0 * n_correct / n_samples
     false_p = 100.0 * n_false_positive/(n_samples - n_correct)
     false_n = 100.0 * n_false_negative/(n_samples - n_correct)
+
+    # Print and save statistics
     print(f"Accuracy with validation size {math.ceil(1-training_percentage)*100}% of data samples: {acc}%, False p.: {false_p}%, False n.: {false_n}%")
     stats.n_false_negative = n_false_negative
     stats.n_false_positive = n_false_positive
