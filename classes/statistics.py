@@ -9,7 +9,8 @@ def formatTime(time_s):
     return time_h, time_m
 
 class Stats():
-    def __init__(self, start_time=None, end_time=None, n_samples=None, training_percentage=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):
+    def __init__(self, stats_dir="./", start_time=None, end_time=None, n_samples=None, training_percentage=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):
+        self.stats_dir = stats_dir if stats_dir[-1] == "/" else stats_dir+"/"
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
         self.n_false_negative = n_false_negative
@@ -27,7 +28,7 @@ class Stats():
     def saveLosses(self):
         assert not self.losses == None
         now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
-        with open("losses_" + now + ".csv", "w") as f:
+        with open(self.stats_dir + "losses_" + now + ".csv", "w") as f:
             for item in self.losses:
                 f.write(f"{item:.6f}\n")
 
@@ -37,7 +38,7 @@ class Stats():
         n_right = self.n_samples - n_wrong
         p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
-        with open("stats_" + now + ".csv", "w") as f:
+        with open(self.stats_dir + "stats_" + now + ".csv", "w") as f:
             f.write(f"Epochs, {self.n_epochs}\n")
             f.write(f"Batch size, {self.batch_size}\n")
             f.write(f"Training percentage, {(self.training_percentage*100):.2f}\n")
@@ -59,5 +60,10 @@ class Stats():
         ax.set(xlabel="% of Training", ylabel="Loss", title="Loss progression")
         ax.grid()
         now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
-        fig.savefig("loss_" + now + ".png")
+        fig.savefig(self.stats_dir + "loss_" + now + ".png")
         plt.show()
+
+    def getAccuracy(self):
+        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
+        n_right = self.n_samples - self.n_false_negative - self.n_false_positive
+        return float(n_right)/float(self.n_samples)

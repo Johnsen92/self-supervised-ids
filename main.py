@@ -75,6 +75,7 @@ if not os.path.isfile(chache_file_name) or args.t:
 
     # Define statistics object
     stats = statistics.Stats(
+        stats_dir = args.s,
         n_samples = n_samples,
         training_percentage = training_percentage,
         n_epochs = n_epochs,
@@ -82,13 +83,12 @@ if not os.path.isfile(chache_file_name) or args.t:
         learning_rate = learning_rate
     )
 
-    interval = math.floor(n_samples * n_epochs / 1000)
-
     # Train the model
     print("Training model...")
     start = step = timer()
     n_total_steps = len(train_loader)
     losses = []
+    monitoring_interval = n_samples * n_epochs // (1000 * batch_size) 
     for epoch in range(n_epochs):
         loss_sum = []
         for i, (data, labels, categories) in enumerate(train_loader): 
@@ -108,13 +108,14 @@ if not os.path.isfile(chache_file_name) or args.t:
             loss.backward()
             optimizer.step()
             
-            if (i+1) % interval == 0:
+            # Calculate time left and save avg. loss of last interval
+            if (i+1) % monitoring_interval == 0:
                 avg_loss = sum(loss_sum)/len(loss_sum)
                 last_step = step
                 step = timer()
                 n_batches = len(train_loader)
                 interval_time = step - last_step
-                sample_time = float(interval_time)/float(interval)
+                sample_time = float(interval_time)/float(monitoring_interval)
                 time_left = sample_time * float(n_batches * n_epochs - epoch * n_batches - i)/3600.0
                 time_left_h = math.floor(time_left)
                 time_left_m = math.floor((time_left - time_left_h)*60.0)
@@ -179,10 +180,7 @@ with torch.no_grad():
         n_correct += (predicted == labels).sum().item()
         n_false_negative += (predicted < labels).sum().item()
         n_false_positive += (predicted > labels).sum().item()
-#        if predicted.item() == 0.0 and labels.item() == 1.0:
-#            n_false_negative += 1
-#        elif predicted.item() == 1.0 and labels.item() == 0.0:
-#            n_false_positive += 1
+        assert n_correct == n_samples - n_false_negative - n_false_positive
 
         # Break after x for debugging
         if args.d and i == 1000:
@@ -194,9 +192,9 @@ with torch.no_grad():
     false_n = 100.0 * n_false_negative/(n_samples - n_correct)
 
     # Print and save statistics
-    print(f"Accuracy with validation size {math.ceil(1-training_percentage)*100}% of data samples: {acc}%, False p.: {false_p}%, False n.: {false_n}%")
     stats.n_false_negative = n_false_negative
     stats.n_false_positive = n_false_positive
+    print(f"Accuracy with validation size {((1.0-training_percentage)*100):.2f}% of data samples: {stats.getAccuracy()*100}%, False p.: {false_p}%, False n.: {false_n}%")
     stats.saveStats()
     stats.saveLosses()
     stats.plotLosses()
