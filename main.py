@@ -14,57 +14,57 @@ import os.path
 
 # Define argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
-parser.add_argument('-f', help='Pickle file containing the training data')
-parser.add_argument('-g', action='store_true', help='Train on GPU if available')
-parser.add_argument('-t', action='store_true', help='Force training even if cache file exists')
-parser.add_argument('-d', action='store_true', help='Debug flag')
-parser.add_argument('-c', default="./cache/", help='Cache folder')
-parser.add_argument('-s', default="./stats/", help='Statistics folder')
+parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
+parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
+parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
+parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
+parser.add_argument('-c', '--cache_dir', default='./cache/', help='Cache folder')
+parser.add_argument('-s', '--stats_dir', default='./stats/', help='Statistics folder')
+parser.add_argument('-e', '--n_epochs', default=10, help='Number of epochs')
+parser.add_argument('-b', '--batch_size', default=32, help='Batch size')
+parser.add_argument('-p', '--train_percent', default=90, help='Training percentage')
+parser.add_argument('-l', '--hidden_size', default=512, help='Size of hidden layers')
+parser.add_argument('-n', '--n_layers', default=3, help='Number of LSTM layers')
 args = parser.parse_args(sys.argv[1:])
 
 # Define hyperparameters
-data_filename = os.path.basename(args.f)
+data_filename = os.path.basename(args.data_file)
 learning_rate = 0.001
-batch_size = 64
-n_epochs = 10
-training_percentage = 0.9
-hidden_size = 512
 output_size = 2
-num_layers = 3
 
 # Define cache
-key_prefix = data_filename[:-7] + f"_hs{hidden_size}_bs{batch_size}_ep{n_epochs}_tp{training_percentage}"
-cache = utils.Cache(cache_dir=args.c, md5=True, key_prefix=key_prefix)
+key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}'
+cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix)
 
 # Load dataset and normalize data, or load from cache
-if not cache.exists("dataset"):
-    dataset = datasets.Flows(data_pickle=args.f, cache=cache)
-    cache.save("dataset", dataset)
+if not cache.exists('dataset'):
+    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache)
+    cache.save('dataset', dataset)
 else:
-    print("(Cache) Loading normalized dataset...")
-    dataset = cache.load("dataset")
+    print('(Cache) Loading normalized dataset...')
+    dataset = cache.load('dataset')
 
 # Create data loaders
 n_samples = len(dataset)
-training_size = math.floor(n_samples*training_percentage)
+training_size = (n_samples*args.train_percent) // 100
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
-train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
-if torch.cuda.is_available() and args.g:
-    device = torch.device("cuda:0")
+if torch.cuda.is_available() and args.gpu:
+    device = torch.device('cuda:0')
 else:
-    device = torch.device("cpu")
+    device = torch.device('cpu')
 
 # Define model
 data, labels, categories = dataset[0]
 input_size = data.size()[1]
-model = lstm.LSTM(input_size, hidden_size, output_size, num_layers, batch_size, device).to(device)
+model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
 
 # Train model if no cache file exists or the train flag is set, otherwise load cached model
-chache_file_name = args.c + key_prefix + "_trained_model.pickle"
-if not os.path.isfile(chache_file_name) or args.t:
+chache_file_name = args.cache_dir + key_prefix + '_trained_model.pickle'
+if not os.path.isfile(chache_file_name) or args.train:
     # Define loss
     criterion = nn.CrossEntropyLoss()
 
@@ -73,21 +73,21 @@ if not os.path.isfile(chache_file_name) or args.t:
 
     # Define statistics object
     stats = statistics.Stats(
-        stats_dir = args.s,
+        stats_dir = args.stats_dir,
         n_samples = n_samples,
-        training_percentage = training_percentage,
-        n_epochs = n_epochs,
-        batch_size = batch_size,
+        train_percent = args.train_percent / 100.0,
+        n_epochs = args.n_epochs,
+        batch_size = args.batch_size,
         learning_rate = learning_rate
     )
 
     # Train the model
-    print("Training model...")
+    print('Training model...')
     start = step = timer()
     n_total_steps = len(train_loader)
     losses = []
-    monitoring_interval = n_samples * n_epochs // (1000 * batch_size) 
-    for epoch in range(n_epochs):
+    monitoring_interval = n_samples * args.n_epochs // (1000 * args.batch_size) 
+    for epoch in range(args.n_epochs):
         loss_sum = []
         for i, (data, labels, categories) in enumerate(train_loader): 
 
@@ -114,17 +114,17 @@ if not os.path.isfile(chache_file_name) or args.t:
                 n_batches = len(train_loader)
                 interval_time = step - last_step
                 sample_time = float(interval_time)/float(monitoring_interval)
-                time_left = sample_time * float(n_batches * n_epochs - epoch * n_batches - i)/3600.0
+                time_left = sample_time * float(n_batches * args.n_epochs - epoch * n_batches - i)/3600.0
                 time_left_h = math.floor(time_left)
                 time_left_m = math.floor((time_left - time_left_h)*60.0)
-                print (f'Epoch [{epoch+1}/{n_epochs}], Step [{i+1}/{n_total_steps}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
+                print (f'Epoch [{epoch+1}/{args.n_epochs}], Step [{i+1}/{n_total_steps}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
                 losses.append(avg_loss)
                 loss_sum = []
 
             # Break after x for debugging
-            if args.d and i == (1000 // batch_size):
+            if args.debug and i == (1000 // args.batch_size):
                 break
-    print("...done")        
+    print('...done')        
 
     # Get stats
     end = timer()
@@ -134,28 +134,28 @@ if not os.path.isfile(chache_file_name) or args.t:
 
 
     # Store trained model
-    print("Storing model to cache...",end='')
+    print('Storing model to cache...',end='')
     torch.save(model.state_dict(), chache_file_name)
-    print("done")
+    print('done')
 
     # Store statistics object
-    print("Storing statistics to cache...",end='')
-    cache.save("stats", stats)
-    print("done")
+    print('Storing statistics to cache...',end='')
+    cache.save('stats', stats)
+    print('done')
 else:
     # Load cached model
-    print("(Cache) Loading trained model...",end='')
+    print('(Cache) Loading trained model...',end='')
     model.load_state_dict(torch.load(chache_file_name))
     model.eval()
-    print("done")
+    print('done')
 
     # Load statistics object
-    print("(Cache) Loading statistics object...",end='')
-    stats = cache.load("stats")
-    print("done")
+    print('(Cache) Loading statistics object...',end='')
+    stats = cache.load('stats')
+    print('done')
 
 # Validate model
-print("Validating model...")
+print('Validating model...')
 with torch.no_grad():
     n_correct = 0
     n_samples = 0
@@ -191,8 +191,8 @@ with torch.no_grad():
     # Save and cache statistics
     stats.n_false_negative = n_false_negative
     stats.n_false_positive = n_false_positive
-    print(f"Accuracy with validation size {((1.0-training_percentage)*100):.2f}% of data samples: {stats.getAccuracy()*100}%, False p.: {false_p}%, False n.: {false_n}%")
-    if not args.d:
+    print(f'Accuracy with validation size {((1.0-args.train_percent)*100):.2f}% of data samples: {stats.getAccuracy()*100}%, False p.: {false_p}%, False n.: {false_n}%')
+    if not args.debug:
         stats.saveStats()
         stats.saveLosses()
         stats.plotLosses()

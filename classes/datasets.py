@@ -75,7 +75,7 @@ class CAIA(Dataset):
         self.X = torch.tensor(x, dtype=torch.float32)
         self.y = torch.tensor(y)
 
-        print("done")
+        print('done')
         
 
     def __len__(self):
@@ -97,12 +97,12 @@ class Flows(Dataset):
         removeChangeable = False
 
         # Load pickled dataset
-        with open (data_pickle, "rb") as f:
+        with open (data_pickle, 'rb') as f:
             all_data = pickle.load(f)
 
-        with open(data_pickle[:-7]+"_categories_mapping.json", "r") as f:
+        with open(data_pickle[:-7]+'_categories_mapping.json', 'r') as f:
             categories_mapping_content = json.load(f)
-        categories_mapping, mapping = categories_mapping_content["categories_mapping"], categories_mapping_content["mapping"]
+        categories_mapping, mapping = categories_mapping_content['categories_mapping'], categories_mapping_content['mapping']
         assert min(mapping.values()) == 0
 
         # Remove flows witch invalid IATs
@@ -117,20 +117,20 @@ class Flows(Dataset):
         print('Normalizing data...', end='')
 
         # Normalize data between -1 and 1
-        if not self.cache == None and not self.cache.exists("norm"):
+        if not self.cache == None and not self.cache.exists('norm'):
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)
             stds = np.std(catted_x, axis=0)
             stds[stds==0.0] = 1.0
             
             # Store for future use
-            cache.save("norm", (means, stds))
+            cache.save('norm', (means, stds))
         else:
-            (means, stds) = cache.load("norm")
+            (means, stds) = cache.load('norm')
 
-        assert means.shape[0] == X[0].shape[-1], "means.shape: {}, x.shape: {}".format(means.shape, X[0].shape)
-        assert stds.shape[0] == X[0].shape[-1], "stds.shape: {}, x.shape: {}".format(stds.shape, X[0].shape)
-        assert not (stds==0).any(), "stds: {}".format(stds)
+        assert means.shape[0] == X[0].shape[-1], 'means.shape: {}, x.shape: {}'.format(means.shape, X[0].shape)
+        assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
+        assert not (stds==0).any(), 'stds: {}'.format(stds)
         
         print('done')
         

@@ -1,6 +1,13 @@
 data/*
 cache/*
 stats/*
+latex/*.aux
+latex/*.bbl
+latex/*.toc
+latex/*.blg
+latex/*.log
+latex/*.synctex.gz
+classes/__pycache__
 *.pyc
 .~*
 *.csv
