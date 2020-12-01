@@ -28,7 +28,7 @@ class Stats():
     def saveLosses(self):
         assert not self.losses == None
         now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
-        with open(self.stats_dir + "losses_" + now + ".csv", "w") as f:
+        with open(self.stats_dir + now + "_losses.csv", "w") as f:
             for item in self.losses:
                 f.write(f"{item:.6f}\n")
 
@@ -60,7 +60,7 @@ class Stats():
         ax.set(xlabel="% of Training", ylabel="Loss", title="Loss progression")
         ax.grid()
         now = datetime.now().strftime("%d%m%Y_%H-%M-%S")
-        fig.savefig(self.stats_dir + "loss_" + now + ".png")
+        fig.savefig(self.stats_dir + now + "_loss.png")
         plt.show()
 
     def getAccuracy(self):

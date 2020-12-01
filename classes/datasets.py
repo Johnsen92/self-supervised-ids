@@ -85,19 +85,22 @@ class CAIA(Dataset):
         return self.X[i], self.y[i]
 
 class Flows(Dataset):
-    def __init__(self, pickle_file):
+    def __init__(self, data_pickle, cache=None):
         super().__init__()
         print('Loading data file...', end='')
+
+        self.cache = cache
+        self.data_pickle = data_pickle
 
         # Parameters
         maxLength = 100
         removeChangeable = False
 
         # Load pickled dataset
-        with open (pickle_file, "rb") as f:
+        with open (data_pickle, "rb") as f:
             all_data = pickle.load(f)
 
-        with open(pickle_file[:-7]+"_categories_mapping.json", "r") as f:
+        with open(data_pickle[:-7]+"_categories_mapping.json", "r") as f:
             categories_mapping_content = json.load(f)
         categories_mapping, mapping = categories_mapping_content["categories_mapping"], categories_mapping_content["mapping"]
         assert min(mapping.values()) == 0
@@ -114,19 +117,16 @@ class Flows(Dataset):
         print('Normalizing data...', end='')
 
         # Normalize data between -1 and 1
-        chache_file_name = pickle_file[:-7]+"_normalization_data.pickle"
-        if not os.path.isfile(chache_file_name):
+        if not self.cache == None and not self.cache.exists("norm"):
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)
             stds = np.std(catted_x, axis=0)
             stds[stds==0.0] = 1.0
             
             # Store for future use
-            with open(chache_file_name, "wb") as f:
-                f.write(pickle.dumps((means, stds)))
+            cache.save("norm", (means, stds))
         else:
-            with open(chache_file_name, "rb") as f:
-                means, stds = pickle.load(f)
+            (means, stds) = cache.load("norm")
 
         assert means.shape[0] == X[0].shape[-1], "means.shape: {}, x.shape: {}".format(means.shape, X[0].shape)
         assert stds.shape[0] == X[0].shape[-1], "stds.shape: {}, x.shape: {}".format(stds.shape, X[0].shape)

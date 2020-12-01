@@ -20,36 +20,37 @@ parser.add_argument('-t', action='store_true', help='Force training even if cach
 parser.add_argument('-d', action='store_true', help='Debug flag')
 parser.add_argument('-c', default="./cache/", help='Cache folder')
 parser.add_argument('-s', default="./stats/", help='Statistics folder')
-#parser.add_argument('-f', '--dataFile', help='Pickle file containing the training data')
-#parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
-#parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
-#parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
-#parser.add_argument('-c', '--cache', default="./cache/", help='Cache folder')
-#parser.add_argument('-s', '--stats', default="./stats/", help='Statistics folder')
 args = parser.parse_args(sys.argv[1:])
 
 # Define hyperparameters
+data_filename = os.path.basename(args.f)
 learning_rate = 0.001
 batch_size = 64
 n_epochs = 10
 training_percentage = 0.9
+hidden_size = 512
+output_size = 2
+num_layers = 3
 
-# Load dataset and create data loaders
-dataset = datasets.Flows(args.f)
+# Define cache
+key_prefix = data_filename[:-7] + f"_hs{hidden_size}_bs{batch_size}_ep{n_epochs}_tp{training_percentage}"
+cache = utils.Cache(cache_dir=args.c, md5=True, key_prefix=key_prefix)
+
+# Load dataset and normalize data, or load from cache
+if not cache.exists("dataset"):
+    dataset = datasets.Flows(data_pickle=args.f, cache=cache)
+    cache.save("dataset", dataset)
+else:
+    print("(Cache) Loading normalized dataset...")
+    dataset = cache.load("dataset")
+
+# Create data loaders
 n_samples = len(dataset)
 training_size = math.floor(n_samples*training_percentage)
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
 train_loader = DataLoader(dataset=train, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-
-#data, labels, categories = dataset[0]
-#print(labels)
-#print(data.size())
-#print(labels.size())
-#print(categories.size())
-#print(categories)
-#print(dataset.getCategories())
 
 if torch.cuda.is_available() and args.g:
     device = torch.device("cuda:0")
@@ -59,13 +60,10 @@ else:
 # Define model
 data, labels, categories = dataset[0]
 input_size = data.size()[1]
-hidden_size = 512
-output_size = 2
-num_layers = 3
 model = lstm.LSTM(input_size, hidden_size, output_size, num_layers, batch_size, device).to(device)
 
 # Train model if no cache file exists or the train flag is set, otherwise load cached model
-chache_file_name = args.f[:-7]+"_trained_model.pickle"
+chache_file_name = args.c + key_prefix + "_trained_model.pickle"
 if not os.path.isfile(chache_file_name) or args.t:
     # Define loss
     criterion = nn.CrossEntropyLoss()
@@ -124,8 +122,9 @@ if not os.path.isfile(chache_file_name) or args.t:
                 loss_sum = []
 
             # Break after x for debugging
-            if args.d and i == 10000:
+            if args.d and i == (1000 // batch_size):
                 break
+    print("...done")        
 
     # Get stats
     end = timer()
@@ -141,20 +140,18 @@ if not os.path.isfile(chache_file_name) or args.t:
 
     # Store statistics object
     print("Storing statistics to cache...",end='')
-    with open(args.f[:-7]+"_stats.pickle", "wb") as f:
-        f.write(pickle.dumps(stats))
+    cache.save("stats", stats)
     print("done")
 else:
     # Load cached model
-    print("Loading cached model...",end='')
+    print("(Cache) Loading trained model...",end='')
     model.load_state_dict(torch.load(chache_file_name))
     model.eval()
     print("done")
 
     # Load statistics object
-    print("Loading statistics object...",end='')
-    with open(args.f[:-7]+"_stats.pickle", "rb") as f:
-        stats = pickle.load(f)
+    print("(Cache) Loading statistics object...",end='')
+    stats = cache.load("stats")
     print("done")
 
 # Validate model
@@ -191,11 +188,13 @@ with torch.no_grad():
     false_p = 100.0 * n_false_positive/(n_samples - n_correct)
     false_n = 100.0 * n_false_negative/(n_samples - n_correct)
 
-    # Print and save statistics
+    # Save and cache statistics
     stats.n_false_negative = n_false_negative
     stats.n_false_positive = n_false_positive
     print(f"Accuracy with validation size {((1.0-training_percentage)*100):.2f}% of data samples: {stats.getAccuracy()*100}%, False p.: {false_p}%, False n.: {false_n}%")
-    stats.saveStats()
-    stats.saveLosses()
-    stats.plotLosses()
+    if not args.d:
+        stats.saveStats()
+        stats.saveLosses()
+        stats.plotLosses()
+    
 
