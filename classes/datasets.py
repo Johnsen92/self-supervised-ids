@@ -14,6 +14,13 @@ def overwrite_manipulable_entries(seq, filler=-1):
     seq[wrong_direction,:][:,3:5] = filler
     return seq
 
+def pad_label_sequence(labels, categories):
+    max_seq_length = max([len(item) for item in labels])
+    print(max_seq_length)
+    print(labels.size())
+    print(categories.size())
+    return 1,2
+
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs, things=(True, True, True)):
     batch_data = []
@@ -23,7 +30,12 @@ def collate_flows(seqs, things=(True, True, True)):
         batch_data.append(data)
         batch_labels.append(label)
         batch_categories.append(categorie)
-    return torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True), torch.stack(batch_labels), torch.stack(batch_categories)
+
+    padded_data = torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True)
+    padded_labels = torch.nn.utils.rnn.pad_sequence(batch_labels, batch_first=True)
+    padded_categories = torch.nn.utils.rnn.pad_sequence(batch_categories, batch_first=True)
+    pad_label_sequence(batch_labels, batch_categories)
+    return padded_data, padded_labels, padded_categories
 
 
 class FlowBatchSampler(Sampler):
@@ -137,8 +149,11 @@ class Flows(Dataset):
 
         # Store in class members
         self.x = [(item-means)/stds for item in X]
-        self.y = [0 if item[0]==0.0 else 1 for item in Y]
-        self.categories = [item[0, -2:-1] for item in all_data]
+        #self.y = [item[:, -1:] for item in all_data]
+        self.y = [np.zeros(len(item)) if item[0]==0.0 else np.ones(len(item)) for item in Y]
+        self.categories = [item[:, -2:-1] for item in all_data]
+        #self.y = [0 if item[0]==0.0 else 1 for item in Y]
+        #self.categories = [item[0, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.n_samples = len(self.x)
 

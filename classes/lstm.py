@@ -17,6 +17,5 @@ class LSTM(nn.Module):
         out, _ = self.lstm(x, (self.hidden_init, self.cell_init))
         # out is of shape batch_size x seq_len x input_size
         # only take last time step
-        out = out[:, -1, :]
         out = self.fc(out)
         return out

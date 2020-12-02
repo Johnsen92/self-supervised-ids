@@ -4,15 +4,16 @@ import os.path
 import hashlib  
 
 class Cache():
-    def __init__(self, cache_dir, md5=False, key_prefix=''):
+    def __init__(self, cache_dir, md5=False, key_prefix='', no_cache=False):
         self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir+'/'
         self.md5 = md5
         self.key_prefix = key_prefix
+        self.no_cache = no_cache
 
     def exists(self, key, noPrefix=False):
         key = self.getRealKey(key, noPrefix)
         cache_file = self.cache_dir + key + '.pickle'
-        return os.path.isfile(cache_file)
+        return os.path.isfile(cache_file) if not self.no_cache else False
 
     def load(self, key, noPrefix=False):
         key = self.getRealKey(key, noPrefix)

@@ -25,6 +25,8 @@ parser.add_argument('-b', '--batch_size', default=32, help='Batch size')
 parser.add_argument('-p', '--train_percent', default=90, help='Training percentage')
 parser.add_argument('-l', '--hidden_size', default=512, help='Size of hidden layers')
 parser.add_argument('-n', '--n_layers', default=3, help='Number of LSTM layers')
+parser.add_argument('--no_cache', action='store_true', help='Flag to disable cache')
+
 args = parser.parse_args(sys.argv[1:])
 
 # Define hyperparameters
@@ -34,7 +36,7 @@ output_size = 2
 
 # Define cache
 key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}'
-cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix)
+cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, no_cache=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
 if not cache.exists('dataset'):
@@ -98,6 +100,9 @@ if not os.path.isfile(chache_file_name) or args.train:
 
             # Forward pass
             outputs = model(data)
+            #print(outputs.size())
+            #print(labels.size())
+            #print(labels)
             loss = criterion(outputs, labels)
             loss_sum.append(loss.item())
             
