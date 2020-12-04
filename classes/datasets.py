@@ -15,11 +15,23 @@ def overwrite_manipulable_entries(seq, filler=-1):
     return seq
 
 def pad_label_sequence(labels, categories):
-    max_seq_length = max([len(item) for item in labels])
-    print(max_seq_length)
-    print(labels.size())
-    print(categories.size())
-    return 1,2
+    max_seq_length = max([len(seq) for seq in labels])
+    padded_labels = []
+    padded_categories = []
+    for label, category in zip(labels, categories):
+        pad_length = max_seq_length - label.size()[0]
+        if not pad_length == 0:
+            lab_pad = torch.zeros(pad_length, dtype=torch.long)
+            lab_pad.fill_(label[0].item())
+            cat_pad = torch.zeros(pad_length, dtype=torch.long)
+            cat_pad.fill_(category[0].item())
+            padded_labels.append(torch.cat((label, lab_pad), 0))
+            padded_categories.append(torch.cat((category, cat_pad), 0))
+        else:
+            padded_labels.append(label)
+            padded_categories.append(category)
+
+    return torch.stack(padded_labels), torch.stack(padded_categories)
 
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs, things=(True, True, True)):
@@ -32,9 +44,9 @@ def collate_flows(seqs, things=(True, True, True)):
         batch_categories.append(categorie)
 
     padded_data = torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True)
-    padded_labels = torch.nn.utils.rnn.pad_sequence(batch_labels, batch_first=True)
-    padded_categories = torch.nn.utils.rnn.pad_sequence(batch_categories, batch_first=True)
-    pad_label_sequence(batch_labels, batch_categories)
+    #padded_labels = torch.nn.utils.rnn.pad_sequence(batch_labels, batch_first=True)
+    #padded_categories = torch.nn.utils.rnn.pad_sequence(batch_categories, batch_first=True)
+    padded_labels, padded_categories = pad_label_sequence(batch_labels, batch_categories)
     return padded_data, padded_labels, padded_categories
 
 
@@ -161,7 +173,11 @@ class Flows(Dataset):
         return self.n_samples
 
     def __getitem__(self, i):
-        data, labels, categories = torch.FloatTensor(self.x[i]), torch.tensor(self.y[i]), torch.FloatTensor(self.categories[i])
+        #tensor_categories = torch.LongTensor(self.categories[i]).squeeze() if len(self.categories[i]) > 1 else torch.LongTensor(self.categories[i])
+        tensor_categories = torch.reshape(torch.LongTensor(self.categories[i]), (-1,))
+        tensor_labels = torch.LongTensor(self.y[i])
+        tensor_data = torch.FloatTensor(self.x[i])
+        data, labels, categories = tensor_data, tensor_labels, tensor_categories
         return data, labels, categories
 
     def getCategories(self):

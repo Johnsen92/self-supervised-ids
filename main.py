@@ -54,6 +54,7 @@ train, val = random_split(dataset, [training_size, validation_size])
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
+# Decide between GPU and CPU Training
 if torch.cuda.is_available() and args.gpu:
     device = torch.device('cuda:0')
 else:
@@ -66,7 +67,7 @@ model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args
 
 # Train model if no cache file exists or the train flag is set, otherwise load cached model
 chache_file_name = args.cache_dir + key_prefix + '_trained_model.pickle'
-if not os.path.isfile(chache_file_name) or args.train:
+if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
     # Define loss
     criterion = nn.CrossEntropyLoss()
 
@@ -100,10 +101,15 @@ if not os.path.isfile(chache_file_name) or args.train:
 
             # Forward pass
             outputs = model(data)
-            #print(outputs.size())
-            #print(labels.size())
-            #print(labels)
-            loss = criterion(outputs, labels)
+            # print(outputs.size())
+            # print(labels.size())
+            # print("\n\n\n")
+            # print(outputs)
+            # print("\n\n\n")
+            # print(labels)
+            op_view = outputs.view(outputs.size()[0] * outputs.size()[1], 2)
+            lab_view = labels.view(labels.size()[0] * labels.size()[1])
+            loss = criterion(op_view, lab_view)
             loss_sum.append(loss.item())
             
             # Backward and optimize
@@ -112,7 +118,7 @@ if not os.path.isfile(chache_file_name) or args.train:
             optimizer.step()
             
             # Calculate time left and save avg. loss of last interval
-            if (i+1) % monitoring_interval == 0:
+            if i-1 % monitoring_interval == 0:
                 avg_loss = sum(loss_sum)/len(loss_sum)
                 last_step = step
                 step = timer()
