@@ -182,8 +182,10 @@ with torch.no_grad():
         # Forward pass
         outputs = model(data)
 
+        print(outputs.data.size())
+
         # Max returns (value ,index)
-        _, predicted = torch.max(outputs.data, 1)
+        _, predicted = torch.max(outputs.data[:,-1,:], 1)
         n_samples += labels.size(0)
         n_correct += (predicted == labels).sum().item()
         n_false_negative += (predicted < labels).sum().item()
