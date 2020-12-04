@@ -43,8 +43,9 @@ if not cache.exists('dataset'):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache)
     cache.save('dataset', dataset)
 else:
-    print('(Cache) Loading normalized dataset...')
+    print('(Cache) Loading normalized dataset...', end='')
     dataset = cache.load('dataset')
+    print('done')
 
 # Create data loaders
 n_samples = len(dataset)
@@ -182,18 +183,16 @@ with torch.no_grad():
         # Forward pass
         outputs = model(data)
 
-        print(outputs.data.size())
-
         # Max returns (value ,index)
         _, predicted = torch.max(outputs.data[:,-1,:], 1)
         n_samples += labels.size(0)
-        n_correct += (predicted == labels).sum().item()
-        n_false_negative += (predicted < labels).sum().item()
-        n_false_positive += (predicted > labels).sum().item()
+        n_correct += (predicted == labels[:, 0]).sum().item()
+        n_false_negative += (predicted < labels[:, 0]).sum().item()
+        n_false_positive += (predicted > labels[:, 0]).sum().item()
         assert n_correct == n_samples - n_false_negative - n_false_positive
 
         # Break after x for debugging
-        if args.d and i == 1000:
+        if args.debug and i == 1000:
             break
 
     # Calculate statistics
@@ -204,7 +203,7 @@ with torch.no_grad():
     # Save and cache statistics
     stats.n_false_negative = n_false_negative
     stats.n_false_positive = n_false_positive
-    print(f'Accuracy with validation size {((1.0-args.train_percent)*100):.2f}% of data samples: {stats.getAccuracy()*100}%, False p.: {false_p}%, False n.: {false_n}%')
+    print(f'Accuracy with validation size {(100 - args.train_percent)}% of data samples: {(stats.getAccuracy()*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
     if not args.debug:
         stats.saveStats()
         stats.saveLosses()
