@@ -3,10 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from timeit import default_timer as timer
-from datetime import timedelta
-from classes import datasets, lstm, statistics, utils
-import math
+from classes import datasets, lstm, statistics, utils, trainer
 import torchvision
 import torch
 import os.path
@@ -39,7 +36,7 @@ output_size = 2
 
 # Define cache
 key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}'
-cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, no_cache=args.no_cache)
+cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
 if not cache.exists('dataset'):
@@ -69,145 +66,40 @@ data, labels, categories = dataset[0]
 input_size = data.size()[1]
 model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
 
-# Train model if no cache file exists or the train flag is set, otherwise load cached model
-chache_file_name = args.cache_dir + key_prefix + '_trained_model.pickle'
-if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
-    # Define loss
-    criterion = nn.CrossEntropyLoss()
+# Define loss
+criterion = nn.CrossEntropyLoss()
 
-    # Define optimizer
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
+# Define optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
 
-    # Define statistics object
-    stats = statistics.Stats(
-        stats_dir = args.stats_dir,
-        n_samples = n_samples,
-        train_percent = args.train_percent / 100.0,
-        n_epochs = args.n_epochs,
-        batch_size = args.batch_size,
-        learning_rate = learning_rate
-    )
+# Define statistics object
+stats = statistics.Stats(
+    stats_dir = args.stats_dir,
+    n_samples = n_samples,
+    train_percent = args.train_percent / 100.0,
+    n_epochs = args.n_epochs,
+    batch_size = args.batch_size,
+    learning_rate = learning_rate
+)
 
-    # Train the model
-    print('Training model...')
-    start = step = timer()
-    n_batches = len(train_loader)
-    losses = []
-    monitoring_interval = (n_batches * args.n_epochs) // 1000
-    print(monitoring_interval)
-    i = 0
-    for epoch in range(args.n_epochs):
-        loss_sum = []
-        for data, labels, categories in train_loader: 
+# Define trainer
+trainer = trainer.SupvervisedTrainer(
+    model = model, 
+    training_data = train_loader, 
+    validation_data = val_loader,
+    device = device,
+    criterion = criterion, 
+    optimizer = optimizer, 
+    epochs = args.n_epochs, 
+    stats = stats, 
+    cache = cache
+)
 
-            # Move data to selected device 
-            data = data.to(device)
-            labels = labels.to(device)
-            categories = categories.to(device)
-
-            # Forward pass
-            outputs = model(data)
-            op_view = outputs.view(outputs.size()[0] * outputs.size()[1], 2)
-            lab_view = labels.view(labels.size()[0] * labels.size()[1])
-            loss = criterion(op_view, lab_view)
-            loss_sum.append(loss.item())
-            
-            # Backward and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            
-            # Calculate time left and save avg. loss of last interval
-            if i % monitoring_interval == 0:
-                avg_loss = sum(loss_sum)/len(loss_sum)
-                last_step = step
-                step = timer()
-                n_batches = len(train_loader)
-                interval_time = step - last_step
-                sample_time = float(interval_time)/float(monitoring_interval)
-                time_left = sample_time * float(n_batches * args.n_epochs - epoch * n_batches - i)/3600.0
-                time_left_h = math.floor(time_left)
-                time_left_m = math.floor((time_left - time_left_h)*60.0)
-                print (f'Epoch [{epoch+1}/{args.n_epochs}], Step [{i+1}/{n_batches}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
-                losses.append(avg_loss)
-                loss_sum = []
-
-            # Break after x for debugging
-            if args.debug and i == (1000 // args.batch_size):
-                break     
-
-            # Increment manual counter
-            i += 1
-
-    # Get stats
-    end = timer()
-    stats.start_time = start
-    stats.end_time = end
-    stats.losses = losses
-
-
-    # Store trained model
-    print('Storing model to cache...',end='')
-    torch.save(model.state_dict(), chache_file_name)
-    print('done')
-
-    # Store statistics object
-    print('Storing statistics to cache...',end='')
-    cache.save('stats', stats)
-    print('done')
-else:
-    # Load cached model
-    print('(Cache) Loading trained model...',end='')
-    model.load_state_dict(torch.load(chache_file_name))
-    model.eval()
-    print('done')
-
-    # Load statistics object
-    print('(Cache) Loading statistics object...',end='')
-    stats = cache.load('stats')
-    print('done')
+# Train model
+trainer.train()
 
 # Validate model
-print('Validating model...')
-with torch.no_grad():
-    n_correct = 0
-    n_samples = 0
-    n_false_positive = 0
-    n_false_negative = 0
-    for i, (data, labels, categories) in enumerate(train_loader):
+trainer.validate()
 
-        # Move data to selected device 
-        data = data.to(device)
-        labels = labels.to(device)
-        categories = categories.to(device)
-
-        # Forward pass
-        outputs = model(data)
-
-        # Max returns (value ,index)
-        _, predicted = torch.max(outputs.data[:,-1,:], 1)
-        n_samples += labels.size(0)
-        n_correct += (predicted == labels[:, 0]).sum().item()
-        n_false_negative += (predicted < labels[:, 0]).sum().item()
-        n_false_positive += (predicted > labels[:, 0]).sum().item()
-        assert n_correct == n_samples - n_false_negative - n_false_positive
-
-        # Break after x for debugging
-        if args.debug and i == 1000:
-            break
-
-    # Calculate statistics
-    acc = 100.0 * n_correct / n_samples
-    false_p = 100.0 * n_false_positive/(n_samples - n_correct)
-    false_n = 100.0 * n_false_negative/(n_samples - n_correct)
-
-    # Save and cache statistics
-    stats.n_false_negative = n_false_negative
-    stats.n_false_positive = n_false_positive
-    print(f'Accuracy with validation size {(100 - args.train_percent)}% of data samples: {(stats.getAccuracy()*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
-    if not args.debug:
-        stats.saveStats()
-        stats.saveLosses()
-        stats.plotLosses()
     
 

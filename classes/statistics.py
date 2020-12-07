@@ -17,7 +17,7 @@ class Stats():
         self.train_percent = train_percent
         self.n_epochs = n_epochs
         self.batch_size = batch_size
-        self.learning_rate = learning_rate 
+        self.learning_rate = learning_rate  
         self.losses = losses
         self.start_time = start_time
         self.end_time = end_time
