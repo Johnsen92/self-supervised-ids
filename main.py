@@ -26,6 +26,9 @@ parser.add_argument('-p', '--train_percent', default=90, help='Training percenta
 parser.add_argument('-l', '--hidden_size', default=512, help='Size of hidden layers')
 parser.add_argument('-n', '--n_layers', default=3, help='Number of LSTM layers')
 parser.add_argument('--no_cache', action='store_true', help='Flag to disable cache')
+parser.add_argument('--sequenceToVector', action='store_true', help='If set, only the output of the last LSTM iteration is considered')
+parser.add_argument('--self_supervised', action='store_true', help='If set, self supervised pretraining is performed')
+parser.add_argument('--pre_training', default=70, help='Percentage of training data used for self supervised pretraining')
 
 args = parser.parse_args(sys.argv[1:])
 
@@ -88,12 +91,14 @@ if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
     # Train the model
     print('Training model...')
     start = step = timer()
-    n_total_steps = len(train_loader)
+    n_batches = len(train_loader)
     losses = []
-    monitoring_interval = n_samples * args.n_epochs // (1000 * args.batch_size) 
+    monitoring_interval = (n_batches * args.n_epochs) // 1000
+    print(monitoring_interval)
+    i = 0
     for epoch in range(args.n_epochs):
         loss_sum = []
-        for i, (data, labels, categories) in enumerate(train_loader): 
+        for data, labels, categories in train_loader: 
 
             # Move data to selected device 
             data = data.to(device)
@@ -102,12 +107,6 @@ if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
 
             # Forward pass
             outputs = model(data)
-            # print(outputs.size())
-            # print(labels.size())
-            # print("\n\n\n")
-            # print(outputs)
-            # print("\n\n\n")
-            # print(labels)
             op_view = outputs.view(outputs.size()[0] * outputs.size()[1], 2)
             lab_view = labels.view(labels.size()[0] * labels.size()[1])
             loss = criterion(op_view, lab_view)
@@ -119,7 +118,7 @@ if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
             optimizer.step()
             
             # Calculate time left and save avg. loss of last interval
-            if i-1 % monitoring_interval == 0:
+            if i % monitoring_interval == 0:
                 avg_loss = sum(loss_sum)/len(loss_sum)
                 last_step = step
                 step = timer()
@@ -129,14 +128,16 @@ if args.no_cache or not os.path.isfile(chache_file_name) or args.train:
                 time_left = sample_time * float(n_batches * args.n_epochs - epoch * n_batches - i)/3600.0
                 time_left_h = math.floor(time_left)
                 time_left_m = math.floor((time_left - time_left_h)*60.0)
-                print (f'Epoch [{epoch+1}/{args.n_epochs}], Step [{i+1}/{n_total_steps}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
+                print (f'Epoch [{epoch+1}/{args.n_epochs}], Step [{i+1}/{n_batches}], Avg. Loss: {avg_loss:.4f}, Time left: {time_left_h} h {time_left_m} m')
                 losses.append(avg_loss)
                 loss_sum = []
 
             # Break after x for debugging
             if args.debug and i == (1000 // args.batch_size):
-                break
-    print('...done')        
+                break     
+
+            # Increment manual counter
+            i += 1
 
     # Get stats
     end = timer()
