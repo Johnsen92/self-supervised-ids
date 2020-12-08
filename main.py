@@ -24,8 +24,9 @@ parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of 
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
 parser.add_argument('-o', '--output_size', default=2, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
+parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
+parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to disable cache')
-parser.add_argument('--sequenceToVector', action='store_true', help='If set, only the output of the last LSTM iteration is considered')
 parser.add_argument('--selfsupervised', action='store_true', help='If set, self supervised pretraining is performed')
 parser.add_argument('--pre_training', default=70, type=int, help='Percentage of training data used for self supervised pretraining')
 args = parser.parse_args(sys.argv[1:])
@@ -39,7 +40,7 @@ cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, d
 
 # Load dataset and normalize data, or load from cache
 if not cache.exists('dataset'):
-    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache)
+    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save('dataset', dataset, msg='Storing normalized dataset')
 else:
     dataset = cache.load('dataset', msg='Loading normalized dataset')
@@ -131,7 +132,7 @@ trainer = trainer.Supvervised(
     cache = cache
 )
 
-# Train model
+# Pretrain, if flag is set, then train model
 if args.selfsupervised:
     pretrainer.train()
 trainer.train()

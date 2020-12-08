@@ -32,5 +32,4 @@ class PretrainableLSTM(LSTM):
         else:
             out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
             out = self._fc(out) 
-
         return out

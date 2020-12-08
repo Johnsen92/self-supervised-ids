@@ -109,16 +109,14 @@ class CAIA(Dataset):
         return self.X[i], self.y[i]
 
 class Flows(Dataset):
-    def __init__(self, data_pickle, cache=None):
+    def __init__(self, data_pickle, cache=None, max_length=100, remove_changeable=False):
         super().__init__()
         print('Loading data file...', end='')
 
         self.cache = cache
         self.data_pickle = data_pickle
-
-        # Parameters
-        maxLength = 100
-        removeChangeable = False
+        self.max_length = max_length
+        self.remove_changeable = remove_changeable
 
         # Load pickled dataset
         with open (data_pickle, 'rb') as f:
@@ -130,8 +128,8 @@ class Flows(Dataset):
         assert min(mapping.values()) == 0
 
         # Remove flows witch invalid IATs
-        all_data = [item[:maxLength,:] for item in all_data if np.all(item[:,4]>=0)]
-        if removeChangeable:
+        all_data = [item[:max_length,:] for item in all_data if np.all(item[:,4]>=0)]
+        if remove_changeable:
             all_data = [overwrite_manipulable_entries(item) for item in all_data]
 
         X = [item[:, :-2] for item in all_data]
@@ -156,16 +154,10 @@ class Flows(Dataset):
         assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
         assert not (stds==0).any(), 'stds: {}'.format(stds)
         
-        
-        
-
         # Store in class members
         self.x = [(item-means)/stds for item in X]
-        #self.y = [item[:, -1:] for item in all_data]
         self.y = [np.zeros(len(item)) if item[0]==0.0 else np.ones(len(item)) for item in Y]
         self.categories = [item[:, -2:-1] for item in all_data]
-        #self.y = [0 if item[0]==0.0 else 1 for item in Y]
-        #self.categories = [item[0, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.n_samples = len(self.x)
 
@@ -179,6 +171,3 @@ class Flows(Dataset):
         tensor_data = torch.FloatTensor(self.x[i])
         data, labels, categories = tensor_data, tensor_labels, tensor_categories
         return data, labels, categories
-
-    def getCategories(self):
-        return self.categories
