@@ -138,25 +138,25 @@ class Flows(Dataset):
         Y = [item[:, -1:] for item in all_data]
         print('done')
 
-        print('Normalizing data...', end='')
-
         # Normalize data between -1 and 1
         if not self.cache == None and not self.cache.exists('norm'):
+            print('Calculating normalization data...', end='')
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)
             stds = np.std(catted_x, axis=0)
             stds[stds==0.0] = 1.0
+            print('done')
             
             # Store for future use
-            cache.save('norm', (means, stds))
+            cache.save('norm', (means, stds), msg='Storing normalization data')
         else:
-            (means, stds) = cache.load('norm')
+            (means, stds) = cache.load('norm', msg='Loading normalization data')
 
         assert means.shape[0] == X[0].shape[-1], 'means.shape: {}, x.shape: {}'.format(means.shape, X[0].shape)
         assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
         assert not (stds==0).any(), 'stds: {}'.format(stds)
         
-        print('done')
+        
         
 
         # Store in class members

@@ -1,12 +1,64 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from enum import Enum
 from datetime import datetime
+from timeit import default_timer as timer
+from datetime import timedelta
 
 def formatTime(time_s):
     time_h = float(time_s) // 3600.0
     time_m = math.floor((float(time_s) / 3600.0 - time_h) * 60.0)
     return time_h, time_m
+
+class Aggregate(Enum):
+    NONE = 0,
+    SUM = 1,
+    AVG = 2
+
+class Monitor():
+    aggregates = Aggregate()
+
+    def __init__(self, iterations, n_measurements=1000, agr=Aggregate.NONE, time_tracking=False):
+        self.iterations = iterations
+        self.n_samples = n_measurements
+        self.agr = agr
+        self.time_tracking = time_tracking
+        self._interval = iterations // n_measurements
+        self._prev_timer = timer()
+        self._timer = timer()
+        self._first = True
+        self._seq = []
+        self._agr_seq = [] 
+        self._i = 0
+
+    def __call__(self, val):
+        self._i += 1
+        self._seq.append(val)
+        if self._i-1 % self._interval == 0:
+            if self.agr == Aggregate.NONE:
+                self._agr_seq = self._seq[-1]
+            elif self.agr == Aggregate.SUM:
+                self._agr_seq = sum(self._seq)
+            elif self.agr == Aggregate.AVG:
+                self._agr_seq = sum(self._seq)/len(self._seq)
+            else:
+                print(f'Invalid enum value: {self.agr}')
+            self._seq = []
+            if self.time_tracking:
+                self._time_left()
+            return True
+        else:
+            return False
+
+    def _time_left(self):
+        self._prev_timer = self._timer
+        self._timer = timer()
+        interval_time = self._timer - self._prev_timer
+        time_left_s = int(float(interval_time) * float(self.iterations - self._i) / float(self._interval))
+        time_left_h, time_left_m = formatTime(time_left_s)
+        print(f'Time left: {time_left_h}h {time_left_m}m')
+        
 
 class Stats():
     def __init__(self, stats_dir='./', start_time=None, end_time=None, n_samples=None, train_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):

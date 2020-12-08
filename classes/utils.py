@@ -15,19 +15,25 @@ class Cache():
         cache_file = self.cache_dir + key + '.pickle'
         return os.path.isfile(cache_file) if not self.disabled else False
 
-    def load(self, key, noPrefix=False):
+    def load(self, key, noPrefix=False, msg=None):
         key = self.getRealKey(key, noPrefix)
         cache_file = self.cache_dir + key + '.pickle'
         assert os.path.isfile(cache_file)
+        print(f'(Cache) Loading {key} from cache' if msg == None else f'(Cache) {msg}', end='')
         with open (cache_file, 'rb') as f:
-            return pickle.load(f)
+            pkl = pickle.load(f)
+            print('...done')
+        return pkl
+        
 
-    def save(self, key, obj, noPrefix=False):
+    def save(self, key, obj, noPrefix=False, msg=None):
         key = self.getRealKey(key, noPrefix)
         cache_file = self.cache_dir + key + '.pickle'
+        print(f'(Cache) Storing {key} to cache' if msg == None else f'(Cache) {msg}', end='')
         with open (cache_file, 'wb') as f:
             f.write(pickle.dumps(obj))
-
+            print('...done')
+        
     def getRealKey(self, key, noPrefix):
         prefix = hashlib.md5(self.key_prefix.encode('utf-8')).hexdigest() if self.md5 else self.key_prefix
         return key if noPrefix else prefix + '_' + key
