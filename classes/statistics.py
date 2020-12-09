@@ -21,7 +21,7 @@ class Monitor():
         self.iterations = iterations
         self.n_samples = n_measurements
         self.agr = agr
-        self._interval = iterations // n_measurements
+        self._interval = iterations // n_measurements if iterations // n_measurements > 0 else 1
         self._prev_timer = timer()
         self._timer = timer()
         self._seq = []
@@ -75,12 +75,13 @@ class Monitor():
         return self._end_time - self._start_time
 
 class Stats():
-    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):
+    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
         self.n_false_negative = n_false_negative
         self.train_percent = train_percent
+        self.val_percent = val_percent
         self.n_epochs = n_epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate  
@@ -106,7 +107,8 @@ class Stats():
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Epochs, {self.n_epochs}\n')
             f.write(f'Batch size, {self.batch_size}\n')
-            f.write(f'Training percentage, {(self.train_percent*100):.2f}\n')
+            f.write(f'Training percentage, {self.train_percent:.2f}\n')
+            f.write(f'Validation percentage, {self.val_percent:.2f}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
             f.write(f'Accuracy, {p_acc:.2f} %\n')

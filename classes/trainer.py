@@ -44,7 +44,7 @@ class Supvervised(Trainer):
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.NONE)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
@@ -77,7 +77,7 @@ class Supvervised(Trainer):
                         print (f'Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
-            self.stats.training_time = mon.duration_s
+            self.stats.training_time_s = mon.duration_s
             self.stats.losses = mon.measurements
 
             # Store trained model
@@ -127,7 +127,7 @@ class Supvervised(Trainer):
             # Save and cache statistics
             self.stats.n_false_negative = n_false_negative
             self.stats.n_false_positive = n_false_positive
-            print(f'Accuracy with validation size {(100 - self.stats.train_percent)}% of data samples: {(stats.accuracy*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
+            print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
             self.stats.save_stats()
             self.stats.save_losses()
             self.stats.plot_losses()
@@ -141,7 +141,7 @@ class PredictPacket(Trainer):
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.NONE)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
@@ -189,3 +189,6 @@ class PredictPacket(Trainer):
 
             # Load statistics object
             self.stats = self.cache.load('pretraining_stats', msg='Loading pretraining statistics object')
+
+    def validate(self):
+        print('Though shalt not validate an only pretrained model')

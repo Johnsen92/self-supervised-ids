@@ -31,11 +31,13 @@ parser.add_argument('--selfsupervised', action='store_true', help='If set, self 
 parser.add_argument('--pre_training', default=70, type=int, help='Percentage of training data used for self supervised pretraining')
 args = parser.parse_args(sys.argv[1:])
 
+debug_size = 1024
+
 # Define hyperparameters
 data_filename = os.path.basename(args.data_file)
 
 # Define cache
-key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}'
+key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}{f"_pr{args.pre_training}" if args.selfsupervised else ""}'
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
@@ -47,6 +49,12 @@ else:
 
 # Create data loaders
 n_samples = len(dataset)
+
+# If debug flag is set, reduce size of dataset significantly
+if args.debug:
+    dataset, _ = random_split(dataset, [debug_size, n_samples - debug_size])
+    n_samples = debug_size
+
 training_size = (n_samples*args.train_percent) // 100
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
@@ -86,21 +94,23 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Define statistics objects
 if args.selfsupervised:
-    pretraining_percent = (float(args.train_percent) / 100.0) * (float(args.pre_training) / 100.0)
+    pretraining_percent = args.train_percent * args.pre_training // 10000
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
         n_samples = n_samples,
         train_percent = pretraining_percent,
+        val_percent = 100 - args.train_percent,
         n_epochs = args.n_epochs,
         batch_size = args.batch_size,
         learning_rate = args.learning_rate
     )
 
-training_percentage = (args.train_percent / 100.0) - pretraining_percent if args.selfsupervised else args.train_percent / 100.0
+training_percentage = args.train_percent - pretraining_percent if args.selfsupervised else args.train_percent
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
     n_samples = n_samples,
     train_percent = training_percentage,
+    val_percent = 100 - args.train_percent,
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate
