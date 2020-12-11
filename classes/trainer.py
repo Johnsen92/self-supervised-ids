@@ -28,6 +28,7 @@ class Trainer():
         assert isinstance(cache, Cache)
         self.device = device
         self.n_batches = len(self.training_data)
+        self.scaler = torch.cuda.amp.GradScaler()
 
     def train(self):
         pass
@@ -61,15 +62,17 @@ class Supvervised(Trainer):
                     categories = categories.to(self.device)
 
                     # Forward pass
-                    outputs = self.model(data, pretraining=False)
-                    op_view = outputs.view(-1, 2)
-                    lab_view = labels.view(-1)
-                    loss = self.criterion(op_view, lab_view)
+                    with torch.cuda.amp.autocast():
+                        outputs = self.model(data, pretraining=False)
+                        op_view = outputs.view(-1, 2)
+                        lab_view = labels.view(-1)
+                        loss = self.criterion(op_view, lab_view)
                     
                     # Backward and optimize
                     self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
                     
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
@@ -164,14 +167,17 @@ class PredictPacket(Trainer):
                     data = data.to(self.device)
 
                     # Forward pass
-                    outputs = self.model(data, pretraining=True)
-                    loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+                    # Forward pass
+                    with torch.cuda.amp.autocast():
+                        outputs = self.model(data, pretraining=True)
+                        loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
                     
                     # Backward and optimize
                     self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
-                    
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+     
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left

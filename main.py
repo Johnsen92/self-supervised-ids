@@ -66,10 +66,10 @@ if args.selfsupervised:
     selfsupervised_size = (args.pre_training * training_size) // 100
     supervised_size = training_size - selfsupervised_size
     pretrain, train = random_split(train, [selfsupervised_size, supervised_size])
-    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
-train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
 # Decide between GPU and CPU Training
 if torch.cuda.is_available() and args.gpu:

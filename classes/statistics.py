@@ -127,7 +127,8 @@ class Stats():
         ax.set(xlabel='% of Training', ylabel='Loss', title='Loss progression')
         ax.grid()
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        fig.savefig(self.stats_dir + now + '_loss.png')
+        print(self.stats_dir + now + '_loss.png')
+        fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         plt.show()
 
     @property
