@@ -28,7 +28,7 @@ class Trainer():
         assert isinstance(cache, Cache)
         self.device = device
         self.n_batches = len(self.training_data)
-        self.scaler = torch.cuda.amp.GradScaler()
+        self._scaler = torch.cuda.amp.GradScaler()
 
     def train(self):
         pass
@@ -70,9 +70,9 @@ class Supvervised(Trainer):
                     
                     # Backward and optimize
                     self.optimizer.zero_grad()
-                    self.scaler.scale(loss).backward()
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
+                    self._scaler.scale(loss).backward()
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
                     
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
@@ -174,9 +174,9 @@ class PredictPacket(Trainer):
                     
                     # Backward and optimize
                     self.optimizer.zero_grad()
-                    self.scaler.scale(loss).backward()
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
+                    self._scaler.scale(loss).backward()
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
      
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
