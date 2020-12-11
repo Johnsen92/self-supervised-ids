@@ -94,43 +94,51 @@ class Supvervised(Trainer):
             self.model.eval()
             print('done')
 
-            # Load statistics object
-            self.stats = self.cache.load('stats', msg='Loading statistics object')
+            if self.cache.exists('stats'):
+                # Load statistics object
+                self.stats = self.cache.load('stats', msg='Loading statistics object')
 
     def validate(self):
-        # Validate model
-        print('Validating model...')
-        with torch.no_grad():
-            n_correct = n_samples = n_false_positive = n_false_negative = 0
-            for data, labels, categories in self.validation_data:
 
-                # Move data to selected device 
-                data = data.to(self.device)
-                labels = labels.to(self.device)
-                categories = categories.to(self.device)
+        if self.cache.exists('stats_completed'):
+            self.stats = self.cache.load('stats_completed', msg='Loading cached validation results')
+        else:
+            # Validate model
+            print('Validating model...')
+            with torch.no_grad():
+                n_correct = n_samples = n_false_positive = n_false_negative = 0
+                for data, labels, categories in self.validation_data:
 
-                # Forward pass
-                outputs = self.model(data)
+                    # Move data to selected device 
+                    data = data.to(self.device)
+                    labels = labels.to(self.device)
+                    categories = categories.to(self.device)
 
-                # Max returns (value ,index)
-                _, predicted = torch.max(outputs.data[:,-1,:], 1)
-                n_samples += labels.size(0)
-                n_correct += (predicted == labels[:, 0]).sum().item()
-                n_false_negative += (predicted < labels[:, 0]).sum().item()
-                n_false_positive += (predicted > labels[:, 0]).sum().item()
-                assert n_correct == n_samples - n_false_negative - n_false_positive
+                    # Forward pass
+                    outputs = self.model(data)
 
-            # Calculate statistics
-            false_p = 100.0 * n_false_positive/(n_samples - n_correct)
-            false_n = 100.0 * n_false_negative/(n_samples - n_correct)
+                    # Max returns (value ,index)
+                    _, predicted = torch.max(outputs.data[:,-1,:], 1)
+                    n_samples += labels.size(0)
+                    n_correct += (predicted == labels[:, 0]).sum().item()
+                    n_false_negative += (predicted < labels[:, 0]).sum().item()
+                    n_false_positive += (predicted > labels[:, 0]).sum().item()
+                    assert n_correct == n_samples - n_false_negative - n_false_positive
 
-            # Save and cache statistics
-            self.stats.n_false_negative = n_false_negative
-            self.stats.n_false_positive = n_false_positive
-            print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
-            self.stats.save_stats()
-            self.stats.save_losses()
-            self.stats.plot_losses()
+                # Calculate results
+                false_p = 100.0 * n_false_positive/(n_samples - n_correct)
+                false_n = 100.0 * n_false_negative/(n_samples - n_correct)
+
+                # Save and cache validation results
+                self.stats.n_false_negative = n_false_negative
+                self.stats.n_false_positive = n_false_positive
+                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
+                self.cache.save('stats_completed', self.stats, msg='Storing validation results')
+
+        # Print and plot stats
+        self.stats.save_stats()
+        self.stats.save_losses()
+        self.stats.plot_losses()
 
 class PredictPacket(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache):

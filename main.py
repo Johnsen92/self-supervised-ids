@@ -37,7 +37,9 @@ debug_size = 1024
 data_filename = os.path.basename(args.data_file)
 
 # Define cache
-key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}{f"_pr{args.pre_training}" if args.selfsupervised else ""}'
+key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+if args.selfsupervised:
+    key_prefix.join(f'_pr{args.pre_training}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
