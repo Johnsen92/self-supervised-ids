@@ -20,14 +20,14 @@ parser.add_argument('-s', '--stats_dir', default='./stats/', help='Statistics fo
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size')
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage')
-parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden layers')
+parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
 parser.add_argument('-o', '--output_size', default=2, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
-parser.add_argument('--no_cache', action='store_true', help='Flag to disable cache')
-parser.add_argument('--selfsupervised', action='store_true', help='If set, self supervised pretraining is performed')
+parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+parser.add_argument('--selfsupervised', action='store_true', help='Flag to enable self supervised pretraining')
 args = parser.parse_args(sys.argv[1:])
 
 # If debug flag is set, minimize dataset and epochs
