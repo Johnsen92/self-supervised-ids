@@ -71,11 +71,13 @@ class Monitor():
 
     @property
     def duration_s(self):
-        assert not self._end_time == None and not self._start_time == None
+        if self._end_time == None:
+            print('End time not set, setting it to now')
+            self._end_time = timer()
         return self._end_time - self._start_time
 
 class Stats():
-    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None):
+    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None, gpu=True):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -84,6 +86,7 @@ class Stats():
         self.val_percent = val_percent
         self.n_epochs = n_epochs
         self.batch_size = batch_size
+        self.gpu = gpu
         self.learning_rate = learning_rate  
         self.losses = losses
         self.training_time_s = training_time_s
@@ -105,6 +108,7 @@ class Stats():
         p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
+            f.write(f'Trained on, {"GPU" if self.gpu else "CPU"} %\n')
             f.write(f'Epochs, {self.n_epochs}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Training percentage, {self.train_percent:.2f}\n')
@@ -127,7 +131,6 @@ class Stats():
         ax.set(xlabel='% of Training', ylabel='Loss', title='Loss progression')
         ax.grid()
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        print(self.stats_dir + now + '_loss.png')
         fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         plt.show()
 

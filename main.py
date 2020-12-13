@@ -31,7 +31,9 @@ parser.add_argument('--selfsupervised', action='store_true', help='If set, self 
 parser.add_argument('--pre_training', default=70, type=int, help='Percentage of training data used for self supervised pretraining')
 args = parser.parse_args(sys.argv[1:])
 
-debug_size = 1024
+debug_size = 512
+if args.debug:
+    args.n_epochs = 1
 
 # Define hyperparameters
 data_filename = os.path.basename(args.data_file)
@@ -104,7 +106,8 @@ if args.selfsupervised:
         val_percent = 100 - args.train_percent,
         n_epochs = args.n_epochs,
         batch_size = args.batch_size,
-        learning_rate = args.learning_rate
+        learning_rate = args.learning_rate,
+        gpu = args.gpu
     )
 
 training_percentage = args.train_percent - pretraining_percent if args.selfsupervised else args.train_percent
@@ -115,7 +118,8 @@ stats_training = statistics.Stats(
     val_percent = 100 - args.train_percent,
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,
-    learning_rate = args.learning_rate
+    learning_rate = args.learning_rate,
+    gpu = args.gpu
 )
 
 # Define pretrainer

@@ -28,7 +28,7 @@ class Trainer():
         assert isinstance(cache, Cache)
         self.device = device
         self.n_batches = len(self.training_data)
-        self._scaler = torch.cuda.amp.GradScaler()
+        self._scaler = torch.cuda.amp.GradScaler() if stats.gpu else None
 
     def train(self):
         pass
@@ -60,19 +60,33 @@ class Supvervised(Trainer):
                     data = data.to(self.device)
                     labels = labels.to(self.device)
                     categories = categories.to(self.device)
+                         
+                    # Clear gradients
+                    self.optimizer.zero_grad()
 
-                    # Forward pass
-                    with torch.cuda.amp.autocast():
+                    # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
+                    if not self._scaler == None:
+                        with torch.cuda.amp.autocast():
+                            # Forwards pass
+                            outputs = self.model(data, pretraining=False)
+                            op_view = outputs.view(-1, 2)
+                            lab_view = labels.view(-1)
+                            loss = self.criterion(op_view, lab_view)
+
+                        # Backward and optimize
+                        self._scaler.scale(loss).backward()
+                        self._scaler.step(self.optimizer)
+                        self._scaler.update()
+                    else:
+                        # Forwards pass
                         outputs = self.model(data, pretraining=False)
                         op_view = outputs.view(-1, 2)
                         lab_view = labels.view(-1)
                         loss = self.criterion(op_view, lab_view)
-                    
-                    # Backward and optimize
-                    self.optimizer.zero_grad()
-                    self._scaler.scale(loss).backward()
-                    self._scaler.step(self.optimizer)
-                    self._scaler.update()
+
+                        # Backward and optimize
+                        loss.backward()
+                        self.optimizer.step()
                     
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
@@ -166,18 +180,31 @@ class PredictPacket(Trainer):
                     # Move data to selected device 
                     data = data.to(self.device)
 
-                    # Forward pass
-                    # Forward pass
-                    with torch.cuda.amp.autocast():
+                    # Clear gradients
+                    self.optimizer.zero_grad()
+                    
+                    # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
+                    if not self._scaler == None:
+                        with torch.cuda.amp.autocast():
+                            # Forwards pass
+                            outputs = self.model(data, pretraining=True)
+                            loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+
+                        # Backward and optimize
+                        self._scaler.scale(loss).backward()
+                        self._scaler.step(self.optimizer)
+                        self._scaler.update()
+                    else:
+                        # Forwards pass
                         outputs = self.model(data, pretraining=True)
                         loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
-                    
-                    # Backward and optimize
-                    self.optimizer.zero_grad()
-                    self._scaler.scale(loss).backward()
-                    self._scaler.step(self.optimizer)
-                    self._scaler.update()
-     
+
+                        # Backward and optimize
+                        loss.backward()
+                        self.optimizer.step()
+
+                        
+
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
