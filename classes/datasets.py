@@ -119,7 +119,7 @@ class Flows(Dataset):
         self.remove_changeable = remove_changeable
 
         # Load pickled dataset
-        with open (data_pickle, 'rb') as f:
+        with open(data_pickle, 'rb') as f:
             all_data = pickle.load(f)
 
         with open(data_pickle[:-7]+'_categories_mapping.json', 'r') as f:

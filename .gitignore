@@ -1,6 +1,7 @@
 data/*
 cache/*
 stats/*
+json/*
 latex/*.aux
 latex/*.bbl
 latex/*.toc

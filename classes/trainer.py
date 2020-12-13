@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 
 class Trainer():
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache):
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         self.model = model
         assert isinstance(model, nn.Module)
         self.training_data = training_data
@@ -29,6 +29,7 @@ class Trainer():
         self.device = device
         self.n_batches = len(self.training_data)
         self._scaler = torch.cuda.amp.GradScaler() if stats.gpu else None
+        self.json = json
 
     def train(self):
         pass
@@ -37,15 +38,15 @@ class Trainer():
         pass
 
 class Supvervised(Trainer):
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache):
-        super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache)
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
+        super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
         
     def train(self):
         # Set model into training mode
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='train', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
@@ -158,15 +159,15 @@ class Supvervised(Trainer):
         self.stats.plot_losses()
 
 class PredictPacket(Trainer):
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache):
-        super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache)
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
+        super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
 
     def train(self):
         # Set model into training mode
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='pretrain', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'

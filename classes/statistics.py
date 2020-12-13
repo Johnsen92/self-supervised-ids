@@ -5,6 +5,7 @@ from enum import Enum
 from datetime import datetime
 from timeit import default_timer as timer
 from datetime import timedelta
+import json
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -17,10 +18,16 @@ class Monitor():
         SUM = 1,
         AVG = 2
 
-    def __init__(self, iterations, n_measurements=1000, agr=Aggregate.NONE):
+    index = 0
+
+    def __init__(self, iterations, n_measurements=1000, agr=Aggregate.NONE, json_dir=None, title=None):
         self.iterations = iterations
         self.n_samples = n_measurements
         self.agr = agr
+        if not json_dir == None:
+            self._json_dir = json_dir if json_dir[-1] == '/' else json_dir+'/'
+        self._json = False if json_dir == None else True
+        self._percent_interval = iterations // 100 if iterations // 100 > 0 else 1
         self._interval = iterations // n_measurements if iterations // n_measurements > 0 else 1
         self._prev_timer = timer()
         self._timer = timer()
@@ -29,6 +36,21 @@ class Monitor():
         self._i = 0
         self._start_time = None
         self._end_time = None  
+        self._progress = 0
+        if title == None:
+            self.title = "Monitor #" + str(Monitor.index)
+        else:
+            self.title = title
+        Monitor.index += 1
+
+    def _export_progress(self):
+        assert self._json   
+        prog_dict = {}
+        prog_dict['title'] = self.title
+        prog_dict['progress'] = self._progress
+        prog_dict['time_left_h'], prog_dict['time_left_m'] = self.time_left
+        with open(self._json_dir + self.title + '_progress.json', 'w') as f:
+            f.write(json.dumps(prog_dict))
 
     def __call__(self, val):
         # Check if first or last iteration and set start-/endtime
@@ -37,7 +59,16 @@ class Monitor():
         elif self._i == self.iterations-1:
             self._end_time = timer()
 
+        # Update iteration counter
         self._i += 1
+
+        # Update progress in percent for every percent of training done
+        if (self._i-1) % self._percent_interval == 0:
+            self._progress += 1
+            # If json is true, export progress
+            if self._json:
+                self._export_progress()
+
         self._seq.append(val)
         if (self._i-1) % self._interval == 0:
             if self.agr == self.Aggregate.NONE:
@@ -77,7 +108,10 @@ class Monitor():
         return self._end_time - self._start_time
 
 class Stats():
-    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None, gpu=True):
+
+    index = 0
+
+    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -90,6 +124,11 @@ class Stats():
         self.learning_rate = learning_rate  
         self.losses = losses
         self.training_time_s = training_time_s
+        if title == None:
+            self.title = "Statistics #" + str(Stats.index)
+        else:
+            self.title = title
+        Stats.index += 1
 
     def plot_stats(self):
         pass
@@ -139,3 +178,7 @@ class Stats():
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
         n_right = self.n_samples - self.n_false_negative - self.n_false_positive
         return float(n_right)/float(self.n_samples)
+
+    @property
+    def false_alarm_rate(self):
+        pass
