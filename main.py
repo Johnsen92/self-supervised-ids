@@ -28,7 +28,6 @@ parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to disable cache')
 parser.add_argument('--selfsupervised', action='store_true', help='If set, self supervised pretraining is performed')
-parser.add_argument('--pre_training', default=70, type=int, help='Percentage of training data used for self supervised pretraining')
 args = parser.parse_args(sys.argv[1:])
 
 debug_size = 512
@@ -63,13 +62,6 @@ training_size = (n_samples*args.train_percent) // 100
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
 
-# If selfsuper training is enabled, split training data according to pre_training percentage
-if args.selfsupervised:
-    selfsupervised_size = (args.pre_training * training_size) // 100
-    supervised_size = training_size - selfsupervised_size
-    pretrain, train = random_split(train, [selfsupervised_size, supervised_size])
-    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
-
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
@@ -98,11 +90,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Define statistics objects
 if args.selfsupervised:
-    pretraining_percent = args.train_percent * args.pre_training // 10000
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
         n_samples = n_samples,
-        train_percent = pretraining_percent,
+        train_percent = args.train_percent,
         val_percent = 100 - args.train_percent,
         n_epochs = args.n_epochs,
         batch_size = args.batch_size,
@@ -110,11 +101,10 @@ if args.selfsupervised:
         gpu = args.gpu
     )
 
-training_percentage = args.train_percent - pretraining_percent if args.selfsupervised else args.train_percent
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
     n_samples = n_samples,
-    train_percent = training_percentage,
+    train_percent = args.train_percent,
     val_percent = 100 - args.train_percent,
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,
@@ -125,7 +115,7 @@ stats_training = statistics.Stats(
 # Define pretrainer
 pretrainer = trainer.PredictPacket(
     model = model, 
-    training_data = pretrain_loader, 
+    training_data = train_loader, 
     validation_data = val_loader,
     device = device,
     criterion = pretraining_criterion, 
