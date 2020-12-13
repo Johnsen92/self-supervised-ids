@@ -30,6 +30,7 @@ parser.add_argument('--no_cache', action='store_true', help='Flag to disable cac
 parser.add_argument('--selfsupervised', action='store_true', help='If set, self supervised pretraining is performed')
 args = parser.parse_args(sys.argv[1:])
 
+# If debug flag is set, minimize dataset and epochs
 debug_size = 512
 if args.debug:
     args.n_epochs = 1
@@ -40,7 +41,7 @@ data_filename = os.path.basename(args.data_file)
 # Define cache
 key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.selfsupervised:
-    key_prefix.join(f'_pr{args.pre_training}')
+    key_prefix.join(f'_pr')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
@@ -53,15 +54,17 @@ else:
 # Create data loaders
 n_samples = len(dataset)
 
-# If debug flag is set, reduce size of dataset significantly
+# If debug flag is set, only take debug_size samples
 if args.debug:
     dataset, _ = random_split(dataset, [debug_size, n_samples - debug_size])
     n_samples = debug_size
 
+# Split dataset into training and validation parts
 training_size = (n_samples*args.train_percent) // 100
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
 
+# Define data loaders
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
@@ -88,7 +91,7 @@ training_criterion = nn.CrossEntropyLoss()
 # Define optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  
 
-# Define statistics objects
+# Define statistic object for pretraining
 if args.selfsupervised:
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
@@ -101,6 +104,7 @@ if args.selfsupervised:
         gpu = args.gpu
     )
 
+# Define statistic object for training
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
     n_samples = n_samples,
