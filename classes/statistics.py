@@ -24,9 +24,6 @@ class Monitor():
         self.iterations = iterations
         self.n_samples = n_measurements
         self.agr = agr
-        if not json_dir == None:
-            self._json_dir = json_dir if json_dir[-1] == '/' else json_dir+'/'
-        self._json = False if json_dir == None else True
         self._percent_interval = iterations // 100 if iterations // 100 > 0 else 1
         self._interval = iterations // n_measurements if iterations // n_measurements > 0 else 1
         self._prev_timer = timer()
@@ -37,11 +34,21 @@ class Monitor():
         self._start_time = None
         self._end_time = None  
         self._progress = 0
+        self._time_left_s = 0
+        if not json_dir == None:
+            self._json_dir = json_dir if json_dir[-1] == '/' else json_dir+'/'
+
         if title == None:
             self.title = "Monitor #" + str(Monitor.index)
         else:
             self.title = title
         Monitor.index += 1
+
+        if json_dir == None:
+            self._json = False
+        else:
+            self._json = True
+            self._export_progress()
 
     def _export_progress(self):
         assert self._json   
@@ -49,7 +56,7 @@ class Monitor():
         prog_dict['title'] = self.title
         prog_dict['progress'] = self._progress
         prog_dict['time_left_h'], prog_dict['time_left_m'] = self.time_left
-        with open(self._json_dir + self.title + '_progress.json', 'w') as f:
+        with open(self._json_dir + 'progress.json', 'w') as f:
             f.write(json.dumps(prog_dict))
 
     def __call__(self, val):
@@ -71,6 +78,14 @@ class Monitor():
 
         self._seq.append(val)
         if (self._i-1) % self._interval == 0:
+
+            # Calculate expected time left
+            self._prev_timer = self._timer
+            self._timer = timer()
+            interval_time = self._timer - self._prev_timer
+            self._time_left_s = int(float(interval_time) * float(self.iterations - self._i) / float(self._interval))
+            
+            # Calculate aggregate
             if self.agr == self.Aggregate.NONE:
                 self._agr_seq.append(self._seq[-1])
             elif self.agr == self.Aggregate.SUM:
@@ -86,11 +101,7 @@ class Monitor():
 
     @property
     def time_left(self):
-        self._prev_timer = self._timer
-        self._timer = timer()
-        interval_time = self._timer - self._prev_timer
-        time_left_s = int(float(interval_time) * float(self.iterations - self._i) / float(self._interval))
-        return formatTime(time_left_s)
+        return formatTime(self._time_left_s)
         
     @property
     def measurements(self):

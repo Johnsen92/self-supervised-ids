@@ -46,7 +46,7 @@ class Supvervised(Trainer):
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='train', json_dir=self.json)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Training', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
@@ -69,7 +69,7 @@ class Supvervised(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(data, pretraining=False)
+                            outputs = self.model(data)
                             op_view = outputs.view(-1, 2)
                             lab_view = labels.view(-1)
                             loss = self.criterion(op_view, lab_view)
@@ -80,7 +80,7 @@ class Supvervised(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(data, pretraining=False)
+                        outputs = self.model(data)
                         op_view = outputs.view(-1, 2)
                         lab_view = labels.view(-1)
                         loss = self.criterion(op_view, lab_view)
@@ -118,6 +118,10 @@ class Supvervised(Trainer):
 
     def validate(self):
 
+        # Define monitor to track time and avg. loss over time
+        n_val_samples = len(self.validation_data)
+        mon = Monitor(n_val_samples, 1000, agr=Monitor.Aggregate.NONE, title='Validation', json_dir=self.json)
+
         if self.cache.exists('stats_completed'):
             self.stats = self.cache.load('stats_completed', msg='Loading cached validation results')
         else:
@@ -143,6 +147,10 @@ class Supvervised(Trainer):
                     n_false_positive += (predicted > labels[:, 0]).sum().item()
                     assert n_correct == n_samples - n_false_negative - n_false_positive
 
+                    if mon(0):
+                        time_left_h, time_left_m = mon.time_left
+                        print (f'Step [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
+
                 # Calculate results
                 false_p = 100.0 * n_false_positive/(n_samples - n_correct)
                 false_n = 100.0 * n_false_negative/(n_samples - n_correct)
@@ -167,7 +175,7 @@ class PredictPacket(Trainer):
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='pretrain', json_dir=self.json)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Pretraining', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
         chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
