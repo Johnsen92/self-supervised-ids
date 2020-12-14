@@ -9,4 +9,4 @@ clean:
 	rm ${PYCACHE_DIR}/*
 
 test:
-	python3 main.py -f ./data/flows.pickle -g -t
+	python3 main.py -f ./data/flows.pickle -g --no_cache -S -b 128 -j /var/www/html/json

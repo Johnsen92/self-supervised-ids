@@ -85,9 +85,8 @@ data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
 if args.selfsupervised:
-    model = lstm.PretrainableLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
-else:
-    model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
+    pretraining_model = lstm.LSTM(input_size, args.hidden_size, input_size, args.n_layers, args.batch_size, device).to(device)
+model = lstm.ChainLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device, pretraining_model).to(device)
 
 # Define loss
 if args.selfsupervised:
@@ -95,6 +94,7 @@ if args.selfsupervised:
 training_criterion = nn.CrossEntropyLoss()
 
 # Define optimizer
+pretraining_optimizer = torch.optim.Adam(pretraining_model.parameters(), lr=args.learning_rate)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  
 
 # Define statistic object for pretraining
@@ -125,12 +125,12 @@ stats_training = statistics.Stats(
 # Define pretrainer
 if args.selfsupervised:
     pretrainer = trainer.PredictPacket(
-        model = model, 
+        model = pretraining_model, 
         training_data = train_loader, 
         validation_data = val_loader,
         device = device,
         criterion = pretraining_criterion, 
-        optimizer = optimizer, 
+        optimizer = pretraining_optimizer, 
         epochs = args.n_epochs, 
         stats = stats_pretraining, 
         cache = cache,

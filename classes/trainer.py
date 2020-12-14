@@ -196,7 +196,7 @@ class PredictPacket(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(data, pretraining=True)
+                            outputs = self.model(data)
                             loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
 
                         # Backward and optimize
@@ -205,7 +205,7 @@ class PredictPacket(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(data, pretraining=True)
+                        outputs = self.model(data)
                         loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
 
                         # Backward and optimize

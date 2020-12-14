@@ -19,7 +19,18 @@ class LSTM(nn.Module):
         # out is of shape (batch_size x seq_len x input_size)
         out = self._fc(out)
         return out
-     
+
+class ChainLSTM(LSTM):
+    def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, device, prev_model):
+        super().__init__(input_size, hidden_size, output_size, num_layers, batch_size, device)
+        self.prev_model = prev_model
+
+    def forward(self, x):
+        s1 = self.prev_model(x)
+        s2, _ = self._lstm(s1, (self._hidden_init, self._cell_init))
+        out = self._fc(s2)
+        return out
+
 class PretrainableLSTM(LSTM):
     def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, device):
         super().__init__(input_size, hidden_size, output_size, num_layers, batch_size, device)

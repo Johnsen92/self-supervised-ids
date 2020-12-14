@@ -3,6 +3,8 @@ import pickle
 import os.path
 import hashlib  
 
+
+
 class Cache():
     def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):
         self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir+'/'
@@ -23,8 +25,7 @@ class Cache():
         with open (cache_file, 'rb') as f:
             pkl = pickle.load(f)
             print('...done')
-        return pkl
-        
+        return pkl     
 
     def save(self, key, obj, no_prefix=False, msg=None):
         key = self.get_real_key(key, no_prefix)
