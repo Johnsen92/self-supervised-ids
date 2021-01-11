@@ -10,7 +10,7 @@ import os.path
 import jsons
 import json
 
-# Define argument parser
+# Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
 parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
@@ -41,10 +41,10 @@ debug_size = 512
 if args.debug:
     args.n_epochs = 1
 
-# Define hyperparameters
+# Init hyperparameters
 data_filename = os.path.basename(args.data_file)
 
-# Define cache
+# Init cache
 key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.selfsupervised:
     key_prefix.join(f'_pr')
@@ -70,7 +70,7 @@ training_size = (n_samples*args.train_percent) // 100
 validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
 
-# Define data loaders
+# Init data loaders
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
@@ -80,25 +80,23 @@ if torch.cuda.is_available() and args.gpu:
 else:
     device = torch.device('cpu')
 
-# Define model
+# Init model
 data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
+
+# Pretraining if enabled
 if args.selfsupervised:
+    # Init model
     pretraining_model = lstm.LSTM(input_size, args.hidden_size, input_size, args.n_layers, args.batch_size, device).to(device)
-model = lstm.ChainLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device, pretraining_model).to(device)
-
-# Define loss
-if args.selfsupervised:
+    
+    # Init loss
     pretraining_criterion = nn.L1Loss()
-training_criterion = nn.CrossEntropyLoss()
-
-# Define optimizer
-pretraining_optimizer = torch.optim.Adam(pretraining_model.parameters(), lr=args.learning_rate)
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  
-
-# Define statistic object for pretraining
-if args.selfsupervised:
+    
+    # Init optimizer
+    pretraining_optimizer = torch.optim.Adam(pretraining_model.parameters(), lr=args.learning_rate)
+    
+    # Init stats
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
         n_samples = n_samples,
@@ -109,8 +107,39 @@ if args.selfsupervised:
         learning_rate = args.learning_rate,
         gpu = args.gpu
     )
+    
+    # Init pretrainer
+    if args.selfsupervised:
+        pretrainer = trainer.PredictPacket(
+            model = pretraining_model, 
+            training_data = train_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = pretraining_optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_pretraining, 
+            cache = cache,
+            json = args.json_dir
+        )
+    
+    # Pretrain
+    pretrainer.train()
 
-# Define statistic object for training
+    # Init ChainLSTM for supervised training
+    model = lstm.ChainLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device, pretraining_model).to(device)
+else:
+    # Init LSTM for supervised training
+    model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
+
+
+# Init loss
+training_criterion = nn.CrossEntropyLoss()
+
+# Init optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  
+
+# Init stats
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
     n_samples = n_samples,
@@ -122,23 +151,8 @@ stats_training = statistics.Stats(
     gpu = args.gpu
 )
 
-# Define pretrainer
-if args.selfsupervised:
-    pretrainer = trainer.PredictPacket(
-        model = pretraining_model, 
-        training_data = train_loader, 
-        validation_data = val_loader,
-        device = device,
-        criterion = pretraining_criterion, 
-        optimizer = pretraining_optimizer, 
-        epochs = args.n_epochs, 
-        stats = stats_pretraining, 
-        cache = cache,
-        json = args.json_dir
-    )
-
-# Define trainer
-trainer = trainer.Supvervised(
+# Init trainer
+trainer = trainer.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -151,9 +165,7 @@ trainer = trainer.Supvervised(
     json = args.json_dir
 )
 
-# Pretrain, if flag is set, then train model
-if args.selfsupervised:
-    pretrainer.train()
+# Train model
 trainer.train()
 
 # Validate model

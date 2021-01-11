@@ -168,8 +168,8 @@ class Stats():
             f.write(f'Accuracy, {p_acc:.2f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
-            f.write(f'% false positves, {(float(self.n_false_positive)/float(n_wrong)*100.0):.2f} %\n')
-            f.write(f'% false negatives, {(float(self.n_false_negative)/float(n_wrong)*100.0):.2f} %\n')
+            f.write(f'% false positves, {(self.false_positive * 100):.2f} %\n')
+            f.write(f'% false negatives, {(self.false_negative * 100):.2f} %\n')
 
     def plot_losses(self):
         assert not self.losses == None
@@ -189,6 +189,18 @@ class Stats():
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
         n_right = self.n_samples - self.n_false_negative - self.n_false_positive
         return float(n_right)/float(self.n_samples)
+
+    @property
+    def false_positive(self):
+        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
+        # Avoid division by 0 by adding minor float value
+        return float(self.n_false_positive)/(float(self.n_false_positive + self.n_false_negative) + 0.00001)
+
+    @property
+    def false_negative(self):
+        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
+        # Avoid division by 0 by adding minor float value
+        return float(self.n_false_negative)/(float(self.n_false_positive + self.n_false_negative) + 0.00001)
 
     @property
     def false_alarm_rate(self):

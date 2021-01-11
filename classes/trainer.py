@@ -37,7 +37,7 @@ class Trainer():
     def validate(self):
         pass
 
-class Supvervised(Trainer):
+class Supervised(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
         
@@ -151,14 +151,10 @@ class Supvervised(Trainer):
                         time_left_h, time_left_m = mon.time_left
                         print (f'Step [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
 
-                # Calculate results
-                false_p = 100.0 * n_false_positive/(n_samples - n_correct)
-                false_n = 100.0 * n_false_negative/(n_samples - n_correct)
-
                 # Save and cache validation results
                 self.stats.n_false_negative = n_false_negative
                 self.stats.n_false_positive = n_false_positive
-                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy*100):.3f}%, False p.: {false_p:.3f}%, False n.: {false_n:.3f}%')
+                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy * 100):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%')
                 self.cache.save('stats_completed', self.stats, msg='Storing validation results')
 
         # Print and plot stats
@@ -211,8 +207,6 @@ class PredictPacket(Trainer):
                         # Backward and optimize
                         loss.backward()
                         self.optimizer.step()
-
-                        
 
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
