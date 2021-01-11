@@ -13,21 +13,13 @@ import os.path
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import Sampler, BatchSampler, SequentialSampler, RandomSampler
 
-def testfunction(stats):
-    stats.batch_size = 64
-    return 0
 
-stats = statistics.Stats(    
-    stats_dir = "./stats/",
-    n_samples = 2000,
-    train_percent = 100.0,
-    n_epochs = 1,
-    batch_size = 32,
-    learning_rate = 0.001
-)
 
-print(stats.batch_size)
-testfunction(stats)
-print(stats.batch_size)
+mask = torch.ones(5, 5, 5)
 
+print(mask)
+
+mask[:, 2:4, :] = torch.zeros(mask.size())
+
+print(mask)
     

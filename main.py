@@ -110,7 +110,7 @@ if args.selfsupervised:
     
     # Init pretrainer
     if args.selfsupervised:
-        pretrainer = trainer.PredictPacket(
+        pretrainer = trainer.ObscureFeature(
             model = pretraining_model, 
             training_data = train_loader, 
             validation_data = val_loader,

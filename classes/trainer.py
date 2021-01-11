@@ -236,3 +236,84 @@ class PredictPacket(Trainer):
 
     def validate(self):
         print('Though shalt not validate an only pretrained model')
+
+class ObscureFeature(Trainer):
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
+        super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
+
+    def mask(self, data):
+        masked_data = data
+        data_size = data.size()
+        masked_data[:, 6:9, :] = torch.zeros(data_size[0], 3, data_size[2])
+        return masked_data
+
+    def train(self):
+        # Set model into training mode
+        self.model.train()
+
+        # Define monitor to track time and avg. loss over time
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Pretraining', json_dir=self.json)
+
+        # Train model if no cache file exists or the train flag is set, otherwise load cached model
+        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
+        if self.cache.disabled or not os.path.isfile(chache_file_name):
+
+            # Train the model
+            print('Training model...')
+            for epoch in range(self.epochs):
+                for data, _, _ in self.training_data: 
+
+                    # Move data to selected device 
+                    data = data.to(self.device)
+
+                    # Clear gradients
+                    self.optimizer.zero_grad()
+                    
+                    # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
+                    if not self._scaler == None:
+                        with torch.cuda.amp.autocast():
+                            # Forwards pass
+                            outputs = self.model(self.mask(data))
+                            loss = self.criterion(outputs, data)
+
+                        # Backward and optimize
+                        self._scaler.scale(loss).backward()
+                        self._scaler.step(self.optimizer)
+                        self._scaler.update()
+                    else:
+                        # Forwards pass
+                        outputs = self.model(self.mask(data))
+                        loss = self.criterion(outputs, data)
+
+                        # Backward and optimize
+                        loss.backward()
+                        self.optimizer.step()
+
+                    # Calculate time left and save avg. loss of last interval
+                    if mon(loss.item()):
+                        time_left_h, time_left_m = mon.time_left
+                        print (f'Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+
+            # Get stats
+            self.stats.training_time = mon.duration_s
+            self.stats.losses = mon.measurements
+
+            # Store trained model
+            print('(Cache) Storing pretrained model to cache', end='')
+            torch.save(self.model.state_dict(), chache_file_name)
+            print('...done')
+
+            # Store statistics object
+            self.cache.save('pretraining_stats', self.stats, msg='Storing pretraining statistics to cache')
+        else:
+            # Load cached model
+            print('(Cache) Loading pretraining model...',end='')
+            self.model.load_state_dict(torch.load(chache_file_name))
+            self.model.eval()
+            print('done')
+
+            # Load statistics object
+            self.stats = self.cache.load('pretraining_stats', msg='Loading pretraining statistics object')
+
+    def validate(self):
+        print('Though shalt not validate an only pretrained model')
