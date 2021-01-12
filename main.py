@@ -42,20 +42,20 @@ if args.debug:
     args.n_epochs = 1
 
 # Init hyperparameters
-data_filename = os.path.basename(args.data_file)
+data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename[:-7] + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.selfsupervised:
     key_prefix.join(f'_pr')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
-if not cache.exists('dataset'):
+if not cache.exists(data_filename + "_normalized") or args.no_cache:
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
-    cache.save('dataset', dataset, msg='Storing normalized dataset')
+    cache.save(data_filename + "_normalized", dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
-    dataset = cache.load('dataset', msg='Loading normalized dataset')
+    dataset = cache.load(data_filename + "_normalized", no_prefix=True, msg='Loading normalized dataset')
 
 # Create data loaders
 n_samples = len(dataset)
@@ -110,7 +110,7 @@ if args.selfsupervised:
     
     # Init pretrainer
     if args.selfsupervised:
-        pretrainer = trainer.ObscureFeature(
+        pretrainer = trainer.PredictPacket(
             model = pretraining_model, 
             training_data = train_loader, 
             validation_data = val_loader,
