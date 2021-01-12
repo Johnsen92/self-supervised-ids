@@ -34,13 +34,12 @@ class ChainLSTM(LSTM):
 class PretrainableLSTM(LSTM):
     def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, device):
         super().__init__(input_size, hidden_size, output_size, num_layers, batch_size, device)
-        self._pretrain_fc = nn.Linear(hidden_size, input_size)
+        self.pretraining = True
 
-    def forward(self, x, pretraining=False):
-        if pretraining:
-            out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
-            out = self._pretrain_fc(out)
-        else:
+    def forward(self, x):
+        if self.pretraining:
             out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
             out = self._fc(out) 
+        else:
+            out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
         return out

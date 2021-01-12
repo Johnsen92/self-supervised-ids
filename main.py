@@ -126,11 +126,14 @@ if args.selfsupervised:
     # Pretrain
     pretrainer.train()
 
+    # Disable pretraining mode
+    pretraining_model.pretraining = False
+
     # Init ChainLSTM for supervised training
     model = lstm.ChainLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device, pretraining_model).to(device)
 else:
     # Init LSTM for supervised training
-    model = lstm.LSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
+    model = lstm.LSTM(args.hidden_size if args.selfsupervised else input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
 
 
 # Init loss
