@@ -174,5 +174,9 @@ trainer.train()
 # Validate model
 trainer.validate()
 
+# Evaluate model
+if not args.debug:
+    trainer.evaluate()
+
     
 

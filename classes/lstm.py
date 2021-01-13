@@ -37,9 +37,7 @@ class PretrainableLSTM(LSTM):
         self.pretraining = True
 
     def forward(self, x):
+        out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
         if self.pretraining:
-            out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
             out = self._fc(out) 
-        else:
-            out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
         return out

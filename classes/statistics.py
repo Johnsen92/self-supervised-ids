@@ -153,23 +153,20 @@ class Stats():
 
     def save_stats(self):
         time_h, time_m = formatTime(self.training_time_s)
-        n_wrong = self.n_false_negative + self.n_false_positive
-        n_right = self.n_samples - n_wrong
-        p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
-            f.write(f'Trained on, {"GPU" if self.gpu else "CPU"} %\n')
+            f.write(f'Trained on, {"GPU" if self.gpu else "CPU"}\n')
             f.write(f'Epochs, {self.n_epochs}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Training percentage, {self.train_percent:.2f}\n')
             f.write(f'Validation percentage, {self.val_percent:.2f}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
-            f.write(f'Accuracy, {p_acc:.2f} %\n')
+            f.write(f'Accuracy, {self.accuracy:.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
-            f.write(f'% false positves, {(self.false_positive * 100):.2f} %\n')
-            f.write(f'% false negatives, {(self.false_negative * 100):.2f} %\n')
+            f.write(f'% false positves, {(self.false_positive * 100.0):.3f} %\n')
+            f.write(f'% false negatives, {(self.false_negative * 100.0):.3f} %\n')
 
     def plot_losses(self):
         assert not self.losses == None

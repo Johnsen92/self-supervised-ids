@@ -31,6 +31,9 @@ class Trainer():
         self._scaler = torch.cuda.amp.GradScaler() if stats.gpu else None
         self.json = json
 
+    def evaluate(self):
+        pass
+
     def train(self):
         pass
 
@@ -154,10 +157,10 @@ class Supervised(Trainer):
                 # Save and cache validation results
                 self.stats.n_false_negative = n_false_negative
                 self.stats.n_false_positive = n_false_positive
-                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy * 100):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%')
+                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy * 100.0):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%')
                 self.cache.save('stats_completed', self.stats, msg='Storing validation results')
 
-        # Print and plot stats
+    def evaluate(self):
         self.stats.save_stats()
         self.stats.save_losses()
         self.stats.plot_losses()
