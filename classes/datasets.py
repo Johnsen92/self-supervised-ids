@@ -35,29 +35,29 @@ def pad_label_sequence(labels, categories):
 
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs):    
-    #seqs, labels, categories = zip(*seqs)
-    len_seqs = [len(seq) for seq in seqs]
-    #len_labels = [len(labels) for label in labels]
-    #len_categories = [len(cat) for cat in categories]
+    flows, labels, categories = list(zip(*seqs))
+    len_flows = [len(flow) for flow in flows]
+    len_labels = [len(labels) for label in labels]
+    len_categories = [len(cat) for cat in categories]
 
-	#assert len(seqs) == len(labels) == len(categories)
-    #assert len(len_seqs) == len(len_labels) == len(len_categories)
+    assert len(len_flows) == len(len_labels) == len(len_categories)
 
-    padded_seqs = torch.nn.utils.rnn.pad_sequence(seqs, batch_first=True)
-    #padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-    #padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
+    padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
+    padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
+    padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
 
-    packed_padded_seqs = torch.nn.utils.rnn.pack_padded_sequence(padded_seqs, len_seqs, enforce_sorted=False)
-    #packed_padded_labels = torch.nn.utils.rnn.pack_padded_sequence(padded_labels, len_labels, enforce_sorted=False)
-    #packed_padded_categories = torch.nn.utils.rnn.pack_padded_sequence(padded_categories, len_categories, enforce_sorted=False)
+    #assert 1 == 2
 
+    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, len_flows, batch_first=True, enforce_sorted=False)
+    #packed_padded_labels = torch.nn.utils.rnn.pack_padded_sequence(padded_labels, len_labels, batch_first=True, enforce_sorted=False)
+    #packed_padded_categories = torch.nn.utils.rnn.pack_padded_sequence(padded_categories, len_categories, batch_first=True, enforce_sorted=False)
 
-    return packed_padded_seqs, packed_padded_labels, packed_padded_categories
+    return packed_padded_flows, padded_labels, padded_categories
 
 def pack_sequences(seqs):
-    seq_lengths = torch.LongTensor([len(seq) for seq in seqs]).to(device)
-	seq_tensor = torch.nn.utils.rnn.pad_sequence(seqs).to(device)
-    return torch.nn.utils.rnn.pack_padded_sequence(seq_tensor, seq_lengths, enforce_sorted=False)
+    seq_lengths = torch.LongTensor([len(seq) for seq in seqs])
+    seq_tensor = torch.nn.utils.rnn.pad_sequence(seqs, batch_first=True)
+    return torch.nn.utils.rnn.pack_padded_sequence(seq_tensor, seq_lengths, batch_first=True, enforce_sorted=False)
 
 class FlowBatchSampler(Sampler):
     def __init__(self, dataset, batch_size, drop_last):

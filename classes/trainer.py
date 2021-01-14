@@ -187,6 +187,7 @@ class PredictPacket(Trainer):
 
                     # Move data to selected device 
                     data = data.to(self.device)
+                    data_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
 
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -196,7 +197,7 @@ class PredictPacket(Trainer):
                         with torch.cuda.amp.autocast():
                             # Forwards pass
                             outputs = self.model(data)
-                            loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+                            loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -205,7 +206,7 @@ class PredictPacket(Trainer):
                     else:
                         # Forwards pass
                         outputs = self.model(data)
-                        loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+                        loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
 
                         # Backward and optimize
                         loss.backward()
@@ -245,10 +246,11 @@ class ObscureFeature(Trainer):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
 
     def mask(self, data):
-        masked_data = data
+        data_unpacked, data_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+        masked_data = data_unpacked
         data_size = data.size()
         masked_data[:, 6:9, :] = torch.zeros(data_size[0], 3, data_size[2])
-        return masked_data
+        return torch.nn.utils.rnn.pack_padded_sequence(data, data_lens, batch_first=True)
 
     def train(self):
         # Set model into training mode
@@ -268,6 +270,7 @@ class ObscureFeature(Trainer):
 
                     # Move data to selected device 
                     data = data.to(self.device)
+                    data_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
 
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -277,7 +280,7 @@ class ObscureFeature(Trainer):
                         with torch.cuda.amp.autocast():
                             # Forwards pass
                             outputs = self.model(self.mask(data))
-                            loss = self.criterion(outputs, data)
+                            loss = self.criterion(outputs, data_unpacked)
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -286,7 +289,7 @@ class ObscureFeature(Trainer):
                     else:
                         # Forwards pass
                         outputs = self.model(self.mask(data))
-                        loss = self.criterion(outputs, data)
+                        loss = self.criterion(outputs, data_unpacked)
 
                         # Backward and optimize
                         loss.backward()

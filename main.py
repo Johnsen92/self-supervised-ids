@@ -71,8 +71,8 @@ validation_size = n_samples - training_size
 train, val = random_split(dataset, [training_size, validation_size])
 
 # Init data loaders
-train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
 # Decide between GPU and CPU Training
 if torch.cuda.is_available() and args.gpu:
