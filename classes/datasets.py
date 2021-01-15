@@ -37,20 +37,12 @@ def pad_label_sequence(labels, categories):
 def collate_flows(seqs):    
     flows, labels, categories = list(zip(*seqs))
     len_flows = [len(flow) for flow in flows]
-    len_labels = [len(labels) for label in labels]
-    len_categories = [len(cat) for cat in categories]
-
-    assert len(len_flows) == len(len_labels) == len(len_categories)
 
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
 
-    #assert 1 == 2
-
     packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, len_flows, batch_first=True, enforce_sorted=False)
-    #packed_padded_labels = torch.nn.utils.rnn.pack_padded_sequence(padded_labels, len_labels, batch_first=True, enforce_sorted=False)
-    #packed_padded_categories = torch.nn.utils.rnn.pack_padded_sequence(padded_categories, len_categories, batch_first=True, enforce_sorted=False)
 
     return packed_padded_flows, padded_labels, padded_categories
 
