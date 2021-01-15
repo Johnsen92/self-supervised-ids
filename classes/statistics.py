@@ -113,6 +113,9 @@ class Monitor():
 
     @property
     def duration_s(self):
+        if self._start_time == None:
+            print('Start time not set, setting it to now')
+            self._start_time = timer()
         if self._end_time == None:
             print('End time not set, setting it to now')
             self._end_time = timer()
@@ -147,7 +150,7 @@ class Stats():
     def save_losses(self):
         assert not self.losses == None
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        with open(self.stats_dir + now + '_losses.csv', 'w') as f:
+        with open(self.stats_dir  + 'losses_' + now + '.csv', 'w') as f:
             for item in self.losses:
                 f.write(f'{item:.6f}\n')
 
@@ -162,7 +165,7 @@ class Stats():
             f.write(f'Validation percentage, {self.val_percent:.2f}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
-            f.write(f'Accuracy, {self.accuracy:.3f} %\n')
+            f.write(f'Accuracy, {(self.accuracy * 100.0):.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
             f.write(f'% false positves, {(self.false_positive * 100.0):.3f} %\n')

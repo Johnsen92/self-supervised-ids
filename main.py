@@ -29,7 +29,7 @@ parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='
 parser.add_argument('-j', '--json_dir', default='./json/', help='Json exports folder')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-parser.add_argument('-S', '--selfsupervised', action='store_true', help='Flag to enable self supervised pretraining')
+parser.add_argument('-S', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining')
 args = parser.parse_args(sys.argv[1:])
 
 # Serialize arguments and store them in json export folder
@@ -46,18 +46,19 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
 key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
-if args.selfsupervised:
-    key_prefix.join(f'_pr')
+if args.self_supervised > 0:
+    key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
-if not cache.exists(data_filename + "_normalized") or args.no_cache:
+if not cache.exists(data_filename + "_normalized", no_prefix=True):
+#if not cache.exists(data_filename + "_normalized", no_prefix=True) or args.no_cache:
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save(data_filename + "_normalized", dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(data_filename + "_normalized", no_prefix=True, msg='Loading normalized dataset')
 
-# Create data loaders
+# Number of samples
 n_samples = len(dataset)
 
 # If debug flag is set, only take debug_size samples
@@ -66,11 +67,16 @@ if args.debug:
     n_samples = debug_size
 
 # Split dataset into training and validation parts
-training_size = (n_samples*args.train_percent) // 100
+training_size = (n_samples * args.train_percent) // 100
 validation_size = n_samples - training_size
+pretraining_size = (training_size * args.self_supervised) // 100
+supervised_size = training_size - pretraining_size
 train, val = random_split(dataset, [training_size, validation_size])
+pretrain, train = random_split(train, [pretraining_size, supervised_size])
 
 # Init data loaders
+if args.self_supervised > 0:
+    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
@@ -84,23 +90,21 @@ else:
 data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
+model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, args.batch_size, device).to(device)
+
+# Init optimizer
+optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Pretraining if enabled
-if args.selfsupervised:
-    # Init model
-    pretraining_model = lstm.LSTM(input_size, args.hidden_size, input_size, args.n_layers, args.batch_size, device).to(device)
-    
-    # Init loss
+if args.self_supervised > 0:
+    # Init pretraining loss
     pretraining_criterion = nn.L1Loss()
-    
-    # Init optimizer
-    pretraining_optimizer = torch.optim.Adam(pretraining_model.parameters(), lr=args.learning_rate)
-    
-    # Init stats
+      
+    # Init pretraining stats
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
         n_samples = n_samples,
-        train_percent = args.train_percent,
+        train_percent = args.self_supervised,
         val_percent = 100 - args.train_percent,
         n_epochs = args.n_epochs,
         batch_size = args.batch_size,
@@ -108,45 +112,34 @@ if args.selfsupervised:
         gpu = args.gpu
     )
     
-    # Init pretrainer
-    if args.selfsupervised:
-        pretrainer = trainer.PredictPacket(
-            model = pretraining_model, 
-            training_data = train_loader, 
-            validation_data = val_loader,
-            device = device,
-            criterion = pretraining_criterion, 
-            optimizer = pretraining_optimizer, 
-            epochs = args.n_epochs, 
-            stats = stats_pretraining, 
-            cache = cache,
-            json = args.json_dir
-        )
+    # Init pretraining pretrainer
+    pretrainer = trainer.PredictPacket(
+        model = model, 
+        training_data = pretrain_loader, 
+        validation_data = val_loader,
+        device = device,
+        criterion = pretraining_criterion, 
+        optimizer = optimizer, 
+        epochs = args.n_epochs, 
+        stats = stats_pretraining, 
+        cache = cache,
+        json = args.json_dir
+    )
     
     # Pretrain
     pretrainer.train()
 
-    # Disable pretraining mode
-    pretraining_model.pretraining = False
-
-    # Init ChainLSTM for supervised training
-    model = lstm.ChainLSTM(input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device, pretraining_model).to(device)
-else:
-    # Init LSTM for supervised training
-    model = lstm.LSTM(args.hidden_size if args.selfsupervised else input_size, args.hidden_size, output_size, args.n_layers, args.batch_size, device).to(device)
-
+# Disable pretraining mode
+model.pretraining = False
 
 # Init loss
 training_criterion = nn.CrossEntropyLoss()
-
-# Init optimizer
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)  
 
 # Init stats
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
     n_samples = n_samples,
-    train_percent = args.train_percent,
+    train_percent = args.train_percent - args.self_supervised,
     val_percent = 100 - args.train_percent,
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,

@@ -157,8 +157,9 @@ class Supervised(Trainer):
                 # Save and cache validation results
                 self.stats.n_false_negative = n_false_negative
                 self.stats.n_false_positive = n_false_positive
-                print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy * 100.0):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%')
                 self.cache.save('stats_completed', self.stats, msg='Storing validation results')
+        
+        print(f'Accuracy with validation size {self.stats.val_percent}% of data samples: Accuracy {(self.stats.accuracy * 100.0):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%')
 
     def evaluate(self):
         self.stats.save_stats()

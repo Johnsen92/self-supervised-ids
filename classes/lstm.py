@@ -39,10 +39,13 @@ class PretrainableLSTM(LSTM):
     def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, device):
         super().__init__(input_size, hidden_size, output_size, num_layers, batch_size, device)
         self.pretraining = True
+        self._fc_pretraining = nn.Linear(hidden_size, input_size)
 
     def forward(self, x):
         out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
+        s1, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
         if self.pretraining:
-            s1, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
-            out = self._fc(s1) 
+            out = self._fc_pretraining(s1)
+        else:
+            out = self._fc(s1)
         return out
