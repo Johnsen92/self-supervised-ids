@@ -103,7 +103,6 @@ if args.self_supervised > 0:
     # Init pretraining stats
     stats_pretraining = statistics.Stats(
         stats_dir = args.stats_dir,
-        n_samples = n_samples,
         train_percent = args.self_supervised,
         val_percent = 100 - args.train_percent,
         n_epochs = args.n_epochs,
@@ -138,7 +137,6 @@ training_criterion = nn.CrossEntropyLoss()
 # Init stats
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
-    n_samples = n_samples,
     train_percent = args.train_percent - args.self_supervised,
     val_percent = 100 - args.train_percent,
     n_epochs = args.n_epochs,
@@ -152,7 +150,7 @@ trainer = trainer.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
-    device = device,
+    device = device, 
     criterion = training_criterion, 
     optimizer = optimizer, 
     epochs = args.n_epochs, 

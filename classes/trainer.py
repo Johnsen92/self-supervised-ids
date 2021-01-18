@@ -155,6 +155,7 @@ class Supervised(Trainer):
                         print (f'Step [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
 
                 # Save and cache validation results
+                self.stats.n_samples = n_samples
                 self.stats.n_false_negative = n_false_negative
                 self.stats.n_false_positive = n_false_positive
                 self.cache.save('stats_completed', self.stats, msg='Storing validation results')
