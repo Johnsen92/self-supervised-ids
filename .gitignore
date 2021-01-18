@@ -2,6 +2,7 @@ data/*
 cache/*
 stats/*
 json/*
+baseline/*
 latex/*.aux
 latex/*.bbl
 latex/*.toc

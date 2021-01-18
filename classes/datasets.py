@@ -39,8 +39,9 @@ def collate_flows(seqs):
     len_flows = [len(flow) for flow in flows]
 
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
-    padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-    padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
+    padded_labels, padded_categories = pad_label_sequence(labels, categories)
+    #padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
+    #padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
 
     packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, len_flows, batch_first=True, enforce_sorted=False)
 
@@ -154,12 +155,13 @@ class Flows(Dataset):
         assert means.shape[0] == X[0].shape[-1], 'means.shape: {}, x.shape: {}'.format(means.shape, X[0].shape)
         assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
         assert not (stds==0).any(), 'stds: {}'.format(stds)
-        
+
         # Store in class members
         self.x = [(item-means)/stds for item in X]
         self.y = [np.zeros(len(item)) if item[0]==0.0 else np.ones(len(item)) for item in Y]
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
+        self.mapping = mapping
         self.n_samples = len(self.x)
 
     def __len__(self):
