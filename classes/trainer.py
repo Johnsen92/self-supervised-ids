@@ -148,7 +148,7 @@ class Supervised(Trainer):
                     n_correct += (predicted == labels[:, 0]).sum().item()
                     n_false_negative += (predicted < labels[:, 0]).sum().item()
                     n_false_positive += (predicted > labels[:, 0]).sum().item()
-                    self.stats.class_stats.add((predicted == labels[:, 0]), categories)
+                    self.stats.class_stats.add((predicted == labels[:, 0]), categories[:, 0])
                     assert n_correct == n_samples - n_false_negative - n_false_positive
 
                     if mon(0):
