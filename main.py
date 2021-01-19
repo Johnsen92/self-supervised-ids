@@ -100,7 +100,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Pretraining if enabled
 if args.self_supervised > 0:
-    # Init pretraining loss
+    # Init pretraining criterion
     pretraining_criterion = nn.L1Loss()
       
     # Init pretraining stats
@@ -134,7 +134,7 @@ if args.self_supervised > 0:
 # Disable pretraining mode
 model.pretraining = False
 
-# Init loss
+# Init criterion
 training_criterion = nn.CrossEntropyLoss()
 
 # Init stats
