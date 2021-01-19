@@ -157,6 +157,6 @@ class Flows(Dataset):
 
     def __getitem__(self, i):
         tensor_categories = torch.reshape(torch.LongTensor(self.categories[i]), (-1,))
-        tensor_labels = torch.reshape(torch.FloatTensor(self.y[i]), (-1,))
+        tensor_labels = torch.reshape(torch.LongTensor(self.y[i]), (-1,))
         tensor_data = torch.FloatTensor(self.x[i])
         return tensor_data, tensor_labels, tensor_categories

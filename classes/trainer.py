@@ -73,8 +73,8 @@ class Supervised(Trainer):
                         with torch.cuda.amp.autocast():
                             # Forwards pass
                             outputs = self.model(data)
-                            op_view = outputs[:, -1, :].view(-1)
-                            lab_view = labels[:, -1].view(-1)
+                            op_view = outputs.view(-1, 2)
+                            lab_view = labels.view(-1)
                             loss = self.criterion(op_view, lab_view)
 
                         # Backward and optimize
@@ -148,6 +148,7 @@ class Supervised(Trainer):
                     n_correct += (predicted == labels[:, 0]).sum().item()
                     n_false_negative += (predicted < labels[:, 0]).sum().item()
                     n_false_positive += (predicted > labels[:, 0]).sum().item()
+                    self.stats.class_stats.add((predicted == labels[:, 0]), categories)
                     assert n_correct == n_samples - n_false_negative - n_false_positive
 
                     if mon(0):
@@ -183,7 +184,7 @@ class PredictPacket(Trainer):
         if self.cache.disabled or not os.path.isfile(chache_file_name):
 
             # Train the model
-            print('Training model...')
+            print('Pretraining model (PacketPrediction)...')
             for epoch in range(self.epochs):
                 for data, _, _ in self.training_data: 
 
@@ -264,7 +265,7 @@ class ObscureFeature(Trainer):
         if self.cache.disabled or not os.path.isfile(chache_file_name):
 
             # Train the model
-            print('Training model...')
+            print('Pretraining model (ObscureFeature)...')
             for epoch in range(self.epochs):
                 for data, _, _ in self.training_data: 
 
