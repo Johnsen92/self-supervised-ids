@@ -9,6 +9,15 @@ import torch
 import os.path
 import jsons
 import json
+from enum import Enum
+
+class ProxyTask(Enum):
+    NONE = 1,
+    PACKET_PREDICTION = 2,
+    OBSCURE_FEATURE = 3
+
+    def __str__(self):
+        return self.name
 
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
@@ -29,6 +38,7 @@ parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LST
 parser.add_argument('-o', '--output_size', default=2, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
+parser.add_argument('-x', '--proxy_task', default=ProxyTask.PACKET_PREDICTION, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
@@ -121,19 +131,35 @@ if args.self_supervised > 0:
         gpu = args.gpu
     )
     
-    # Init pretraining pretrainer
-    pretrainer = trainer.ObscureFeature(
-        model = model, 
-        training_data = pretrain_loader, 
-        validation_data = val_loader,
-        device = device,
-        criterion = pretraining_criterion, 
-        optimizer = optimizer, 
-        epochs = args.n_epochs, 
-        stats = stats_pretraining, 
-        cache = cache,
-        json = args.json_dir
-    )
+    # Init pretrainer
+    if(args.proxy_task == ProxyTask.PACKET_PREDICTION):
+        pretrainer = trainer.PredictPacket(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_pretraining, 
+            cache = cache,
+            json = args.json_dir
+        )
+    elif(args.proxy_task == ProxyTask.OBSCURE_FEATURE):
+        pretrainer = trainer.ObscureFeature(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_pretraining, 
+            cache = cache,
+            json = args.json_dir
+        )
+    else:
+        print(f'Proxy task can not be {args.proxy_task} for self supervised training')
     
     # Pretrain
     pretrainer.train()

@@ -62,6 +62,7 @@ class Supervised(Trainer):
 
                     # Move data to selected device 
                     data = data.to(self.device)
+                    data_unpacked = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
                     labels = labels.to(self.device)
                     categories = categories.to(self.device)
                          
