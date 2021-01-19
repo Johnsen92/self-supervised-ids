@@ -73,8 +73,6 @@ class Supervised(Trainer):
                         with torch.cuda.amp.autocast():
                             # Forwards pass
                             outputs = self.model(data)
-                            #print(outputs.size())
-                            #print(labels.size())
                             op_view = outputs[:, -1, :].view(-1)
                             lab_view = labels[:, -1].view(-1)
                             loss = self.criterion(op_view, lab_view)

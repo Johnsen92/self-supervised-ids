@@ -34,7 +34,8 @@ class Monitor():
         self._start_time = None
         self._end_time = None  
         self._progress = 0
-        self._time_left_s = 0
+        self._time_left_s = -1
+        self._time_left_s_last = -1
         if not json_dir == None:
             self._json_dir = json_dir if json_dir[-1] == '/' else json_dir+'/'
 
@@ -83,6 +84,7 @@ class Monitor():
             self._prev_timer = self._timer
             self._timer = timer()
             interval_time = self._timer - self._prev_timer
+            self._time_left_s_last = self._time_left_s
             self._time_left_s = int(float(interval_time) * float(self.iterations - self._i) / float(self._interval))
             
             # Calculate aggregate
@@ -101,7 +103,15 @@ class Monitor():
 
     @property
     def time_left(self):
-        return formatTime(self._time_left_s)
+        if self._time_left_s >= 0:
+            # If last value available, return avg.
+            if self._time_left_s_last >= 0:
+                return formatTime((self._time_left_s + self._time_left_s_last) // 2)
+            else:
+                return formatTime(self._time_left_s)
+        # If called before first call of __call__ function, return 0
+        else:
+            return formatTime(0)
         
     @property
     def measurements(self):
@@ -113,19 +123,58 @@ class Monitor():
 
     @property
     def duration_s(self):
-        if self._start_time == None:
-            print('Start time not set, setting it to now')
-            self._start_time = timer()
         if self._end_time == None:
             print('End time not set, setting it to now')
             self._end_time = timer()
         return self._end_time - self._start_time
 
+class ClassStats():
+    def __init__(self, mapping, stats_dir='./', benign=6):
+        self.benign = benign
+        self.stats_dir = stats_dir
+        self.mapping = mapping
+        self.reverse_mapping = { val: key for key, val in mapping.items() }
+        self.number = { c : 0 for c in mapping.values() }
+        self.right = { c : 0 for c in mapping.values() }
+
+    @property
+    def labels(self):
+        return self.mapping.keys()
+
+    @property
+    def classes(self):
+        return self.mapping.values()
+
+    def add(self, results, classes):
+        for index, c in enumerate(classes):
+            c_val = c.item()
+            self.number[c_val] += 1
+            if results[index]:
+                self.right[c_val] += 1
+
+    def save_stats(self):
+        now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        with open(self.stats_dir + 'class_stats_' + now + '.csv', 'w') as f:
+            f.write('Class, Alias, Occurance, Right, Accuracy\n')
+            for key, val in self.mapping.items():
+                accuracy = self.right[val] / self.number[val] * 100.0 if not self.number[val] == 0 else 100.0
+                f.write(f'{key}, {val}, {self.number[val]}, {self.right[val]}, {accuracy:.3f}\n')
+
+            n_samples = sum(self.number.values())
+            n_right = sum(self.right.values())
+            n_attack = n_samples - self.number[self.benign]
+            n_right_attack = n_right - self.right[self.benign]
+            accuracy_benign = self.right[self.benign] / self.number[self.benign] * 100.0 if not self.number[self.benign] == 0 else 100.0
+            accuracy_attack = n_right_attack / n_attack * 100.0 if not n_attack == 0 else 100.0
+            f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {accuracy_benign:.3f}\n')
+            f.write(f'Attack, not {self.benign}, {n_attack}, {n_right_attack}, {accuracy_attack:.3f}\n')
+
+
 class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
+    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, class_mapping=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -138,6 +187,11 @@ class Stats():
         self.learning_rate = learning_rate  
         self.losses = losses
         self.training_time_s = training_time_s
+        if not class_mapping == None:
+            self.class_stats = ClassStats(class_mapping, stats_dir)
+        else:
+            self.class_stats = None
+
         if title == None:
             self.title = "Statistics #" + str(Stats.index)
         else:
@@ -150,12 +204,15 @@ class Stats():
     def save_losses(self):
         assert not self.losses == None
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        with open(self.stats_dir  + 'losses_' + now + '.csv', 'w') as f:
+        with open(self.stats_dir + 'losses_' + now + '.csv', 'w') as f:
             for item in self.losses:
                 f.write(f'{item:.6f}\n')
 
     def save_stats(self):
         time_h, time_m = formatTime(self.training_time_s)
+        n_wrong = self.n_false_negative + self.n_false_positive
+        n_right = self.n_samples - n_wrong
+        p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Trained on, {"GPU" if self.gpu else "CPU"}\n')
@@ -165,11 +222,13 @@ class Stats():
             f.write(f'Validation percentage, {self.val_percent:.2f}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
-            f.write(f'Accuracy, {(self.accuracy * 100.0):.3f} %\n')
+            f.write(f'Accuracy, {p_acc:.2f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
-            f.write(f'% false positves, {(self.false_positive * 100.0):.3f} %\n')
-            f.write(f'% false negatives, {(self.false_negative * 100.0):.3f} %\n')
+            f.write(f'% false positves, {(self.false_positive * 100):.2f} %\n')
+            f.write(f'% false negatives, {(self.false_negative * 100):.2f} %\n')
+        if not self.class_stats == None:
+            self.class_stats.save_stats()
 
     def plot_losses(self):
         assert not self.losses == None
@@ -205,3 +264,4 @@ class Stats():
     @property
     def false_alarm_rate(self):
         pass
+
