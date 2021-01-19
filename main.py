@@ -23,7 +23,7 @@ parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage')
 parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
-parser.add_argument('-o', '--output_size', default=2, type=int, help='Size of LSTM output vector')
+parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('-j', '--json_dir', default='./json/', help='Json exports folder')
@@ -37,7 +37,7 @@ with open(args.json_dir + '/args.json', 'w') as f:
     f.write(jsons.dumps(args))
 
 # If debug flag is set, minimize dataset and epochs
-debug_size = 512
+debug_size = 1024
 if args.debug:
     args.n_epochs = 1
 
@@ -132,7 +132,9 @@ if args.self_supervised > 0:
 model.pretraining = False
 
 # Init loss
-training_criterion = nn.CrossEntropyLoss()
+#training_criterion = nn.CrossEntropyLoss()
+training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
+#training_criterion = nn.BCELoss(reduction="mean")
 
 # Init stats
 stats_training = statistics.Stats(

@@ -16,9 +16,8 @@ class LSTM(nn.Module):
 
     def forward(self, x):
         s1, _ = self._lstm(x, (self._hidden_init, self._cell_init))
-        s2, _ = torch.nn.utils.rnn.pad_packed_sequence(s1, batch_first=True)
         # out is of shape (batch_size x seq_len x output_size)
-        out = self._fc(s2)
+        out = self._fc(s1)
         return out
 
 class ChainLSTM(LSTM):
@@ -28,11 +27,8 @@ class ChainLSTM(LSTM):
 
     def forward(self, x):
         s1 = self.prev_model(x)
-        s1_lens = [len(item) for item in s1]
-        s2 = torch.nn.utils.rnn.pack_padded_sequence(s1, s1_lens, batch_first=True, enforce_sorted=False)
-        s3, _ = self._lstm(s2, (self._hidden_init, self._cell_init))
-        s4, _ = torch.nn.utils.rnn.pad_packed_sequence(s3, batch_first=True)
-        out = self._fc(s4)
+        s2, _ = self._lstm(s1, (self._hidden_init, self._cell_init))
+        out = self._fc(s2)
         return out
 
 class PretrainableLSTM(LSTM):
@@ -43,9 +39,8 @@ class PretrainableLSTM(LSTM):
 
     def forward(self, x):
         out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
-        s1, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
         if self.pretraining:
-            out = self._fc_pretraining(s1)
+            out = self._fc_pretraining(out)
         else:
-            out = self._fc(s1)
+            out = self._fc(out)
         return out

@@ -36,21 +36,9 @@ def pad_label_sequence(labels, categories):
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs):    
     flows, labels, categories = list(zip(*seqs))
-    len_flows = [len(flow) for flow in flows]
-
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
     padded_labels, padded_categories = pad_label_sequence(labels, categories)
-    #padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-    #padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
-
-    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, len_flows, batch_first=True, enforce_sorted=False)
-
-    return packed_padded_flows, padded_labels, padded_categories
-
-def pack_sequences(seqs):
-    seq_lengths = torch.LongTensor([len(seq) for seq in seqs])
-    seq_tensor = torch.nn.utils.rnn.pad_sequence(seqs, batch_first=True)
-    return torch.nn.utils.rnn.pack_padded_sequence(seq_tensor, seq_lengths, batch_first=True, enforce_sorted=False)
+    return padded_flows, padded_labels, padded_categories
 
 class FlowBatchSampler(Sampler):
     def __init__(self, dataset, batch_size, drop_last):
@@ -158,7 +146,7 @@ class Flows(Dataset):
 
         # Store in class members
         self.x = [(item-means)/stds for item in X]
-        self.y = [np.zeros(len(item)) if item[0]==0.0 else np.ones(len(item)) for item in Y]
+        self.y = Y
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.mapping = mapping
@@ -168,8 +156,7 @@ class Flows(Dataset):
         return self.n_samples
 
     def __getitem__(self, i):
-        #tensor_categories = torch.LongTensor(self.categories[i]).squeeze() if len(self.categories[i]) > 1 else torch.LongTensor(self.categories[i])
         tensor_categories = torch.reshape(torch.LongTensor(self.categories[i]), (-1,))
-        tensor_labels = torch.LongTensor(self.y[i])
+        tensor_labels = torch.reshape(torch.FloatTensor(self.y[i]), (-1,))
         tensor_data = torch.FloatTensor(self.x[i])
         return tensor_data, tensor_labels, tensor_categories
