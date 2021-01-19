@@ -129,7 +129,7 @@ class Monitor():
         return self._end_time - self._start_time
 
 class ClassStats():
-    def __init__(self, mapping, stats_dir='./', benign=6):
+    def __init__(self, mapping, stats_dir='./', benign=10):
         self.benign = benign
         self.stats_dir = stats_dir
         self.mapping = mapping
@@ -171,16 +171,16 @@ class ClassStats():
             f.write('\n')
             benign_rate = float(self.number[self.benign]) / float(n_samples) * 100.0
             attack_rate = float(n_attack) / float(n_samples) * 100.0
-            f.write(f'Samples, {n_samples}%\n')
-            f.write(f'Benign, {benign_rate:.3f}%\n')
-            f.write(f'Attack, {attack_rate:.3f}%\n')
+            f.write(f'Samples, {n_samples}\n')
+            f.write(f'Benign, {benign_rate:.3f}\n')
+            f.write(f'Attack, {attack_rate:.3f}\n')
 
 
 class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, class_mapping=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
+    def __init__(self, stats_dir='./', training_time_s=None, n_samples=None, train_percent=None, val_percent=None, n_epochs=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -193,10 +193,7 @@ class Stats():
         self.learning_rate = learning_rate  
         self.losses = losses
         self.training_time_s = training_time_s
-        if not class_mapping == None:
-            self.class_stats = ClassStats(class_mapping, stats_dir)
-        else:
-            self.class_stats = None
+        self.class_stats = class_stats
 
         if title == None:
             self.title = "Statistics #" + str(Stats.index)

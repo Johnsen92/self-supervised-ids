@@ -95,7 +95,7 @@ class Supervised(Trainer):
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
-                        print (f'Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+                        print (f'Supervised, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
             self.stats.training_time_s = mon.duration_s
@@ -153,7 +153,7 @@ class Supervised(Trainer):
 
                     if mon(0):
                         time_left_h, time_left_m = mon.time_left
-                        print (f'Step [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
+                        print (f'Validation [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
 
                 # Save and cache validation results
                 self.stats.n_samples = n_samples
@@ -217,7 +217,7 @@ class PredictPacket(Trainer):
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
-                        print (f'Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+                        print (f'Pretraining, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
             self.stats.training_time = mon.duration_s
@@ -298,7 +298,7 @@ class ObscureFeature(Trainer):
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
-                        print (f'Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+                        print (f'Pretraining, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
             self.stats.training_time = mon.duration_s
