@@ -2,6 +2,15 @@ import torch as torch
 from torch import nn
 from torch.nn import functional as F
 
+# Fill padded section of output with last unpadded LSTM output in sequence
+def pad_packed_output_sequence(packed_output):
+    output, output_lengths = torch.nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+    padded_output = output
+    batch_size = output.size()[0]
+    for i in range(batch_size):
+        padded_output[i, output_lengths[i]:, :] = output[i, output_lengths[i]-1, :]
+    return padded_output
+
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers, batch_size, device):
         super().__init__()
@@ -39,7 +48,7 @@ class PretrainableLSTM(LSTM):
 
     def forward(self, x):
         out, _ = self._lstm(x, (self._hidden_init, self._cell_init))
-        out, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
+        out = pad_packed_output_sequence(out)
         if self.pretraining:
             out = self._fc_pretraining(out)
         else:

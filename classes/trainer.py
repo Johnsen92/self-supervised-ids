@@ -58,13 +58,11 @@ class Supervised(Trainer):
             # Train the model
             print('Training model...')
             for epoch in range(self.epochs):
-                for data, labels, categories in self.training_data: 
+                for (_, data), labels, _ in self.training_data: 
 
                     # Move data to selected device 
                     data = data.to(self.device)
-                    data_unpacked = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
                     labels = labels.to(self.device)
-                    categories = categories.to(self.device)
                          
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -133,7 +131,7 @@ class Supervised(Trainer):
             print('Validating model...')
             with torch.no_grad():
                 n_correct = n_samples = n_false_positive = n_false_negative = 0
-                for data, labels, categories in self.validation_data:
+                for (_, data), labels, categories in self.validation_data:
 
                     # Move data to selected device 
                     data = data.to(self.device)
@@ -187,10 +185,11 @@ class PredictPacket(Trainer):
             # Train the model
             print('Pretraining model (PacketPrediction)...')
             for epoch in range(self.epochs):
-                for data, _, _ in self.training_data: 
+                for (data_unpacked, data), _, _ in self.training_data: 
 
                     # Move data to selected device 
                     data = data.to(self.device)
+                    data_unpacked = data_unpacked.to(self.device)
 
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -200,7 +199,7 @@ class PredictPacket(Trainer):
                         with torch.cuda.amp.autocast():
                             # Forwards pass
                             outputs = self.model(data)
-                            loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+                            loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -209,7 +208,7 @@ class PredictPacket(Trainer):
                     else:
                         # Forwards pass
                         outputs = self.model(data)
-                        loss = self.criterion(outputs[:, :-1, :], data[:, 1:, :])
+                        loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
 
                         # Backward and optimize
                         loss.backward()
@@ -268,10 +267,20 @@ class ObscureFeature(Trainer):
             # Train the model
             print('Pretraining model (ObscureFeature)...')
             for epoch in range(self.epochs):
-                for data, _, _ in self.training_data: 
+                for (_, data), _, _ in self.training_data: 
+
+                    # Unpack data
+                    data_unpacked, data_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+
+                    # Obscure features
+                    masked_data = self.mask(data_unpacked)
+
+                    # Pack data
+                    masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, data_lens, batch_first=True, enforce_sorted=False)
 
                     # Move data to selected device 
-                    data = data.to(self.device)
+                    masked_data = masked_data.to(self.device)
+                    data_unpacked = data_unpacked.to(self.device)
 
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -280,8 +289,8 @@ class ObscureFeature(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(self.mask(data))
-                            loss = self.criterion(outputs, data)
+                            outputs = self.model(masked_data)
+                            loss = self.criterion(outputs, data_unpacked)
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -289,8 +298,8 @@ class ObscureFeature(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(self.mask(data))
-                        loss = self.criterion(outputs, data)
+                        outputs = self.model(masked_data)
+                        loss = self.criterion(outputs, data_unpacked)
 
                         # Backward and optimize
                         loss.backward()
