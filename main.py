@@ -132,7 +132,7 @@ if args.self_supervised > 0:
     )
     
     # Init pretrainer
-    if(args.proxy_task == ProxyTask.PACKET_PREDICTION):
+    if(args.proxy_task == ProxyTask.PREDICT):
         pretrainer = trainer.PredictPacket(
             model = model, 
             training_data = pretrain_loader, 
@@ -145,7 +145,7 @@ if args.self_supervised > 0:
             cache = cache,
             json = args.json_dir
         )
-    elif(args.proxy_task == ProxyTask.OBSCURE_FEATURE):
+    elif(args.proxy_task == ProxyTask.OBSCURE):
         pretrainer = trainer.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
