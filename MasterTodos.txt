@@ -1,6 +1,0 @@
-TODOs:
-
-pack_padded_sequence
-Use one LSTM
-Pretraining 95%, Supervised 5%
-Maybe use 32bit Float
