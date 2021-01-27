@@ -166,7 +166,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = args.n_epochs, 
-            stats = stats_pretraining, 
+            stats = stats_training, 
             cache = cache,
             json = args.json_dir
         )
