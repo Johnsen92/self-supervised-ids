@@ -115,21 +115,33 @@ model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, ar
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
+# Init class stats
+class_stats_training = statistics.ClassStats(
+    stats_dir = args.stats_dir,
+    mapping = category_mapping,
+    benign = args.benign_category
+)
+
+# Init stats
+stats_training = statistics.Stats(
+    stats_dir = args.stats_dir,
+    class_stats = class_stats_training,
+    proxy_task = f'{args.proxy_task}',
+    pretrain_percent = pretraining_size * 100 // n_samples,
+    train_percent = supervised_size * 100 // n_samples,
+    val_percent = args.val_percent,
+    n_epochs = args.n_epochs,
+    batch_size = args.batch_size,
+    learning_rate = args.learning_rate,
+    gpu = args.gpu,
+    hidden_size = args.hidden_size,
+    n_layers = args.n_layers
+)
+
 # Pretraining if enabled
 if args.self_supervised > 0:
     # Init pretraining criterion
     pretraining_criterion = nn.L1Loss()
-      
-    # Init pretraining stats
-    stats_pretraining = statistics.Stats(
-        stats_dir = args.stats_dir,
-        train_percent = pretraining_size // n_samples,
-        val_percent = args.val_percent,
-        n_epochs = args.n_epochs,
-        batch_size = args.batch_size,
-        learning_rate = args.learning_rate,
-        gpu = args.gpu
-    )
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.PREDICT):
@@ -141,7 +153,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = args.n_epochs, 
-            stats = stats_pretraining, 
+            stats = stats_training, 
             cache = cache,
             json = args.json_dir
         )
@@ -170,25 +182,6 @@ model.pretraining = False
 # Init criterion
 training_criterion = nn.CrossEntropyLoss()
 
-# Init class stats
-class_stats_training = statistics.ClassStats(
-    stats_dir = args.stats_dir,
-    mapping = category_mapping,
-    benign = args.benign_category
-)
-
-# Init stats
-stats_training = statistics.Stats(
-    stats_dir = args.stats_dir,
-    class_stats = class_stats_training,
-    train_percent = supervised_size // n_samples,
-    val_percent = args.val_percent,
-    n_epochs = args.n_epochs,
-    batch_size = args.batch_size,
-    learning_rate = args.learning_rate,
-    gpu = args.gpu
-)
-
 # Init trainer
 trainer = trainer.Supervised(
     model = model, 
@@ -210,8 +203,8 @@ trainer.train()
 trainer.validate()
 
 # Evaluate model
-if not args.debug:
-    trainer.evaluate()
+#if not args.debug:
+trainer.evaluate()
 
     
 

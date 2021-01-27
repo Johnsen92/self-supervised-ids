@@ -97,7 +97,7 @@ class Supervised(Trainer):
                         print (f'Supervised, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
-            self.stats.training_time_s = mon.duration_s
+            self.stats.add_monitor(mon)
             self.stats.losses = mon.measurements
 
             # Store trained model
@@ -220,7 +220,8 @@ class PredictPacket(Trainer):
                         print (f'Pretraining, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
-            self.stats.training_time = mon.duration_s
+            self.stats.add_monitor(mon)
+            # TODO: Print losses for pretraining and supervised training
             self.stats.losses = mon.measurements
 
             # Store trained model
@@ -311,7 +312,7 @@ class ObscureFeature(Trainer):
                         print (f'Pretraining, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
-            self.stats.training_time = mon.duration_s
+            self.stats.add_monitor(mon)
             self.stats.losses = mon.measurements
 
             # Store trained model
