@@ -35,7 +35,7 @@ parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validatio
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
-parser.add_argument('-o', '--output_size', default=2, type=int, help='Size of LSTM output vector')
+parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('-x', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
@@ -180,7 +180,8 @@ if args.self_supervised > 0:
 model.pretraining = False
 
 # Init criterion
-training_criterion = nn.CrossEntropyLoss()
+#training_criterion = nn.CrossEntropyLoss()
+training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Init trainer
 trainer = trainer.Supervised(

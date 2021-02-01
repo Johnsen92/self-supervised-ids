@@ -71,9 +71,9 @@ class Supervised(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(data)
-                            op_view = outputs.view(-1, 2)
-                            lab_view = labels.view(-1)
+                            outputs, mask = self.model(data)
+                            op_view = outputs[mask].view(-1)
+                            lab_view = labels[mask].view(-1)
                             loss = self.criterion(op_view, lab_view)
 
                         # Backward and optimize
@@ -139,15 +139,17 @@ class Supervised(Trainer):
                     categories = categories.to(self.device)
 
                     # Forward pass
-                    outputs = self.model(data)
+                    outputs, _ = self.model(data)
 
                     # Max returns (value ,index)
                     _, predicted = torch.max(outputs.data[:,-1,:], 1)
+                    target = labels[:, 0, :].squeeze()
+                    categories = categories[:, 0, :].squeeze()  
                     n_samples += labels.size(0)
-                    n_correct += (predicted == labels[:, 0]).sum().item()
-                    n_false_negative += (predicted < labels[:, 0]).sum().item()
-                    n_false_positive += (predicted > labels[:, 0]).sum().item()
-                    self.stats.class_stats.add((predicted == labels[:, 0]), categories[:, 0])
+                    n_correct += (predicted == target).sum().item()
+                    n_false_negative += (predicted < target).sum().item()
+                    n_false_positive += (predicted > target).sum().item()
+                    self.stats.class_stats.add((predicted == target), categories)
                     assert n_correct == n_samples - n_false_negative - n_false_positive
 
                     if mon(0):
