@@ -41,8 +41,6 @@ def collate_flows(seqs):
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
     packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, flows_len, batch_first=True, enforce_sorted=False)
-    #packed_padded_labels = torch.nn.utils.rnn.pack_padded_sequence(padded_labels, flows_len, batch_first=True, enforce_sorted=False)
-    #packed_padded_categories = torch.nn.utils.rnn.pack_padded_sequence(padded_categories, flows_len, batch_first=True, enforce_sorted=False)
     return (padded_flows, packed_padded_flows), padded_labels, padded_categories
 
 class FlowBatchSampler(Sampler):

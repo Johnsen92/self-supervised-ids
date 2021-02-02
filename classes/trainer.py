@@ -43,7 +43,19 @@ class Trainer():
 class Supervised(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
-        
+
+    def mask(self, op_size, seq_lens):
+        mask = torch.zeros(op_size, dtype=torch.bool)
+        for index, length in enumerate(seq_lens):
+            mask[index, :length,:] = True
+        return mask
+
+    def logit_mask(self, op_size, seq_lens):
+        logit_mask = torch.zeros(op_size, dtype=torch.bool)
+        for index, length in enumerate(seq_lens):
+            logit_mask[index, length-1,:] = True
+        return logit_mask
+
     def train(self):
         # Set model into training mode
         self.model.train()
@@ -71,7 +83,8 @@ class Supervised(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs, mask = self.model(data)
+                            outputs, seq_lens = self.model(data)
+                            mask = self.mask(outputs.size(), seq_lens)
                             op_view = outputs[mask].view(-1)
                             lab_view = labels[mask].view(-1)
                             loss = self.criterion(op_view, lab_view)
@@ -139,10 +152,12 @@ class Supervised(Trainer):
                     categories = categories.to(self.device)
 
                     # Forward pass
-                    outputs, _ = self.model(data)
+                    outputs, seq_lens = self.model(data)
+                    logit_mask = self.logit_mask(outputs.size(), seq_lens)
 
                     # Max returns (value ,index)
-                    _, predicted = torch.max(outputs.data[:,-1,:], 1)
+                    sigmoided_output = torch.sigmoid(outputs.data[logit_mask].detach())
+                    predicted = torch.round(sigmoided_output)
                     target = labels[:, 0, :].squeeze()
                     categories = categories[:, 0, :].squeeze()  
                     n_samples += labels.size(0)
@@ -173,6 +188,14 @@ class PredictPacket(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
 
+    def masks(self, op_size, seq_lens):
+        logit_mask = torch.zeros(op_size, dtype=torch.bool)
+        target_mask = torch.zeros(op_size, dtype=torch.bool)
+        for index, length in enumerate(seq_lens):
+            target_mask[index, :length-1,:] = True
+            logit_mask[index, 1:length,:] = True
+        return logit_mask, target_mask
+
     def train(self):
         # Set model into training mode
         self.model.train()
@@ -181,17 +204,19 @@ class PredictPacket(Trainer):
         mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Pretraining', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
-        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
+        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_pretrained_model.sdc'
         if self.cache.disabled or not os.path.isfile(chache_file_name):
 
             # Train the model
             print('Pretraining model (PacketPrediction)...')
             for epoch in range(self.epochs):
-                for (data_unpacked, data), _, _ in self.training_data: 
+                for (_, data), _, _ in self.training_data: 
 
                     # Move data to selected device 
-                    data = data.to(self.device)
+                    data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
                     data_unpacked = data_unpacked.to(self.device)
+                    data = data.to(self.device)
+                    seq_lens = seq_lens.to(self.device)
 
                     # Clear gradients
                     self.optimizer.zero_grad()
@@ -200,8 +225,9 @@ class PredictPacket(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(data)
-                            loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
+                            outputs, seq_lens = self.model(data)
+                            logit_mask, target_mask = self.masks(outputs.size(), seq_lens)
+                            loss = self.criterion(outputs[logit_mask], data_unpacked[target_mask])
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -209,7 +235,7 @@ class PredictPacket(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(data)
+                        outputs, _ = self.model(data)
                         loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
 
                         # Backward and optimize
@@ -250,11 +276,19 @@ class ObscureFeature(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
 
-    def mask(self, data):
+    def obscure(self, data, i_start, i_end):
+        assert i_end >= i_start
+        assert i_end < data.size()[1]
         masked_data = data
         data_size = data.size()
-        masked_data[:, 6:9, :] = torch.zeros(data_size[0], 3, data_size[2])
+        masked_data[:, i_start:i_end, :] = torch.zeros(data_size[0], i_end-i_start, data_size[2])
         return masked_data
+
+    def mask(self, op_size, seq_lens):
+        mask = torch.zeros(op_size, dtype=torch.bool)
+        for index, length in enumerate(seq_lens):
+            mask[index, :length,:] = True
+        return mask
 
     def train(self):
         # Set model into training mode
@@ -264,7 +298,7 @@ class ObscureFeature(Trainer):
         mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Pretraining', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
-        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
+        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_pretrained_model.sdc'
         if self.cache.disabled or not os.path.isfile(chache_file_name):
 
             # Train the model
@@ -273,13 +307,13 @@ class ObscureFeature(Trainer):
                 for (_, data), _, _ in self.training_data: 
 
                     # Unpack data
-                    data_unpacked, data_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+                    data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
 
                     # Obscure features
-                    masked_data = self.mask(data_unpacked)
+                    masked_data = self.obscure(data_unpacked, 6, 9)
 
                     # Pack data
-                    masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, data_lens, batch_first=True, enforce_sorted=False)
+                    masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
 
                     # Move data to selected device 
                     masked_data = masked_data.to(self.device)
@@ -292,8 +326,9 @@ class ObscureFeature(Trainer):
                     if not self._scaler == None:
                         with torch.cuda.amp.autocast():
                             # Forwards pass
-                            outputs = self.model(masked_data)
-                            loss = self.criterion(outputs, data_unpacked)
+                            outputs, _ = self.model(masked_data)
+                            op_mask = self.mask(outputs.size(), seq_lens)
+                            loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
 
                         # Backward and optimize
                         self._scaler.scale(loss).backward()
@@ -301,7 +336,7 @@ class ObscureFeature(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(masked_data)
+                        outputs, _ = self.model(masked_data)
                         loss = self.criterion(outputs, data_unpacked)
 
                         # Backward and optimize

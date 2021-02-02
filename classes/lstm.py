@@ -54,11 +54,4 @@ class PretrainableLSTM(LSTM):
             out = self._fc_pretraining(out)
         else:
             out = self._fc(out)
-        mask = self.mask(out.size(), seq_lens)
-        return out, mask
-
-    def mask(self, op_size, seq_lens):
-        mask = torch.zeros(op_size, dtype=torch.bool)
-        for index, length in enumerate(seq_lens):
-            mask[index, :length,:] = True
-        return mask
+        return out, seq_lens

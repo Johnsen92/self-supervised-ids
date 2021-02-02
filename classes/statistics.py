@@ -236,11 +236,11 @@ class Stats():
             f.write(f'# Layers, {self.n_layers}\n')
             f.write(f',\n')
             f.write(f'Results,\n')
-            f.write(f'Accuracy, {p_acc:.2f} %\n')
+            f.write(f'Accuracy, {p_acc:.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
-            f.write(f'% false positves, {(self.false_positive * 100):.2f} %\n')
-            f.write(f'% false negatives, {(self.false_negative * 100):.2f} %\n')
+            f.write(f'% false positves, {(self.false_positive * 100):.3f} %\n')
+            f.write(f'% false negatives, {(self.false_negative * 100):.3f} %\n')
         if not self.class_stats == None:
             self.class_stats.save_stats()
 
