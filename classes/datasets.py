@@ -14,25 +14,6 @@ def overwrite_manipulable_entries(seq, filler=-1):
     seq[wrong_direction,:][:,3:5] = filler
     return seq
 
-def pad_label_sequence(labels, categories):
-    max_seq_length = max([len(seq) for seq in labels])
-    padded_labels = []
-    padded_categories = []
-    for label, category in zip(labels, categories):
-        pad_length = max_seq_length - label.size()[0]
-        if not pad_length == 0:
-            lab_pad = torch.zeros(pad_length, dtype=torch.long)
-            lab_pad.fill_(label[0].item())
-            cat_pad = torch.zeros(pad_length, dtype=torch.long)
-            cat_pad.fill_(category[0].item())
-            padded_labels.append(torch.cat((label, lab_pad), 0))
-            padded_categories.append(torch.cat((category, cat_pad), 0))
-        else:
-            padded_labels.append(label)
-            padded_categories.append(category)
-
-    return torch.stack(padded_labels), torch.stack(padded_categories)
-
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs):    
     flows, labels, categories = zip(*seqs)
@@ -159,9 +140,7 @@ class Flows(Dataset):
         return self.n_samples
 
     def __getitem__(self, i):
-        #tensor_categories = torch.reshape(torch.LongTensor(self.categories[i]), (-1,))
         tensor_categories = torch.LongTensor(self.categories[i])
-        #tensor_labels = torch.reshape(torch.LongTensor(self.y[i]), (-1,))
         tensor_labels = torch.FloatTensor(self.y[i])
         tensor_data = torch.FloatTensor(self.x[i])
         return tensor_data, tensor_labels, tensor_categories

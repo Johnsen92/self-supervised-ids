@@ -180,7 +180,6 @@ if args.self_supervised > 0:
 model.pretraining = False
 
 # Init criterion
-#training_criterion = nn.CrossEntropyLoss()
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Init trainer
@@ -204,8 +203,8 @@ trainer.train()
 trainer.validate()
 
 # Evaluate model
-#if not args.debug:
-trainer.evaluate()
+if not args.debug:
+    trainer.evaluate()
 
     
 
