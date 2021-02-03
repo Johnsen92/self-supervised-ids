@@ -1,6 +1,5 @@
 import torch as torch
 from torch import nn
-from torch.nn import functional as F
 
 # Fill padded section of output with last unpadded LSTM output in sequence
 def pad_packed_output_sequence(packed_output):
