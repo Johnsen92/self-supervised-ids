@@ -11,4 +11,4 @@ clean:
 	rm ${JSON_DIR}/*
 
 test:
-	python3 main.py -f ./data/flows.pickle -b 128 -e 5 -g -s 90 --no_cache -x PREDICT
+	python3 main_lstm.py -f ./data/flows.pickle -b 128 -e 5 -g -s 90 --no_cache -x PREDICT

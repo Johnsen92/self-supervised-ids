@@ -95,9 +95,10 @@ class Supervised(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs = self.model(data)
-                        op_view = outputs.view(-1, 2)
-                        lab_view = labels.view(-1)
+                        outputs, seq_lens = self.model(data)
+                        mask = self.mask(outputs.size(), seq_lens)
+                        op_view = outputs[mask].view(-1)
+                        lab_view = labels[mask].view(-1)
                         loss = self.criterion(op_view, lab_view)
 
                         # Backward and optimize
@@ -235,8 +236,9 @@ class PredictPacket(Trainer):
                         self._scaler.update()
                     else:
                         # Forwards pass
-                        outputs, _ = self.model(data)
-                        loss = self.criterion(outputs[:, :-1, :], data_unpacked[:, 1:, :])
+                        outputs, seq_lens = self.model(data)
+                        logit_mask, target_mask = self.masks(outputs.size(), seq_lens)
+                        loss = self.criterion(outputs[logit_mask], data_unpacked[target_mask])
 
                         # Backward and optimize
                         loss.backward()
@@ -249,7 +251,6 @@ class PredictPacket(Trainer):
 
             # Get stats
             self.stats.add_monitor(mon)
-            # TODO: Print losses for pretraining and supervised training
             self.stats.losses = mon.measurements
 
             # Store trained model
@@ -337,7 +338,8 @@ class ObscureFeature(Trainer):
                     else:
                         # Forwards pass
                         outputs, _ = self.model(masked_data)
-                        loss = self.criterion(outputs, data_unpacked)
+                        op_mask = self.mask(outputs.size(), seq_lens)
+                        loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
 
                         # Backward and optimize
                         loss.backward()
