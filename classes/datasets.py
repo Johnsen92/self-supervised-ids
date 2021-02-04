@@ -18,10 +18,10 @@ def overwrite_manipulable_entries(seq, filler=-1):
 def collate_flows(seqs):    
     flows, labels, categories = zip(*seqs)
     flows_len = [len(flow) for flow in flows]
-    padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
-    padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-    padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
-    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, flows_len, batch_first=True, enforce_sorted=False)
+    padded_flows = torch.nn.utils.rnn.pad_sequence(flows)
+    padded_labels = torch.nn.utils.rnn.pad_sequence(labels)
+    padded_categories = torch.nn.utils.rnn.pad_sequence(categories)
+    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, flows_len, enforce_sorted=False)
     return (padded_flows, packed_padded_flows), padded_labels, padded_categories
 
 class FlowBatchSampler(Sampler):
@@ -39,11 +39,11 @@ class FlowBatchSampler(Sampler):
             batch_labels.append(label)
             batch_categories.append(categorie)
             if len(batch_data) == self.batch_size:
-                batch_data_padded = torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True)
+                batch_data_padded = torch.nn.utils.rnn.pad_sequence(batch_data)
                 yield (batch_data_padded, torch.stack(batch_labels), torch.stack(batch_categories))
                 batch_data = batch_labels = batch_categories = []
         if len(batch_data) > 0 and not self.drop_last:
-            batch_data_padded = torch.nn.utils.rnn.pad_sequence(batch_data, batch_first=True)
+            batch_data_padded = torch.nn.utils.rnn.pad_sequence(batch_data)
             yield (batch_data_padded, torch.stack(batch_labels), torch.stack(batch_categories))
     
     def __len__(self):

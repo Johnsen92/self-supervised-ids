@@ -3,7 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, trainer
+from classes import datasets, lstm, statistics, utils, transformer_trainer, transformer
 import torchvision
 import torch
 import os.path
@@ -82,6 +82,12 @@ if args.debug:
     dataset, _ = random_split(dataset, [debug_size, n_samples - debug_size])
     n_samples = debug_size
 
+# Decide between GPU and CPU Training
+if torch.cuda.is_available() and args.gpu:
+    device = torch.device('cuda:0')
+else:
+    device = torch.device('cpu')
+
 # Split dataset into training and validation parts
 validation_size = (n_samples * args.val_percent) // 100
 training_size = (n_samples * args.train_percent) // 100
@@ -90,21 +96,15 @@ unused_size = unallocated_size - validation_size
 assert unused_size >= 0
 pretraining_size = (training_size * args.self_supervised) // 100
 supervised_size = training_size - pretraining_size
-train, unallocated = random_split(dataset, [training_size, unallocated_size])
-val, unused = random_split(unallocated, [validation_size, unused_size])
-pretrain, train = random_split(train, [pretraining_size, supervised_size])
+train_data, unallocated = random_split(dataset, [training_size, unallocated_size])
+val_data, unused = random_split(unallocated, [validation_size, unused_size])
+pretrain_data, train_data = random_split(train_data, [pretraining_size, supervised_size])
 
 # Init data loaders
 if args.self_supervised > 0:
-    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-
-# Decide between GPU and CPU Training
-if torch.cuda.is_available() and args.gpu:
-    device = torch.device('cuda:0')
-else:
-    device = torch.device('cpu')
+    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
 # Init model
 data, _, _ = dataset[0]
@@ -112,8 +112,34 @@ input_size = data.size()[1]
 output_size = args.output_size
 model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, args.batch_size, device).to(device)
 
-# Init optimizer
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+# We're ready to define everything we need for training our Seq2Seq model
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Model hyperparameters
+num_heads = 3
+num_encoder_layers = 6
+num_decoder_layers = 6
+dropout = 0.10
+forward_expansion = 4
+
+model = transformer.Transformer(
+    input_size,
+    num_heads,
+    num_encoder_layers,
+    num_decoder_layers,
+    forward_expansion,
+    dropout,
+    args.max_sequence_length,
+    device,
+).to(device)
+
+optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, factor=0.1, patience=10, verbose=True
+)
+
+criterion = nn.BCEWithLogitsLoss()
 
 # Init class stats
 class_stats_training = statistics.ClassStats(
@@ -138,52 +164,11 @@ stats_training = statistics.Stats(
     n_layers = args.n_layers
 )
 
-# Pretraining if enabled
-if args.self_supervised > 0:
-    # Init pretraining criterion
-    pretraining_criterion = nn.L1Loss()
-    
-    # Init pretrainer
-    if(args.proxy_task == ProxyTask.PREDICT):
-        pretrainer = trainer.PredictPacket(
-            model = model, 
-            training_data = pretrain_loader, 
-            validation_data = val_loader,
-            device = device,
-            criterion = pretraining_criterion, 
-            optimizer = optimizer, 
-            epochs = args.n_epochs, 
-            stats = stats_training, 
-            cache = cache,
-            json = args.json_dir
-        )
-    elif(args.proxy_task == ProxyTask.OBSCURE):
-        pretrainer = trainer.ObscureFeature(
-            model = model, 
-            training_data = pretrain_loader, 
-            validation_data = val_loader,
-            device = device,
-            criterion = pretraining_criterion, 
-            optimizer = optimizer, 
-            epochs = args.n_epochs, 
-            stats = stats_training, 
-            cache = cache,
-            json = args.json_dir
-        )
-    else:
-        print(f'Proxy task can not be {args.proxy_task} for self supervised training')
-    
-    # Pretrain
-    pretrainer.train()
-
-# Disable pretraining mode
-model.pretraining = False
-
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Init trainer
-trainer = trainer.Supervised(
+trainer = transformer_trainer.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -205,6 +190,3 @@ trainer.validate()
 # Evaluate model
 if not args.debug:
     trainer.evaluate()
-
-    
-
