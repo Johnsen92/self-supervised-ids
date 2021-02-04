@@ -1,7 +1,9 @@
 data/*
+.data/*
 cache/*
 stats/*
 json/*
+runs/*
 baseline/*
 latex/*.aux
 latex/*.bbl
