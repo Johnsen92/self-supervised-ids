@@ -14,7 +14,8 @@ from enum import Enum
 class ProxyTask(Enum):
     NONE = 1,
     PREDICT = 2,
-    OBSCURE = 3
+    OBSCURE = 3,
+    INTER = 4
 
     def __str__(self):
         return self.name
@@ -38,7 +39,7 @@ parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LST
 parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
-parser.add_argument('-x', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-x', '--proxy_task', default=ProxyTask.INTER, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
@@ -110,10 +111,6 @@ val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=Tr
 data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
-model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, args.batch_size, device).to(device)
-
-# We're ready to define everything we need for training our Seq2Seq model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model hyperparameters
 num_heads = 3
@@ -122,6 +119,7 @@ num_decoder_layers = 6
 dropout = 0.10
 forward_expansion = 4
 
+# Init model
 model = transformer.Transformer(
     input_size,
     num_heads,
@@ -133,13 +131,8 @@ model = transformer.Transformer(
     device,
 ).to(device)
 
+# Init optimizer
 optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
-
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, factor=0.1, patience=10, verbose=True
-)
-
-criterion = nn.BCEWithLogitsLoss()
 
 # Init class stats
 class_stats_training = statistics.ClassStats(
@@ -164,12 +157,48 @@ stats_training = statistics.Stats(
     n_layers = args.n_layers
 )
 
+# Pretraining if enabled
+if args.self_supervised > 0:
+    # Init pretraining criterion
+    pretraining_criterion = nn.L1Loss()
+    
+    # Init pretrainer
+    if(args.proxy_task == ProxyTask.INTER):
+        # Init trainer
+        pretrainer = transformer_trainer.Interpolation(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = None,
+            device = device, 
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_training, 
+            cache = cache,
+            json = args.json_dir
+        )
+    else:
+        print(f'Proxy task can not be {args.proxy_task} for self supervised training')
+
+    # Pretrain
+    pretrainer.train()
+
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
+#training_criterion = nn.L1Loss()
+
+train_model = transformer.TransformerEncoder(
+    encoder = model.transformer.encoder,
+    input_size = input_size,
+    output_size = args.output_size,
+    dropout = dropout,
+    max_len = args.max_sequence_length,
+    device = device
+).to(device)
 
 # Init trainer
 trainer = transformer_trainer.Supervised(
-    model = model, 
+    model = train_model, 
     training_data = train_loader, 
     validation_data = val_loader,
     device = device, 

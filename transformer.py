@@ -91,9 +91,6 @@ class Transformer(nn.Module):
         return src_mask.to(self.device)
 
     def forward(self, src, trg):
-        print(src.shape)
-        print(src)
-
         src_seq_length, N = src.shape
         trg_seq_length, N = trg.shape
 
@@ -142,7 +139,7 @@ save_model = True
 # Training hyperparameters
 num_epochs = 10000
 learning_rate = 3e-4
-batch_size = 32
+batch_size = 1
 
 # Model hyperparameters
 src_vocab_size = len(german.vocab)
@@ -220,8 +217,18 @@ for epoch in range(num_epochs):
         inp_data = batch.src.to(device)
         target = batch.trg.to(device)
 
+        # print('Src data')
+        # print(inp_data)
+        # print('Target data')
+        # print(target[:-1, :])
+        
+        print(f'Src_size: {inp_data.shape}')
+        print(f'Trg_size: {target.shape}')
+
         # Forward prop
         output = model(inp_data, target[:-1, :])
+
+        print(f'Output_size: {output.shape}')
 
         # Output is of shape (trg_len, batch_size, output_dim) but Cross Entropy Loss
         # doesn't take input in that form. For example if we have MNIST we want to have
@@ -232,8 +239,11 @@ for epoch in range(num_epochs):
         output = output.reshape(-1, output.shape[2])
         target = target[1:].reshape(-1)
 
-        optimizer.zero_grad()
+        print(f'Target_final_size: {target.shape}')
+        print(f'Output_final_size: {output.shape}\n')
 
+        optimizer.zero_grad()
+        
         loss = criterion(output, target)
         losses.append(loss.item())
 
