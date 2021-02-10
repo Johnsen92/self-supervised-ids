@@ -103,9 +103,7 @@ class TransformerEncoder(nn.Module):
             .to(self.device)
         )
 
-        embed_src = self.dropout(
-            (src + self.src_position_embedding(src_positions))
-        )
+        embed_src = self.dropout((src + self.src_position_embedding(src_positions)))
 
         out = self.encoder(embed_src, src_key_padding_mask=mask)
         out = self.fc(out)

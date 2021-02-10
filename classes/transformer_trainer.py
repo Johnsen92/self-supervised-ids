@@ -165,6 +165,12 @@ class Supervised(Trainer):
             mask[:length-1, index, :] = True
         return mask
 
+    def logits(self, output, seq_lens):
+        logits = torch.zeros(output.size()[1], dtype=torch.float)
+        for index, length in enumerate(seq_lens):
+            logits[index] = torch.sum(output[:length-1, index, :])/length
+        return logits
+
     def train(self):
 
         # Tensorboard to get nice loss plot
@@ -283,12 +289,12 @@ class Supervised(Trainer):
                     # Forward pass
                     src_mask = self.src_mask(data_unpacked.size(), seq_lens).to(self.device)
                     outputs = self.model(data_unpacked, src_mask)
-                    logit_mask = self.logit_mask(outputs.size(), seq_lens)
-
-                    outputs.data[logit_mask].sum()
+                    #logit_mask = self.logit_mask(outputs.size(), seq_lens)
+                    logits = self.logits(outputs, seq_lens).to(self.device)
 
                     # Max returns (value ,index)
-                    sigmoided_output = torch.sigmoid(outputs.data[logit_mask].detach())
+                    #sigmoided_output = torch.sigmoid(outputs.data[logit_mask].detach())
+                    sigmoided_output = torch.sigmoid(logits)
                     predicted = torch.round(sigmoided_output)
                     target = labels[0, :, :].squeeze()
                     categories = categories[0, :, :].squeeze()  
