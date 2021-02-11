@@ -168,7 +168,7 @@ if args.self_supervised > 0:
         pretrainer = transformer_trainer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = None,
+            validation_data = val_loader,
             device = device, 
             criterion = pretraining_criterion, 
             optimizer = optimizer, 

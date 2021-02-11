@@ -55,14 +55,14 @@ class Interpolation(Trainer):
         self.model.train()
 
         # Define monitor to track time and avg. loss over time
-        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Training', json_dir=self.json)
+        mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title='Pretraining', json_dir=self.json)
 
         # Train model if no cache file exists or the train flag is set, otherwise load cached model
-        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_trained_model.sdc'
+        chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_pretrained_model.sdc'
         if self.cache.disabled or not os.path.isfile(chache_file_name):
 
             # Train the model
-            print('Training model...')
+            print('Pretraining model...')
             for epoch in range(self.epochs):
                 for (_, data), _, _ in self.training_data: 
 
@@ -70,7 +70,6 @@ class Interpolation(Trainer):
 
                     # Get input and targets and get to cuda
                     data = data_unpacked.to(self.device)
-                    labels = labels.to(self.device)
 
                     # Select every even idx of data as src and every odd idx as target
                     seq_len = data_unpacked.size()[0]
@@ -93,7 +92,6 @@ class Interpolation(Trainer):
                         #mask = self.mask(out.size(), seq_lens).to(self.device)
                         out = out.view(-1)
                         trg = trg_data.view(-1)
-                        #labels = labels[mask].view(-1)
                         self.optimizer.zero_grad()
                         loss = self.criterion(out, trg)
 
@@ -113,13 +111,13 @@ class Interpolation(Trainer):
                     #self.optimizer.step()
 
                     # plot to tensorboard
-                    writer.add_scalar("Training loss", loss, global_step=step)
+                    writer.add_scalar("Pretraining loss", loss, global_step=step)
                     step += 1
 
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
-                        print (f'Supervised, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+                        print (f'Interpolation, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
 
             # Get stats
             self.stats.add_monitor(mon)
@@ -156,13 +154,13 @@ class Supervised(Trainer):
     def trg_mask(self, size, seq_lens):
         mask = torch.zeros(size, dtype=torch.bool)
         for index, length in enumerate(seq_lens):
-            mask[:length-1, index, :] = True
+            mask[:length, index, :] = True
         return mask
 
     def logit_mask(self, size, seq_lens):
         mask = torch.zeros(size, dtype=torch.bool)
         for index, length in enumerate(seq_lens):
-            mask[:length-1, index, :] = True
+            mask[:length, index, :] = True
         return mask
 
     def logits(self, output, seq_lens):
