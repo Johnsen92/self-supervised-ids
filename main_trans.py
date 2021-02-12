@@ -114,10 +114,10 @@ output_size = args.output_size
 
 # Model hyperparameters
 num_heads = 3
-num_encoder_layers = 6
-num_decoder_layers = 6
-dropout = 0.10
-forward_expansion = 4
+num_encoder_layers = 10
+num_decoder_layers = 10
+dropout = 0.01
+forward_expansion = 20
 
 # Init model
 model = transformer.Transformer(
