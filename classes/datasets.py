@@ -18,6 +18,7 @@ def overwrite_manipulable_entries(seq, filler=-1):
 def collate_flows(seqs):    
     flows, labels, categories = zip(*seqs)
     flows_len = [len(flow) for flow in flows]
+    assert not 0 in flows_len
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows)
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories)
