@@ -106,6 +106,8 @@ class TransformerEncoder(nn.Module):
         embed_src = self.dropout((src + self.src_position_embedding(src_positions)))
 
         out = self.encoder(embed_src, src_key_padding_mask=mask)
+        print(out)
+        out = out.masked_fill(torch.isnan(out), 0)
         out = self.fc(out)
         return out
 
