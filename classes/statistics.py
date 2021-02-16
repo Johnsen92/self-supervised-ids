@@ -171,16 +171,18 @@ class ClassStats():
             f.write('\n')
             benign_rate = float(self.number[self.benign]) / float(n_samples) * 100.0
             attack_rate = float(n_attack) / float(n_samples) * 100.0
+            overall_rate = float(n_right) / float(n_samples)
             f.write(f'Samples, {n_samples}\n')
             f.write(f'Benign, {benign_rate:.3f}\n')
             f.write(f'Attack, {attack_rate:.3f}\n')
+            f.write(f'Overall, {overall_rate:.3f}\n')
 
 
 class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, hidden_size=None, n_layers=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
+    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -195,8 +197,7 @@ class Stats():
         self.learning_rate = learning_rate  
         self.losses = losses
         self.class_stats = class_stats
-        self.hidden_size = hidden_size
-        self.n_layers = n_layers
+        self.model_parameters = model_parameters
         self.monitors = []
 
         if title == None:
@@ -222,7 +223,7 @@ class Stats():
         p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
-            f.write(f'Parameters,\n')
+            f.write(f'Hyperparameters,\n')
             f.write(f'Trained on, {"GPU" if self.gpu else "CPU"}\n')
             f.write(f'Epochs, {self.n_epochs}\n')
             f.write(f'Batch size, {self.batch_size}\n')
@@ -232,10 +233,11 @@ class Stats():
             f.write(f'Validation percentage, {self.val_percent}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
-            f.write(f'Hidden size, {self.hidden_size}\n')
-            f.write(f'# Layers, {self.n_layers}\n')
-            f.write(f',\n')
-            f.write(f'Results,\n')
+            f.write(f'\nModelparameters,\n')
+            if not self.model_parameters is None:
+                for key, val in self.model_parameters.items():
+                    f.write(f'{key}, {val}\n')
+            f.write(f'\nResults,\n')
             f.write(f'Accuracy, {p_acc:.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')

@@ -137,6 +137,14 @@ class_stats_training = statistics.ClassStats(
     benign = args.benign_category
 )
 
+# Gather model parameters for statistics
+model_parameters = {
+    '# Layers' : args.n_layers,
+    '# Heads' : args.n_heads,
+    'Forward expansion' : args.forward_expansion,
+    'Dropout' : args.dropout
+}
+
 # Init stats
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
@@ -149,7 +157,7 @@ stats_training = statistics.Stats(
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     gpu = args.gpu,
-    n_layers = args.n_layers
+    model_parameters = model_parameters
 )
 
 # Pretraining if enabled
@@ -191,7 +199,7 @@ train_model = transformer.TransformerEncoder(
     device = device
 ).to(device)
 
-# Init trainer
+# Init trainer for supervised training
 trainer = transformer_trainer.Supervised(
     model = train_model, 
     training_data = train_loader, 

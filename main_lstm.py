@@ -3,7 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, trainer
+from classes import datasets, lstm, statistics, utils, lstm_trainer
 import torchvision
 import torch
 import os.path
@@ -96,9 +96,9 @@ pretrain, train = random_split(train, [pretraining_size, supervised_size])
 
 # Init data loaders
 if args.self_supervised > 0:
-    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 
 # Decide between GPU and CPU Training
 if torch.cuda.is_available() and args.gpu:
@@ -122,6 +122,13 @@ class_stats_training = statistics.ClassStats(
     benign = args.benign_category
 )
 
+# Gather model parameters for statistic
+model_parameters = {
+    'Hidden size' : args.hidden_size,
+    '# Layers' : args.n_layers
+}
+
+
 # Init stats
 stats_training = statistics.Stats(
     stats_dir = args.stats_dir,
@@ -134,8 +141,7 @@ stats_training = statistics.Stats(
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     gpu = args.gpu,
-    hidden_size = args.hidden_size,
-    n_layers = args.n_layers
+    model_parameters = model_parameters
 )
 
 # Pretraining if enabled
@@ -145,7 +151,7 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.PREDICT):
-        pretrainer = trainer.PredictPacket(
+        pretrainer = lstm_trainer.PredictPacket(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -158,7 +164,7 @@ if args.self_supervised > 0:
             json = args.json_dir
         )
     elif(args.proxy_task == ProxyTask.OBSCURE):
-        pretrainer = trainer.ObscureFeature(
+        pretrainer = lstm_trainer.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -183,7 +189,7 @@ model.pretraining = False
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Init trainer
-trainer = trainer.Supervised(
+trainer = lstm_trainer.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -203,8 +209,8 @@ trainer.train()
 trainer.validate()
 
 # Evaluate model
-if not args.debug:
-    trainer.evaluate()
+#if not args.debug:
+trainer.evaluate()
 
     
 
