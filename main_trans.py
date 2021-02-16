@@ -12,7 +12,8 @@ import json
 from enum import Enum
 
 class ProxyTask(Enum):
-    NONE = 1,
+    NONE = 0,
+    AUTO = 1,
     PREDICT = 2,
     OBSCURE = 3,
     INTER = 4
@@ -34,15 +35,17 @@ parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
 parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
-parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
-parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
-parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
+parser.add_argument('-x', '--forward_expansion', default=20, type=int, help='Multiplier for input_size for transformer internal data width')
+parser.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
+parser.add_argument('-l', '--n_layers', default=6, type=int, help='Number of LSTM layers')
+parser.add_argument('-o', '--dropout', default=0.1, type=float, help='Dropout rate')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
-parser.add_argument('-x', '--proxy_task', default=ProxyTask.INTER, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
+parser.add_argument('-y', '--proxy_task', default=ProxyTask.INTER, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
+parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.val_percent <= 100
@@ -52,15 +55,15 @@ with open(args.json_dir + '/args.json', 'w') as f:
     f.write(jsons.dumps(args))
 
 # If debug flag is set, minimize dataset and epochs
-debug_size = 2048
+debug_size = 10240
 if args.debug:
     args.n_epochs = 1
 
-# Init hyperparameters
+# Datafile basename
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
@@ -89,7 +92,7 @@ if torch.cuda.is_available() and args.gpu:
 else:
     device = torch.device('cpu')
 
-# Split dataset into training and validation parts
+# Split dataset into pretraining, training and validation parts
 validation_size = (n_samples * args.val_percent) // 100
 training_size = (n_samples * args.train_percent) // 100
 unallocated_size = n_samples - training_size
@@ -112,23 +115,16 @@ data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
 
-# Model hyperparameters
-num_heads = 3
-num_encoder_layers = 10
-num_decoder_layers = 10
-dropout = 0.01
-forward_expansion = 20
-
 # Init model
 model = transformer.Transformer(
-    input_size,
-    num_heads,
-    num_encoder_layers,
-    num_decoder_layers,
-    forward_expansion,
-    dropout,
-    args.max_sequence_length,
-    device,
+    input_size = input_size,
+    num_heads = args.n_heads,
+    num_encoder_layers = args.n_layers,
+    num_decoder_layers = args.n_layers,
+    forward_expansion = args.forward_expansion,
+    dropout = args.dropout,
+    max_len = args.max_sequence_length,
+    device = device
 ).to(device)
 
 # Init optimizer
@@ -153,7 +149,6 @@ stats_training = statistics.Stats(
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     gpu = args.gpu,
-    hidden_size = args.hidden_size,
     n_layers = args.n_layers
 )
 
@@ -183,15 +178,15 @@ if args.self_supervised > 0:
     # Pretrain
     pretrainer.train()
 
-# Init criterion
+# Init training criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
-#training_criterion = nn.L1Loss()
 
+# Init transformer encoder
 train_model = transformer.TransformerEncoder(
     encoder = model.transformer.encoder,
     input_size = input_size,
     output_size = args.output_size,
-    dropout = dropout,
+    dropout = args.dropout,
     max_len = args.max_sequence_length,
     device = device
 ).to(device)

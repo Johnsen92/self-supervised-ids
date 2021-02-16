@@ -145,32 +145,6 @@ class Supervised(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
 
-    def src_mask(self, size, seq_lens):
-        mask = torch.ones(size[:2], dtype=torch.bool).transpose(0, 1)
-        for index, length in enumerate(seq_lens):
-            mask[index, :length] = False
-        return mask
-
-    def trg_mask(self, size, seq_lens):
-        mask = torch.zeros(size, dtype=torch.bool)
-        for index, length in enumerate(seq_lens):
-            mask[:length, index, :] = True
-        return mask
-
-    def logit_mask(self, size, seq_lens):
-        mask = torch.zeros(size, dtype=torch.bool)
-        for index, length in enumerate(seq_lens):
-            mask[:length, index, :] = True
-        return mask
-
-    def logits(self, output, seq_lens):
-        logits = torch.zeros(output.size()[1], dtype=torch.float)
-        output_rounded = torch.sigmoid(output)
-        for index, length in enumerate(seq_lens):
-            logits[index] = torch.sum(output[:length, index, :])/length
-            #logits[index] = torch.sum(output_rounded[:length, index, :])/length
-        return logits
-
     def train(self):
 
         # Tensorboard to get nice loss plot
@@ -192,31 +166,18 @@ class Supervised(Trainer):
             for epoch in range(self.epochs):
                 for (_, data), labels, _ in self.training_data: 
 
-                    data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
-
                     # Get input and targets and get to cuda
-                    data_unpacked = data_unpacked.to(self.device)
-                    labels = labels.to(self.device)
-
-                    # Create mask for non-padded items only
-                    src_mask = self.src_mask(data_unpacked.size(), seq_lens).to(self.device)
-                    trg_mask = self.trg_mask(labels.size(), seq_lens).to(self.device)
+                    data = data.to(self.device)
+                    labels = labels[0,:,0].to(self.device)
                     
-                    # Output is of shape (trg_len, batch_size, output_dim) but Cross Entropy Loss
-                    # doesn't take input in that form. For example if we have MNIST we want to have
-                    # output to be: (N, 10) and targets just (N). Here we can view it in a similar
-                    # way that we have output_words * batch_size that we want to send in into
-                    # our cost function, so we need to do some reshapin.
-                    # Let's also remove the start token while we're at it
+                    # Scaled forward propagation
                     with torch.cuda.amp.autocast():
 
                         # Forward prop
-                        out = self.model(data_unpacked, src_mask)
-                        out = self.logits(out, seq_lens).to(self.device)
-                        #out = out[trg_mask].view(-1)
-                        #labels = labels[trg_mask].view(-1)
-                        labels = labels[0,:,0]
+                        out = self.model(data)
                         self.optimizer.zero_grad()
+
+                        # Calculate loss
                         loss = self.criterion(out, labels)
 
                     # Backward and optimize
@@ -224,15 +185,6 @@ class Supervised(Trainer):
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
-
-                    # Back prop
-                    #loss.backward()
-                    # Clip to avoid exploding gradient issues, makes sure grads are
-                    # within a healthy range
-                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
-
-                    # Gradient descent step
-                    #self.optimizer.step()
 
                     # plot to tensorboard
                     writer.add_scalar("Training loss", loss, global_step=step)
@@ -283,30 +235,30 @@ class Supervised(Trainer):
                 for (_, data), labels, categories in self.validation_data:
 
                     # Move data to selected device 
-                    data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
-                    data_unpacked = data_unpacked.to(self.device)
+                    data = data.to(self.device)
                     labels = labels.to(self.device)
                     categories = categories.to(self.device)
 
-                    # Forward pass
-                    src_mask = self.src_mask(data_unpacked.size(), seq_lens).to(self.device)
-                    outputs = self.model(data_unpacked, src_mask)
-                    #logit_mask = self.logit_mask(outputs.size(), seq_lens)
-                    logits = self.logits(outputs, seq_lens).to(self.device)
+                    # Masked forward pass
+                    logits = self.model(data)
 
-                    # Max returns (value ,index)
-                    #sigmoided_output = torch.sigmoid(outputs.data[logit_mask].detach())
+                    # Apply sigmoid function and round
                     sigmoided_output = torch.sigmoid(logits)
                     predicted = torch.round(sigmoided_output)
+
+                    # Evaluate results
                     target = labels[0, :, :].squeeze()
                     categories = categories[0, :, :].squeeze()  
                     n_samples += labels.size(1)
                     n_correct += (predicted == target).sum().item()
                     n_false_negative += (predicted < target).sum().item()
                     n_false_positive += (predicted > target).sum().item()
-                    self.stats.class_stats.add((predicted == target), categories)
                     assert n_correct == n_samples - n_false_negative - n_false_positive
 
+                    # Add to class stats
+                    self.stats.class_stats.add((predicted == target), categories)
+                    
+                    # Print progress
                     if mon(0):
                         time_left_h, time_left_m = mon.time_left
                         print (f'Validation [{mon.iter}/{n_val_samples}], Time left: {time_left_h}h {time_left_m}m')
