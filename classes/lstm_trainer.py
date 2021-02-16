@@ -79,21 +79,8 @@ class Supervised(Trainer):
                     # Clear gradients
                     self.optimizer.zero_grad()
 
-                    # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
-                    if not self._scaler == None:
-                        with torch.cuda.amp.autocast():
-                            # Forwards pass
-                            outputs, seq_lens = self.model(data)
-                            mask = self.mask(outputs.size(), seq_lens)
-                            op_view = outputs[mask].view(-1)
-                            lab_view = labels[mask].view(-1)
-                            loss = self.criterion(op_view, lab_view)
-
-                        # Backward and optimize
-                        self._scaler.scale(loss).backward()
-                        self._scaler.step(self.optimizer)
-                        self._scaler.update()
-                    else:
+                    # Forward pass with cuda scaler
+                    with torch.cuda.amp.autocast():
                         # Forwards pass
                         outputs, seq_lens = self.model(data)
                         mask = self.mask(outputs.size(), seq_lens)
@@ -101,9 +88,11 @@ class Supervised(Trainer):
                         lab_view = labels[mask].view(-1)
                         loss = self.criterion(op_view, lab_view)
 
-                        # Backward and optimize
-                        loss.backward()
-                        self.optimizer.step()
+                    # Backward and optimize
+                    self._scaler.scale(loss).backward()
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
+
                     
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
@@ -222,27 +211,17 @@ class PredictPacket(Trainer):
                     # Clear gradients
                     self.optimizer.zero_grad()
                     
-                    # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
-                    if not self._scaler == None:
-                        with torch.cuda.amp.autocast():
-                            # Forwards pass
-                            outputs, seq_lens = self.model(data)
-                            logit_mask, target_mask = self.masks(outputs.size(), seq_lens)
-                            loss = self.criterion(outputs[logit_mask], data_unpacked[target_mask])
-
-                        # Backward and optimize
-                        self._scaler.scale(loss).backward()
-                        self._scaler.step(self.optimizer)
-                        self._scaler.update()
-                    else:
+                    # Forward pass with cuda scaler
+                    with torch.cuda.amp.autocast():
                         # Forwards pass
                         outputs, seq_lens = self.model(data)
                         logit_mask, target_mask = self.masks(outputs.size(), seq_lens)
                         loss = self.criterion(outputs[logit_mask], data_unpacked[target_mask])
 
-                        # Backward and optimize
-                        loss.backward()
-                        self.optimizer.step()
+                    # Backward and optimize
+                    self._scaler.scale(loss).backward()
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
 
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
@@ -324,26 +303,16 @@ class ObscureFeature(Trainer):
                     self.optimizer.zero_grad()
                     
                     # If GPU training and GPU > Nvidia 2000, fp16 should be enabled
-                    if not self._scaler == None:
-                        with torch.cuda.amp.autocast():
-                            # Forwards pass
-                            outputs, _ = self.model(masked_data)
-                            op_mask = self.mask(outputs.size(), seq_lens)
-                            loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
-
-                        # Backward and optimize
-                        self._scaler.scale(loss).backward()
-                        self._scaler.step(self.optimizer)
-                        self._scaler.update()
-                    else:
+                    with torch.cuda.amp.autocast():
                         # Forwards pass
                         outputs, _ = self.model(masked_data)
                         op_mask = self.mask(outputs.size(), seq_lens)
                         loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
 
-                        # Backward and optimize
-                        loss.backward()
-                        self.optimizer.step()
+                    # Backward and optimize
+                    self._scaler.scale(loss).backward()
+                    self._scaler.step(self.optimizer)
+                    self._scaler.update()
 
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):

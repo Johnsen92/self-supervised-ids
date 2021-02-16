@@ -182,7 +182,7 @@ class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, gpu=True, title=None):
+    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
@@ -224,7 +224,6 @@ class Stats():
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Hyperparameters,\n')
-            f.write(f'Trained on, {"GPU" if self.gpu else "CPU"}\n')
             f.write(f'Epochs, {self.n_epochs}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Pretraining percentage, {self.pretrain_percent}\n')

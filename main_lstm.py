@@ -22,7 +22,6 @@ class ProxyTask(Enum):
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
-parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
 parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
@@ -100,11 +99,8 @@ if args.self_supervised > 0:
 train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 
-# Decide between GPU and CPU Training
-if torch.cuda.is_available() and args.gpu:
-    device = torch.device('cuda:0')
-else:
-    device = torch.device('cpu')
+# Won't get far without GPU, so I assume you have one...
+device = torch.device('cuda:0')
 
 # Init model
 data, _, _ = dataset[0]
@@ -140,7 +136,6 @@ stats_training = statistics.Stats(
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
-    gpu = args.gpu,
     model_parameters = model_parameters
 )
 

@@ -24,7 +24,6 @@ class ProxyTask(Enum):
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
-parser.add_argument('-g', '--gpu', action='store_true', help='Train on GPU if available')
 parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
@@ -86,11 +85,8 @@ if args.debug:
     dataset, _ = random_split(dataset, [debug_size, n_samples - debug_size])
     n_samples = debug_size
 
-# Decide between GPU and CPU Training
-if torch.cuda.is_available() and args.gpu:
-    device = torch.device('cuda:0')
-else:
-    device = torch.device('cpu')
+# Won't get far without GPU, so I assume you have one...
+device = torch.device('cuda:0')
 
 # Split dataset into pretraining, training and validation parts
 validation_size = (n_samples * args.val_percent) // 100
@@ -156,7 +152,6 @@ stats_training = statistics.Stats(
     n_epochs = args.n_epochs,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
-    gpu = args.gpu,
     model_parameters = model_parameters
 )
 
