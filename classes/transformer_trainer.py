@@ -165,8 +165,10 @@ class Supervised(Trainer):
 
     def logits(self, output, seq_lens):
         logits = torch.zeros(output.size()[1], dtype=torch.float)
+        output_rounded = torch.sigmoid(output)
         for index, length in enumerate(seq_lens):
-            logits[index] = torch.sum(output[:length-1, index, :])/length
+            logits[index] = torch.sum(output[:length, index, :])/length
+            #logits[index] = torch.sum(output_rounded[:length, index, :])/length
         return logits
 
     def train(self):
@@ -210,14 +212,16 @@ class Supervised(Trainer):
 
                         # Forward prop
                         out = self.model(data_unpacked, src_mask)
-                        out = out[trg_mask].view(-1)
-                        labels = labels[trg_mask].view(-1)
+                        out = self.logits(out, seq_lens).to(self.device)
+                        #out = out[trg_mask].view(-1)
+                        #labels = labels[trg_mask].view(-1)
+                        labels = labels[0,:,0]
                         self.optimizer.zero_grad()
                         loss = self.criterion(out, labels)
 
                     # Backward and optimize
                     self._scaler.scale(loss).backward()
-                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
 
