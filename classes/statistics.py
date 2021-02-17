@@ -193,7 +193,6 @@ class Stats():
         self.val_percent = val_percent
         self.n_epochs = n_epochs
         self.batch_size = batch_size
-        self.gpu = gpu
         self.learning_rate = learning_rate  
         self.losses = losses
         self.class_stats = class_stats

@@ -29,7 +29,7 @@ class Trainer():
         assert isinstance(cache, Cache)
         self.device = device
         self.n_batches = len(self.training_data)
-        self._scaler = torch.cuda.amp.GradScaler() if stats.gpu else None
+        self._scaler = torch.cuda.amp.GradScaler()
         self.json = json
 
     def evaluate(self):
