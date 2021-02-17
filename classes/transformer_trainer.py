@@ -78,18 +78,12 @@ class Interpolation(Trainer):
                     src_data = data[src_idx,:,:]
                     trg_data = data[trg_idx,:,:]
                     
-                    # Output is of shape (trg_len, batch_size, output_dim) but Cross Entropy Loss
-                    # doesn't take input in that form. For example if we have MNIST we want to have
-                    # output to be: (N, 10) and targets just (N). Here we can view it in a similar
-                    # way that we have output_words * batch_size that we want to send in into
-                    # our cost function, so we need to do some reshapin.
-                    # Let's also remove the start token while we're at it
+                    # Forwards pass with cuda scaler
                     with torch.cuda.amp.autocast():
-                        # Forward prop
+                        # Forward pass
                         out = self.model(src_data, trg_data)
 
                         # Create mask for non-padded items only
-                        #mask = self.mask(out.size(), seq_lens).to(self.device)
                         out = out.view(-1)
                         trg = trg_data.view(-1)
                         self.optimizer.zero_grad()
@@ -100,15 +94,6 @@ class Interpolation(Trainer):
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
-
-                    # Back prop
-                    #loss.backward()
-                    # Clip to avoid exploding gradient issues, makes sure grads are
-                    # within a healthy range
-                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
-
-                    # Gradient descent step
-                    #self.optimizer.step()
 
                     # plot to tensorboard
                     writer.add_scalar("Pretraining loss", loss, global_step=step)
@@ -186,7 +171,7 @@ class Supervised(Trainer):
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
 
-                    # plot to tensorboard
+                    # Plot to tensorboard
                     writer.add_scalar("Training loss", loss, global_step=step)
                     step += 1
 
