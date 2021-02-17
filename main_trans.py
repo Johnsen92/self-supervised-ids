@@ -36,7 +36,7 @@ parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validatio
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-x', '--forward_expansion', default=20, type=int, help='Multiplier for input_size for transformer internal data width')
 parser.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
-parser.add_argument('-l', '--n_layers', default=6, type=int, help='Number of LSTM layers')
+parser.add_argument('-l', '--n_layers', default=10, type=int, help='Number of LSTM layers')
 parser.add_argument('-o', '--dropout', default=0.1, type=float, help='Dropout rate')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
