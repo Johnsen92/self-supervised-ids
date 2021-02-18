@@ -102,9 +102,9 @@ pretrain_data, train_data = random_split(train_data, [pretraining_size, supervis
 
 # Init data loaders
 if args.self_supervised > 0:
-    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
 # Init model
 data, _, _ = dataset[0]

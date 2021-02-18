@@ -91,7 +91,13 @@ class Interpolation(Trainer):
 
                     # Backward and optimize
                     self._scaler.scale(loss).backward()
+
+                    # Unscales the gradients of optimizer's assigned params in-place
+                    self._scaler.unscale_(self.optimizer)
+
+                    # Since the gradients of optimizer's assigned params are unscaled, clips as usual:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
 
@@ -129,6 +135,9 @@ class Interpolation(Trainer):
 class Supervised(Trainer):
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json):
         super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, factor=0.1, patience=10, verbose=True
+        )
 
     def train(self):
 
@@ -149,6 +158,7 @@ class Supervised(Trainer):
             # Train the model
             print('Training model...')
             for epoch in range(self.epochs):
+                losses_epoch = []
                 for (_, data), labels, _ in self.training_data: 
 
                     # Get input and targets and get to cuda
@@ -167,7 +177,13 @@ class Supervised(Trainer):
 
                     # Backward and optimize
                     self._scaler.scale(loss).backward()
+                    
+                    # Unscales the gradients of optimizer's assigned params in-place
+                    self._scaler.unscale_(self.optimizer)
+
+                    # Since the gradients of optimizer's assigned params are unscaled, clips as usual:
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+                    
                     self._scaler.step(self.optimizer)
                     self._scaler.update()
 
@@ -175,10 +191,16 @@ class Supervised(Trainer):
                     writer.add_scalar("Training loss", loss, global_step=step)
                     step += 1
 
+                    losses_epoch.append(loss.item())
+
                     # Calculate time left and save avg. loss of last interval
                     if mon(loss.item()):
                         time_left_h, time_left_m = mon.time_left
                         print (f'Supervised, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+
+                # Update scheduler
+                mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
+                self.scheduler.step(mean_loss_epoch)
 
             # Get stats
             self.stats.add_monitor(mon)
