@@ -3,7 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, transformer_trainer, transformer
+from classes import datasets, lstm, statistics, utils, transformer_trainer, transformer, trainer
 import torchvision
 import torch
 import os.path
@@ -70,7 +70,7 @@ if args.self_supervised > 0:
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
 
 # Load dataset and normalize data, or load from cache
-if not cache.exists(data_filename + "_normalized", no_prefix=True) or args.no_cache:
+if not cache.exists(data_filename + "_normalized", no_prefix=True):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save(data_filename + "_normalized", dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
@@ -167,7 +167,7 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.INTER):
-        pretrainer = transformer_trainer.Interpolation(
+        pretrainer = trainer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -181,7 +181,7 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == ProxyTask.AUTO):
-        pretrainer = transformer_trainer.Autoencode(
+        pretrainer = trainer.Autoencode(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -214,7 +214,7 @@ train_model = transformer.TransformerEncoder(
 ).to(device)
 
 # Init trainer for supervised training
-trainer = transformer_trainer.Supervised(
+trainer = trainer.Supervised(
     model = train_model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -231,9 +231,6 @@ trainer = transformer_trainer.Supervised(
 # Train model
 trainer.train()
 
-# Validate model
-trainer.validate(verbose = True)
-
-# Evaluate model
+# Print and save stats
 if not args.debug:
     trainer.evaluate()
