@@ -29,13 +29,17 @@ class Transformer(nn.Module):
         self.fc_out = nn.Linear(input_size, input_size)
         self.dropout = nn.Dropout(dropout)
 
-    def make_src_mask(self, src):
-        src_mask = src.transpose(0, 1) == self.src_pad_idx
-
-        # (N, src_len)
-        return src_mask.to(self.device)
+    def src_mask(self, size, seq_lens):
+        mask = torch.ones(size[:2], dtype=torch.bool).transpose(0, 1)
+        for index, length in enumerate(seq_lens):
+            mask[index, :length] = False
+        return mask
 
     def forward(self, src, trg):
+
+        src, src_seq_len = torch.nn.utils.rnn.pad_packed_sequence(src)
+        trg, trg_seq_len = torch.nn.utils.rnn.pad_packed_sequence(trg)
+
         src_seq_length, batch_size, _ = src.shape
         trg_seq_length, batch_size, _ = trg.shape
 
@@ -60,15 +64,13 @@ class Transformer(nn.Module):
             (trg + self.trg_position_embedding(trg_positions))
         )
 
-        #src_padding_mask = self.make_src_mask(seq_lens)
-        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(
-             self.device
-        )
+        src_padding_mask = self.src_mask(src.size(), src_seq_len).to(self.device)
+        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(self.device)
 
         out = self.transformer(
             embed_src,
             embed_trg,
-            #src_key_padding_mask=src_padding_mask,
+            src_key_padding_mask=src_padding_mask,
             tgt_mask=trg_mask,
         )
         out = self.fc_out(out)

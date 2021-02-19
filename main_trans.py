@@ -10,6 +10,8 @@ import os.path
 import jsons
 import json
 from enum import Enum
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
 
 class ProxyTask(Enum):
     NONE = 0,
@@ -62,7 +64,7 @@ if args.debug:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
@@ -155,6 +157,9 @@ stats_training = statistics.Stats(
     model_parameters = model_parameters
 )
 
+# Init summary writer for TensorBoard
+writer = SummaryWriter(f'runs/do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
+
 # Pretraining if enabled
 if args.self_supervised > 0:
     # Init pretraining criterion
@@ -162,7 +167,6 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.INTER):
-        # Init trainer
         pretrainer = transformer_trainer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
@@ -173,7 +177,22 @@ if args.self_supervised > 0:
             epochs = args.n_epochs, 
             stats = stats_training, 
             cache = cache,
-            json = args.json_dir
+            json = args.json_dir,
+            writer = writer
+        )
+    elif(args.proxy_task == ProxyTask.AUTO):
+        pretrainer = transformer_trainer.Autoencode(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device, 
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_training, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
@@ -205,14 +224,15 @@ trainer = transformer_trainer.Supervised(
     epochs = args.n_epochs, 
     stats = stats_training, 
     cache = cache,
-    json = args.json_dir
+    json = args.json_dir,
+    writer = writer
 )
 
 # Train model
 trainer.train()
 
 # Validate model
-trainer.validate()
+trainer.validate(verbose = True)
 
 # Evaluate model
 if not args.debug:

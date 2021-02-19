@@ -205,6 +205,9 @@ class Stats():
             self.title = title
         Stats.index += 1
 
+    def __str__(self): 
+        return f'bs{self.batch_size}_ep{self.n_epochs}_tp{self.train_percent}_lr{str(self.learning_rate).replace(".", "")}'
+
     def plot_stats(self):
         pass
 
