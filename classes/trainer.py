@@ -243,7 +243,7 @@ class Interpolation(Trainer):
         # Unpack data and move to device
         (_, data), _, _ = batch_data
         data.to(self.device)
-        data_unpacked, seq_len = torch.nn.utils.rnn.pad_packed_sequence(data)
+        data_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(data)
 
         # Select every even idx of data as src and every odd idx as target
         seq_len = data_unpacked.size()[0]
@@ -259,7 +259,7 @@ class Interpolation(Trainer):
         #out = out.view(-1)
         #trg = trg_data.view(-1)
         self.optimizer.zero_grad()
-        loss = self.criterion(out, trg)
+        loss = self.criterion(out, trg_data)
 
         return loss
 

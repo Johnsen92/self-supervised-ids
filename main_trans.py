@@ -167,7 +167,7 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.INTER):
-        pretrainer = trainer.Interpolation(
+        pretrainer = transformer_trainer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
