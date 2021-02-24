@@ -242,22 +242,23 @@ class Interpolation(Trainer):
     def train(self, batch_data):
         # Unpack data and move to device
         (_, data), _, _ = batch_data
-        data.to(self.device)
-        data_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(data)
+
+        data = data.to(self.device)
+        data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
 
         # Select every even idx of data as src and every odd idx as target
-        seq_len = data_unpacked.size()[0]
-        trg_idx = torch.arange(1, seq_len, step=2)
+        max_seq_len = data_unpacked.size()[0]
+        trg_idx = torch.arange(1, max_seq_len, step=2)
         src_idx = trg_idx - 1
-        src_data = data[src_idx,:,:]
-        trg_data = data[trg_idx,:,:]
-        
+        trg_data = torch.nn.utils.rnn.pack_padded_sequence(data_unpacked[trg_idx,:,:], seq_lens // 2, enforce_sorted=False)
+        src_data = torch.nn.utils.rnn.pack_padded_sequence(data_unpacked[src_idx,:,:], seq_lens // 2, enforce_sorted=False)
+
+        #TODO: Figure out what to do with sequences of length 1 (results in length 0 after interpolation split)
+
         # Forward pass
         out = self.model(src_data, trg_data)
 
         # Create mask for non-padded items only
-        #out = out.view(-1)
-        #trg = trg_data.view(-1)
         self.optimizer.zero_grad()
         loss = self.criterion(out, trg_data)
 

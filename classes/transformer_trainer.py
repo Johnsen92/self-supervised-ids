@@ -75,8 +75,9 @@ class Interpolation(Trainer):
                     seq_len = data_unpacked.size()[0]
                     trg_idx = torch.arange(1, seq_len, step=2)
                     src_idx = trg_idx - 1
-                    src_data = data[src_idx,:,:]
                     trg_data = data[trg_idx,:,:]
+                    src_data = data[src_idx,:,:]
+                    
                     
                     # Forwards pass with cuda scaler
                     with torch.cuda.amp.autocast():
