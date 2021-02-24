@@ -3,13 +3,15 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, lstm_trainer
+from classes import datasets, lstm, statistics, utils, lstm_trainer, trainer
 import torchvision
 import torch
 import os.path
 import jsons
 import json
 from enum import Enum
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
 
 class ProxyTask(Enum):
     NONE = 1,
@@ -37,7 +39,7 @@ parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LST
 parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
-parser.add_argument('-x', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-y', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
@@ -139,6 +141,9 @@ stats_training = statistics.Stats(
     model_parameters = model_parameters
 )
 
+# Init summary writer for TensorBoard
+writer = SummaryWriter(f'runs/lstm_nl{args.n_layers}_hs{args.hidden_size}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
+
 # Pretraining if enabled
 if args.self_supervised > 0:
     # Init pretraining criterion
@@ -146,7 +151,7 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.PREDICT):
-        pretrainer = lstm_trainer.PredictPacket(
+        pretrainer = trainer.LSTM.PredictPacket(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -156,10 +161,11 @@ if args.self_supervised > 0:
             epochs = args.n_epochs, 
             stats = stats_training, 
             cache = cache,
-            json = args.json_dir
+            json = args.json_dir,
+            writer = writer
         )
     elif(args.proxy_task == ProxyTask.OBSCURE):
-        pretrainer = lstm_trainer.ObscureFeature(
+        pretrainer = trainer.LSTM.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -169,7 +175,8 @@ if args.self_supervised > 0:
             epochs = args.n_epochs, 
             stats = stats_training, 
             cache = cache,
-            json = args.json_dir
+            json = args.json_dir,
+            writer = writer
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
@@ -184,7 +191,7 @@ model.pretraining = False
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Init trainer
-trainer = lstm_trainer.Supervised(
+trainer = trainer.LSTM.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -194,18 +201,16 @@ trainer = lstm_trainer.Supervised(
     epochs = args.n_epochs, 
     stats = stats_training, 
     cache = cache,
-    json = args.json_dir
+    json = args.json_dir,
+    writer = writer
 )
 
 # Train model
 trainer.train()
 
-# Validate model
-trainer.validate()
-
 # Evaluate model
-#if not args.debug:
-trainer.evaluate()
+if not args.debug:
+    trainer.evaluate()
 
     
 

@@ -65,7 +65,7 @@ class Interpolation(Trainer):
             print('Pretraining model...')
             for epoch in range(self.epochs):
                 for (_, data), _, _ in self.training_data: 
-
+                    # Unpack batch data
                     data_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(data)
 
                     # Get input and targets and get to cuda
@@ -77,7 +77,6 @@ class Interpolation(Trainer):
                     src_idx = trg_idx - 1
                     trg_data = data[trg_idx,:,:]
                     src_data = data[src_idx,:,:]
-                    
                     
                     # Forwards pass with cuda scaler
                     with torch.cuda.amp.autocast():

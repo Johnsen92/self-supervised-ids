@@ -158,7 +158,7 @@ stats_training = statistics.Stats(
 )
 
 # Init summary writer for TensorBoard
-writer = SummaryWriter(f'runs/do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
+writer = SummaryWriter(f'runs/transformer_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
 
 # Pretraining if enabled
 if args.self_supervised > 0:
@@ -167,7 +167,7 @@ if args.self_supervised > 0:
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.INTER):
-        pretrainer = trainer.Interpolation(
+        pretrainer = trainer.Transformer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -181,7 +181,7 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == ProxyTask.AUTO):
-        pretrainer = trainer.Autoencode(
+        pretrainer = trainer.Transformer.Autoencode(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -214,7 +214,7 @@ train_model = transformer.TransformerEncoder(
 ).to(device)
 
 # Init trainer for supervised training
-trainer = trainer.Supervised(
+trainer = trainer.Transformer.Supervised(
     model = train_model, 
     training_data = train_loader, 
     validation_data = val_loader,

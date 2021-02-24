@@ -171,12 +171,11 @@ class ClassStats():
             f.write('\n')
             benign_rate = float(self.number[self.benign]) / float(n_samples) * 100.0
             attack_rate = float(n_attack) / float(n_samples) * 100.0
-            overall_rate = float(n_right) / float(n_samples)
+            overall_rate = float(n_right) / float(n_samples) * 100.0
             f.write(f'Samples, {n_samples}\n')
-            f.write(f'Benign, {benign_rate:.3f}\n')
-            f.write(f'Attack, {attack_rate:.3f}\n')
-            f.write(f'Overall, {overall_rate:.3f}\n')
-
+            f.write(f'Benign, {benign_rate:.3f}%\n')
+            f.write(f'Attack, {attack_rate:.3f}%\n')
+            f.write(f'Overall, {overall_rate:.3f}%\n')
 
 class Stats():
 
