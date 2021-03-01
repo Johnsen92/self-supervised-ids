@@ -129,7 +129,7 @@ class TransformerEncoder(nn.Module):
         out = self.encoder(embed_src, src_key_padding_mask=mask)
 
         # Filter out NaNs
-        #out = out.masked_fill(torch.isnan(out), 0)
+        out = out.masked_fill(torch.isnan(out), 0)
 
         # Project input_size to output_size
         out = self.fc(out)

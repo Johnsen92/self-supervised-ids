@@ -213,6 +213,9 @@ train_model = transformer.TransformerEncoder(
     device = device
 ).to(device)
 
+# Init optimizer
+training_optimizer = optim.Adam(train_model.parameters(), lr=args.learning_rate)
+
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
     model = train_model, 
@@ -220,7 +223,7 @@ trainer = trainer.Transformer.Supervised(
     validation_data = val_loader,
     device = device, 
     criterion = training_criterion, 
-    optimizer = optimizer, 
+    optimizer = training_optimizer, 
     epochs = args.n_epochs, 
     stats = stats_training, 
     cache = cache,
