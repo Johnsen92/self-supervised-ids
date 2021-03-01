@@ -71,6 +71,7 @@ class Trainer(object):
                         # Calculate validation loss after each epoch
                         if self.validation:
                             accuracy, loss = self.validate()
+                            self.model.train()
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
                             self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
 
@@ -347,8 +348,8 @@ class LSTM():
             # Max returns (value ,index)
             sigmoided_output = torch.sigmoid(outputs.data[logit_mask].detach())
             predicted = torch.round(sigmoided_output)
-            targets = labels[:, 0, :].squeeze()
-            categories = categories[:, 0, :].squeeze()  
+            targets = labels[:, 0, 0].squeeze()
+            categories = categories[:, 0, 0].squeeze()  
 
             # Calculate loss
             mask = self.mask(outputs.size(), seq_lens)

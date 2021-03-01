@@ -45,7 +45,7 @@ parser.add_argument('--no_cache', action='store_true', help='Flag to ignore exis
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
 args = parser.parse_args(sys.argv[1:])
 
-assert args.train_percent + args.val_percent <= 100
+assert args.train_percent + args.self_supervised + args.val_percent <= 100
 
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:
@@ -60,7 +60,7 @@ if args.debug:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_sp{args.self_supervised}_lr{str(args.learning_rate).replace(".", "")}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
@@ -84,16 +84,16 @@ if args.debug:
     n_samples = debug_size
 
 # Split dataset into training and validation parts
+unallocated_size = n_samples
 validation_size = (n_samples * args.val_percent) // 100
-training_size = (n_samples * args.train_percent) // 100
-unallocated_size = n_samples - training_size
-unused_size = unallocated_size - validation_size
-assert unused_size >= 0
-pretraining_size = (training_size * args.self_supervised) // 100
-supervised_size = training_size - pretraining_size
-train, unallocated = random_split(dataset, [training_size, unallocated_size])
-val, unused = random_split(unallocated, [validation_size, unused_size])
-pretrain, train = random_split(train, [pretraining_size, supervised_size])
+supervised_size = (n_samples * args.train_percent) // 100
+pretraining_size = (n_samples * args.self_supervised) // 100
+unallocated_size -= supervised_size
+train, unallocated = random_split(dataset, [supervised_size, unallocated_size])
+unallocated_size -= pretraining_size
+pretrain, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
+unallocated_size -= validation_size
+val, unallocated = random_split(unallocated, [validation_size, unallocated_size])
 
 # Init data loaders
 if args.self_supervised > 0:

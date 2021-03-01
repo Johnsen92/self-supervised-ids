@@ -166,16 +166,18 @@ class ClassStats():
             n_right_attack = n_right - self.right[self.benign]
             accuracy_benign = self.right[self.benign] / self.number[self.benign] * 100.0 if not self.number[self.benign] == 0 else 100.0
             accuracy_attack = n_right_attack / n_attack * 100.0 if not n_attack == 0 else 100.0
-            f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {accuracy_benign:.3f}\n')
-            f.write(f'Attack, !{self.benign}, {n_attack}, {n_right_attack}, {accuracy_attack:.3f}\n')
+            accuracy = float(n_right) / float(n_samples) * 100.0
+            f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {accuracy_benign:.3f}%\n')
+            f.write(f'Attack, !{self.benign}, {n_attack}, {n_right_attack}, {accuracy_attack:.3f}%\n')
+            f.write(f'Overall, ALL, {n_samples}, {n_right}, {accuracy:.3f}%\n')
             f.write('\n')
             benign_rate = float(self.number[self.benign]) / float(n_samples) * 100.0
             attack_rate = float(n_attack) / float(n_samples) * 100.0
-            overall_rate = float(n_right) / float(n_samples) * 100.0
+            
             f.write(f'Samples, {n_samples}\n')
-            f.write(f'Benign, {benign_rate:.3f}%\n')
-            f.write(f'Attack, {attack_rate:.3f}%\n')
-            f.write(f'Overall, {overall_rate:.3f}%\n')
+            f.write(f'Benign, {benign_rate:.2f}%\n')
+            f.write(f'Attack, {attack_rate:.2f}%\n')
+            
 
 class Stats():
 
