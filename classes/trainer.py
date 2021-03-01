@@ -305,7 +305,7 @@ class LSTM():
             for index, length in enumerate(seq_lens):
                 mask[index, :length,:] = True
             return mask
-
+            
         def logit_mask(self, op_size, seq_lens):
             logit_mask = torch.zeros(op_size, dtype=torch.bool)
             for index, length in enumerate(seq_lens):
@@ -366,12 +366,12 @@ class LSTM():
             self.cache_filename = "pretrained_model"
 
         def masks(self, op_size, seq_lens):
-            logit_mask = torch.zeros(op_size, dtype=torch.bool)
-            target_mask = torch.zeros(op_size, dtype=torch.bool)
+            src_mask = torch.zeros(op_size, dtype=torch.bool)
+            trg_mask = torch.zeros(op_size, dtype=torch.bool)
             for index, length in enumerate(seq_lens):
-                target_mask[index, :length-1,:] = True
-                logit_mask[index, 1:length,:] = True
-            return logit_mask, target_mask
+                src_mask[index, :length-1,:] = True
+                trg_mask[index, 1:length,:] = True
+            return src_mask, trg_mask
 
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
@@ -384,8 +384,8 @@ class LSTM():
 
             # Forwards pass
             outputs, seq_lens = self.model(data)
-            logit_mask, target_mask = self.masks(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[logit_mask], data_unpacked[target_mask])
+            src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[src_mask], data_unpacked[trg_mask])
 
             return loss
 
