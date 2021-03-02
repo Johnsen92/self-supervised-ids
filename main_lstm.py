@@ -42,6 +42,7 @@ parser.add_argument('-y', '--proxy_task', default=ProxyTask.PREDICT, type=lambda
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
+parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 100
@@ -106,7 +107,7 @@ device = torch.device('cuda:0')
 # Init model
 data, _, _ = dataset[0]
 input_size = data.size()[1]
-model = lstm.PretrainableLSTM(input_size, args.hidden_size, 1, args.n_layers, args.batch_size, device).to(device)
+model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, args.batch_size, device).to(device)
 
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
