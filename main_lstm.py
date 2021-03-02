@@ -89,17 +89,17 @@ validation_size = (n_samples * args.val_percent) // 100
 supervised_size = (n_samples * args.train_percent) // 100
 pretraining_size = (n_samples * args.self_supervised) // 100
 unallocated_size -= supervised_size
-train, unallocated = random_split(dataset, [supervised_size, unallocated_size])
+train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
 unallocated_size -= pretraining_size
-pretrain, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
+pretrain_data, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
 unallocated_size -= validation_size
-val, unallocated = random_split(unallocated, [validation_size, unallocated_size])
+val_data, unallocated = random_split(unallocated, [validation_size, unallocated_size])
 
 # Init data loaders
 if args.self_supervised > 0:
-    pretrain_loader = DataLoader(dataset=pretrain, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-train_loader = DataLoader(dataset=train, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-val_loader = DataLoader(dataset=val, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 
 # Won't get far without GPU, so I assume you have one...
 device = torch.device('cuda:0')
@@ -125,7 +125,6 @@ model_parameters = {
     'Hidden size' : args.hidden_size,
     '# Layers' : args.n_layers
 }
-
 
 # Init stats
 stats_training = statistics.Stats(

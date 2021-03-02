@@ -91,16 +91,16 @@ if args.debug:
 device = torch.device('cuda:0')
 
 # Split dataset into pretraining, training and validation parts
+unallocated_size = n_samples
 validation_size = (n_samples * args.val_percent) // 100
-training_size = (n_samples * args.train_percent) // 100
-unallocated_size = n_samples - training_size
-unused_size = unallocated_size - validation_size
-assert unused_size >= 0
-pretraining_size = (training_size * args.self_supervised) // 100
-supervised_size = training_size - pretraining_size
-train_data, unallocated = random_split(dataset, [training_size, unallocated_size])
-val_data, unused = random_split(unallocated, [validation_size, unused_size])
-pretrain_data, train_data = random_split(train_data, [pretraining_size, supervised_size])
+supervised_size = (n_samples * args.train_percent) // 100
+pretraining_size = (n_samples * args.self_supervised) // 100
+unallocated_size -= supervised_size
+train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
+unallocated_size -= pretraining_size
+pretrain_data, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
+unallocated_size -= validation_size
+val_data, unallocated = random_split(unallocated, [validation_size, unallocated_size])
 
 # Init data loaders
 if args.self_supervised > 0:
@@ -214,7 +214,7 @@ train_model = transformer.TransformerEncoder(
 ).to(device)
 
 # Init optimizer
-training_optimizer = optim.Adam(train_model.parameters(), lr=args.learning_rate)
+optimizer = optim.Adam(train_model.parameters(), lr=args.learning_rate)
 
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
@@ -223,7 +223,7 @@ trainer = trainer.Transformer.Supervised(
     validation_data = val_loader,
     device = device, 
     criterion = training_criterion, 
-    optimizer = training_optimizer, 
+    optimizer = optimizer, 
     epochs = args.n_epochs, 
     stats = stats_training, 
     cache = cache,
