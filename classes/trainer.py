@@ -292,6 +292,52 @@ class Transformer():
 
             return loss
 
+    class ObscureFeature(Trainer):
+        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            # Strings to be used for file and console outputs
+            self.title = "ObscureFeature"
+            self.cache_filename = "pretrained_model"
+
+        def obscure(self, data, i_start, i_end):
+            assert i_end >= i_start
+            assert i_end < data.size()[1]
+            masked_data = data
+            data_size = data.size()
+            masked_data[:, i_start:i_end, :] = torch.zeros(data_size[0], i_end-i_start, data_size[2])
+            return masked_data
+
+        def mask(self, op_size, seq_lens):
+            mask = torch.zeros(op_size, dtype=torch.bool)
+            for index, length in enumerate(seq_lens):
+                mask[index, :length,:] = True
+            return mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (_, data), _, _ = batch_data
+
+            # Unpack data
+            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+
+            # Obscure features
+            masked_data = self.obscure(data_unpacked, 6, 9)
+
+            # Pack data
+            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
+
+            # Move data to selected device 
+            masked_data = masked_data.to(self.device)
+            data_unpacked = data_unpacked.to(self.device)
+
+            # Forwards pass
+            outputs, _ = self.model(masked_data)
+            op_mask = self.mask(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
+
+            return loss
+            
 class LSTM():
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):

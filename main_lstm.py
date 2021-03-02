@@ -3,7 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, lstm_trainer, trainer
+from classes import datasets, lstm, statistics, utils, trainer
 import torchvision
 import torch
 import os.path
@@ -36,7 +36,6 @@ parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validatio
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
-parser.add_argument('-o', '--output_size', default=1, type=int, help='Size of LSTM output vector')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
@@ -107,8 +106,7 @@ device = torch.device('cuda:0')
 # Init model
 data, _, _ = dataset[0]
 input_size = data.size()[1]
-output_size = args.output_size
-model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, args.batch_size, device).to(device)
+model = lstm.PretrainableLSTM(input_size, args.hidden_size, 1, args.n_layers, args.batch_size, device).to(device)
 
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
