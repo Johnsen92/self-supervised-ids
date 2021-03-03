@@ -3,7 +3,7 @@ import sys
 import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
-from classes import datasets, lstm, statistics, utils, transformer_trainer, transformer, trainer
+from classes import datasets, lstm, statistics, utils, transformer, trainer
 import torchvision
 import torch
 import os.path
@@ -18,7 +18,8 @@ class ProxyTask(Enum):
     AUTO = 1,
     PREDICT = 2,
     OBSCURE = 3,
-    INTER = 4
+    MASK = 4,
+    INTER = 5
 
     def __str__(self):
         return self.name
@@ -39,7 +40,7 @@ parser.add_argument('-c', '--benign_category', default=10, type=int, help='Norma
 parser.add_argument('-x', '--forward_expansion', default=20, type=int, help='Multiplier for input_size for transformer internal data width')
 parser.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
 parser.add_argument('-l', '--n_layers', default=10, type=int, help='Number of LSTM layers')
-parser.add_argument('-o', '--dropout', default=0.1, type=float, help='Dropout rate')
+parser.add_argument('-o', '--dropout', default=0.0, type=float, help='Dropout rate')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
@@ -64,7 +65,7 @@ if args.debug:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_xy{args.proxy_task}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
@@ -108,18 +109,28 @@ if args.self_supervised > 0:
 train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
 
-# Init model
+# Define input and output data width
 data, _, _ = dataset[0]
 input_size = data.size()[1]
 output_size = args.output_size
 
 # Init model
-model = transformer.Transformer(
+transformer_model = transformer.Transformer(
     input_size = input_size,
     num_heads = args.n_heads,
     num_encoder_layers = args.n_layers,
     num_decoder_layers = args.n_layers,
     forward_expansion = args.forward_expansion,
+    dropout = args.dropout,
+    max_len = args.max_sequence_length,
+    device = device
+).to(device)
+
+# Init transformer encoder
+model = transformer.TransformerEncoder(
+    encoder = transformer_model.transformer.encoder,
+    input_size = input_size,
+    output_size = args.output_size,
     dropout = args.dropout,
     max_len = args.max_sequence_length,
     device = device
@@ -194,6 +205,34 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
+    elif(args.proxy_task == ProxyTask.OBSCURE):
+        pretrainer = trainer.Transformer.ObscureFeature(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device, 
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_training, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
+    elif(args.proxy_task == ProxyTask.MASK):
+        pretrainer = trainer.Transformer.MaskPacket(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device, 
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_training, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
 
@@ -203,22 +242,12 @@ if args.self_supervised > 0:
 # Init training criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
-# Init transformer encoder
-train_model = transformer.TransformerEncoder(
-    encoder = model.transformer.encoder,
-    input_size = input_size,
-    output_size = args.output_size,
-    dropout = args.dropout,
-    max_len = args.max_sequence_length,
-    device = device
-).to(device)
-
-# Init optimizer
-optimizer = optim.Adam(train_model.parameters(), lr=args.learning_rate)
+# Switch model into supervised fine-tuning mode
+model.tune()
 
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
-    model = train_model, 
+    model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
     device = device, 

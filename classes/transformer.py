@@ -91,17 +91,25 @@ class TransformerEncoder(nn.Module):
         self.output_size = output_size
         self.device = device
         self.input_size = input_size
-        self.fc = nn.Linear(input_size, output_size)
-        self.dropout = nn.Dropout(dropout)
-        self.src_position_embedding = nn.Embedding(max_len, input_size)
+        self._fc_pretraining = nn.Linear(input_size, input_size)
+        self._fc = nn.Linear(input_size, output_size)
+        self._dropout = nn.Dropout(dropout)
+        self._src_position_embedding = nn.Embedding(max_len, input_size)
+        self.pretraining = True
 
-    def src_mask(self, size, seq_lens):
+    def tune(self):
+        self.pretraining = False
+
+    def pretrain(self):
+        self.pretraining = True
+
+    def _src_mask(self, size, seq_lens):
         mask = torch.ones(size[:2], dtype=torch.bool).transpose(0, 1)
         for index, length in enumerate(seq_lens):
             mask[index, :length] = False
         return mask
 
-    def logits(self, output, seq_lens):
+    def _logits(self, output, seq_lens):
         logits = torch.zeros(output.size()[1], dtype=torch.float)
         for index, length in enumerate(seq_lens):
             logits[index] = torch.sum(output[:length, index, :])/length
@@ -113,7 +121,7 @@ class TransformerEncoder(nn.Module):
         src, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed)
 
         # Get source mask to only consider non-padded data
-        mask = self.src_mask(src.size(), seq_lens).to(self.device)
+        mask = self._src_mask(src.size(), seq_lens).to(self.device)
 
         # Create positional encoding
         src_seq_length, batch_size, _ = src.shape    
@@ -123,7 +131,7 @@ class TransformerEncoder(nn.Module):
             .expand(src_seq_length, batch_size)
             .to(self.device)
         )
-        embed_src = self.dropout((src + self.src_position_embedding(src_positions)))
+        embed_src = self._dropout((src + self._src_position_embedding(src_positions)))
 
         # Forward propagation
         out = self.encoder(embed_src, src_key_padding_mask=mask)
@@ -131,11 +139,15 @@ class TransformerEncoder(nn.Module):
         # Filter out NaNs
         out = out.masked_fill(torch.isnan(out), 0)
 
-        # Project input_size to output_size
-        out = self.fc(out)
-        
-        # Create logits as average of seq outputs
-        out = self.logits(out, seq_lens).to(self.device)
+        if self.pretraining:
+            # Project input_size to input_size
+            out = self._fc_pretraining(out)
+        else:
+            # Project input_size to output_size
+            out = self._fc(out)
+            # Create logits as average of seq outputs
+            out = self._logits(out, seq_lens).to(self.device)
+
         return out
 
 class Stage2TransformerEncoder(TransformerEncoder):

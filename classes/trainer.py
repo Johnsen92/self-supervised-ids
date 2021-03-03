@@ -9,6 +9,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
+import random
 
 class Trainer(object):
     class TrainerDecorators(object):
@@ -301,16 +302,24 @@ class Transformer():
 
         def obscure(self, data, i_start, i_end):
             assert i_end >= i_start
-            assert i_end < data.size()[1]
+            assert i_end < data.size()[2]
             masked_data = data
             data_size = data.size()
-            masked_data[:, i_start:i_end, :] = torch.zeros(data_size[0], i_end-i_start, data_size[2])
+            masked_data[:, :, i_start:i_end] = -torch.ones(data_size[0], data_size[1], i_end-i_start)
+            return masked_data
+
+        def obscure_random(self, data, n_features):
+            masked_data = data
+            max_seq_length, batch_size, input_size = data.shape
+            for _ in range(n_features):
+                idx = random.randint(0, input_size-1)
+                masked_data[:, :, idx] = torch.zeros(max_seq_length, batch_size)
             return masked_data
 
         def mask(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
             for index, length in enumerate(seq_lens):
-                mask[index, :length,:] = True
+                mask[:length, index,:] = True
             return mask
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -319,22 +328,65 @@ class Transformer():
             (_, data), _, _ = batch_data
 
             # Unpack data
-            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
 
             # Obscure features
-            masked_data = self.obscure(data_unpacked, 6, 9)
+            masked_data = self.obscure_random(data_unpacked, 1)
 
             # Pack data
-            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
+            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, enforce_sorted=False)
 
             # Move data to selected device 
             masked_data = masked_data.to(self.device)
             data_unpacked = data_unpacked.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.model(masked_data)
+            outputs = self.model(masked_data)
             op_mask = self.mask(outputs.size(), seq_lens)
             loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
+
+            return loss
+
+    class MaskPacket(Trainer):
+        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            # Strings to be used for file and console outputs
+            self.title = "MaskPacket"
+            self.cache_filename = "pretrained_model"
+
+        def mask_sequence(self, data, seq_lens, n_features):
+            masked_data = data
+            mask = torch.zeros(data.size(), dtype=torch.bool)
+            _, _, input_size = data.shape
+            for _ in range(n_features):
+                for batch_idx, length in enumerate(seq_lens):
+                    seq_idx = random.randint(0, length-1)
+                    masked_data[seq_idx, batch_idx, :] = torch.zeros(input_size)
+                    mask[seq_idx, batch_idx, :] = True
+            return masked_data, mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (_, data), _, _ = batch_data
+
+            # Unpack data
+            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
+
+            # Obscure features
+            masked_data, mask = self.mask_sequence(data_unpacked, seq_lens, 1)
+            mask = mask.to(self.device)
+
+            # Pack data
+            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, enforce_sorted=False)
+
+            # Move data to selected device 
+            masked_data = masked_data.to(self.device)
+            data_unpacked = data_unpacked.to(self.device)
+
+            # Forwards pass
+            outputs = self.model(masked_data)
+            loss = self.criterion(outputs[mask], data_unpacked[mask])
 
             return loss
             
@@ -444,11 +496,11 @@ class LSTM():
             self.cache_filename = "pretrained_model"
 
         def obscure(self, data, i_start, i_end):
+            batch_size, max_seq_length, input_size = data.size()
             assert i_end >= i_start
-            assert i_end < data.size()[1]
+            assert i_end < input_size
             masked_data = data
-            data_size = data.size()
-            masked_data[:, i_start:i_end, :] = torch.zeros(data_size[0], i_end-i_start, data_size[2])
+            masked_data[:, :, i_start:i_end] = torch.zeros(batch_size, max_seq_length, i_end-i_start)
             return masked_data
 
         def mask(self, op_size, seq_lens):
