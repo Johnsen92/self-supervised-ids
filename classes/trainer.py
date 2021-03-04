@@ -31,28 +31,43 @@ class Trainer(object):
                     for epoch in range(self.epochs):
                         losses_epoch = []
                         for batch_data in self.training_data:
-
-                            # Scaled forward propagation
-                            with torch.cuda.amp.autocast():
+                            if self._scaler is None:
                                 # --------- Decorated function -----------
                                 loss = training_function(self, batch_data)
                                 # ----------------------------------------
 
-                            # Reset optimizer loss
-                            self.optimizer.zero_grad()
+                                # Reset optimizer loss
+                                self.optimizer.zero_grad()
 
-                            # Scaled backward propagation
-                            self._scaler.scale(loss).backward()
-                            
-                            # Unscales the gradients of optimizer's assigned params in-place
-                            self._scaler.unscale_(self.optimizer)
+                                # Unscaled backward propagation
+                                loss.backward()
+                                
+                                # Clip gradient to prevent exploding gradient
+                                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+                                
+                                # Optimizer step in direction of gradient
+                                self.optimizer.step()
+                            else:
+                                with torch.cuda.amp.autocast():
+                                    # --------- Decorated function -----------
+                                    loss = training_function(self, batch_data)
+                                    # ----------------------------------------
 
-                            # Since the gradients of optimizer's assigned params are unscaled, clip as usual
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
-                            
-                            # Scaled optimizer update step
-                            self._scaler.step(self.optimizer)
-                            self._scaler.update()
+                                # Reset optimizer loss
+                                self.optimizer.zero_grad()
+
+                                # Scaled backward propagation
+                                self._scaler.scale(loss).backward()
+
+                                # Unscales the gradients of optimizer's assigned params in-place
+                                self._scaler.unscale_(self.optimizer)
+
+                                # Clip gradient to prevent exploding gradient
+                                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+
+                                # Scaled optimizer update step
+                                self._scaler.step(self.optimizer)
+                                self._scaler.update()
 
                             # Plot to tensorboard
                             self.writer.add_scalar(self.title + ' loss', loss, global_step=mon.iter)
@@ -139,12 +154,11 @@ class Trainer(object):
                 return self.stats.accuracy, mean_loss
             return wrapper
     
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True):
         # Strings to be used for file and console outputs
         self.title = "Training"
         self.cache_filename = "trained_model"
         self.validation = False
-
         self.model = model
         assert isinstance(model, nn.Module)
         self.training_data = training_data
@@ -162,7 +176,10 @@ class Trainer(object):
         assert isinstance(cache, Cache)
         self.device = device
         self.n_batches = len(self.training_data)
-        self._scaler = torch.cuda.amp.GradScaler()
+        if mixed_precision:
+            self._scaler = torch.cuda.amp.GradScaler()
+        else:
+            self._scaler = None
         self.json = json
         self.writer = writer
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(

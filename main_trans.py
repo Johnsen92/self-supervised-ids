@@ -35,6 +35,7 @@ parser.add_argument('-J', '--json_dir', default='./json/', help='Json exports fo
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size')
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
+parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining percentage of data')
 parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-x', '--forward_expansion', default=20, type=int, help='Multiplier for input_size for transformer internal data width')
@@ -43,7 +44,6 @@ parser.add_argument('-l', '--n_layers', default=10, type=int, help='Number of LS
 parser.add_argument('-o', '--dropout', default=0.0, type=float, help='Dropout rate')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
-parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Percentage of training data to be used in pretraining in respect to training percentage')
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.INTER, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
@@ -55,11 +55,6 @@ assert args.train_percent + args.val_percent <= 100
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:
     f.write(jsons.dumps(args))
-
-# If debug flag is set, minimize dataset and epochs
-debug_size = 10240
-if args.debug:
-    args.n_epochs = 1
 
 # Datafile basename
 data_filename = os.path.basename(args.data_file)[:-7]
@@ -83,11 +78,6 @@ category_mapping = dataset.mapping
 # Number of samples
 n_samples = len(dataset)
 
-# If debug flag is set, only take debug_size samples
-if args.debug:
-    dataset, _ = random_split(dataset, [debug_size, n_samples - debug_size])
-    n_samples = debug_size
-
 # Won't get far without GPU, so I assume you have one...
 device = torch.device('cuda:0')
 
@@ -96,6 +86,12 @@ unallocated_size = n_samples
 validation_size = (n_samples * args.val_percent) // 100
 supervised_size = (n_samples * args.train_percent) // 100
 pretraining_size = (n_samples * args.self_supervised) // 100
+
+# If debug flag is set, use exactly one batch for pretraining, training and validation
+if args.debug:
+    validation_size = supervised_size = pretraining_size = args.batch_size
+    args.n_epochs = 1
+
 unallocated_size -= supervised_size
 train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
 unallocated_size -= pretraining_size
