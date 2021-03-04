@@ -16,7 +16,8 @@ from datetime import datetime
 class ProxyTask(Enum):
     NONE = 1,
     PREDICT = 2,
-    OBSCURE = 3
+    OBSCURE = 3,
+    MASK = 4
 
     def __str__(self):
         return self.name
@@ -145,7 +146,7 @@ writer = SummaryWriter(f'runs/lstm_nl{args.n_layers}_hs{args.hidden_size}_{stats
 # Pretraining if enabled
 if args.self_supervised > 0:
     # Init pretraining criterion
-    pretraining_criterion = nn.L1Loss()
+    pretraining_criterion = nn.MSELoss()
     
     # Init pretrainer
     if(args.proxy_task == ProxyTask.PREDICT):
@@ -164,6 +165,20 @@ if args.self_supervised > 0:
         )
     elif(args.proxy_task == ProxyTask.OBSCURE):
         pretrainer = trainer.LSTM.ObscureFeature(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = args.n_epochs, 
+            stats = stats_training, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
+    elif(args.proxy_task == ProxyTask.MASK):
+        pretrainer = trainer.LSTM.MaskPacket(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,

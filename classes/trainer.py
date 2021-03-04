@@ -82,7 +82,7 @@ class Trainer(object):
                     self.stats.losses = mon.measurements
 
                     # Store trained model
-                    print('Storing model to cache...',end='')
+                    print(f'Storing model to cache {chache_file_name}...',end='')
                     torch.save(self.model.state_dict(), chache_file_name)
                     print('done')
 
@@ -90,7 +90,7 @@ class Trainer(object):
                     self.cache.save('stats', self.stats, msg='Storing statistics to cache')
                 else:
                     # Load cached model
-                    print('(Cache) Loading trained model...',end='')
+                    print(f'(Cache) Loading trained model {chache_file_name}...',end='')
                     self.model.load_state_dict(torch.load(chache_file_name))
                     print('done')
 
@@ -242,7 +242,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "Interpolation"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "interpolate_pretrained_model"
             self.validate = False
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -275,7 +275,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "Autoencoder"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "autoencode_pretrained_model"
 
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
@@ -298,7 +298,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "ObscureFeature"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "obscure_pretrained_model"
 
         def obscure(self, data, i_start, i_end):
             assert i_end >= i_start
@@ -352,9 +352,9 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "MaskPacket"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "mask_pretrained_model"
 
-        def mask_sequence(self, data, seq_lens, n_features):
+        def mask_packets(self, data, seq_lens, n_features):
             masked_data = data
             mask = torch.zeros(data.size(), dtype=torch.bool)
             _, _, input_size = data.shape
@@ -374,7 +374,7 @@ class Transformer():
             data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data)
 
             # Obscure features
-            masked_data, mask = self.mask_sequence(data_unpacked, seq_lens, 1)
+            masked_data, mask = self.mask_packets(data_unpacked, seq_lens, 1)
             mask = mask.to(self.device)
 
             # Pack data
@@ -396,7 +396,7 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "Supervised"
-            self.cache_filename = "trained_model"
+            self.cache_filename = "supervised_trained_model"
             self.validation = True
 
         def mask(self, op_size, seq_lens):
@@ -462,7 +462,7 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "PredictPacket"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "predict_pretrained_model"
 
         def masks(self, op_size, seq_lens):
             src_mask = torch.zeros(op_size, dtype=torch.bool)
@@ -493,21 +493,17 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "ObscureFeature"
-            self.cache_filename = "pretrained_model"
+            self.cache_filename = "obscure_pretrained_model"
 
         def obscure(self, data, i_start, i_end):
             batch_size, max_seq_length, input_size = data.size()
             assert i_end >= i_start
             assert i_end < input_size
+            mask = torch.zeros(data.size(), dtype=torch.bool)
             masked_data = data
             masked_data[:, :, i_start:i_end] = torch.zeros(batch_size, max_seq_length, i_end-i_start)
-            return masked_data
-
-        def mask(self, op_size, seq_lens):
-            mask = torch.zeros(op_size, dtype=torch.bool)
-            for index, length in enumerate(seq_lens):
-                mask[index, :length,:] = True
-            return mask
+            mask[:, :, i_start:i_end] = True
+            return masked_data, mask
 
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
@@ -518,7 +514,7 @@ class LSTM():
             data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
 
             # Obscure features
-            masked_data = self.obscure(data_unpacked, 6, 9)
+            masked_data, mask = self.obscure(data_unpacked, 6, 9)
 
             # Pack data
             masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
@@ -526,10 +522,53 @@ class LSTM():
             # Move data to selected device 
             masked_data = masked_data.to(self.device)
             data_unpacked = data_unpacked.to(self.device)
+            mask = mask.to(self.device)
 
             # Forwards pass
             outputs, _ = self.model(masked_data)
-            op_mask = self.mask(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[op_mask], data_unpacked[op_mask])
+            loss = self.criterion(outputs[mask], data_unpacked[mask])
+
+            return loss
+
+    class MaskPacket(Trainer):
+        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            # Strings to be used for file and console outputs
+            self.title = "MaskPacket"
+            self.cache_filename = "mask_pretrained_model"
+
+        def mask_packets(self, data, seq_lens, n_features):
+            masked_data = data
+            mask = torch.zeros(data.size(), dtype=torch.bool)
+            _, _, input_size = data.shape
+            for _ in range(n_features):
+                for batch_idx, length in enumerate(seq_lens):
+                    seq_idx = random.randint(0, length-1)
+                    masked_data[batch_idx, seq_idx, :] = torch.zeros(input_size)
+                    mask[batch_idx, seq_idx, :] = True
+            return masked_data, mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (_, data), _, _ = batch_data
+
+            # Unpack data
+            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+
+            # Obscure features
+            masked_data, mask = self.mask_packets(data_unpacked, seq_lens, 1)
+
+            # Pack data
+            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
+
+            # Move data to selected device 
+            masked_data = masked_data.to(self.device)
+            data_unpacked = data_unpacked.to(self.device)
+            mask = mask.to(self.device)
+
+            # Forwards pass
+            outputs, _ = self.model(masked_data)
+            loss = self.criterion(outputs[mask], data_unpacked[mask])
 
             return loss
