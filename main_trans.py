@@ -54,7 +54,7 @@ parser.add_argument('--no_cache', action='store_true', help='Flag to ignore exis
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 args = parser.parse_args(sys.argv[1:])
 
-assert args.train_percent + args.val_percent <= 100
+assert args.train_percent + args.self_supervised + args.val_percent <= 100
 
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:
