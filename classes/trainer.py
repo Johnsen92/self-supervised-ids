@@ -154,7 +154,7 @@ class Trainer(object):
                 return self.stats.accuracy, mean_loss
             return wrapper
     
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True):
+    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=False):
         # Strings to be used for file and console outputs
         self.title = "Training"
         self.cache_filename = "trained_model"
@@ -204,7 +204,7 @@ class Trainer(object):
 class Transformer():
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = "Supervised"
             self.cache_filename = "trained_model"
@@ -410,7 +410,7 @@ class Transformer():
 class LSTM():
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = "Supervised"
             self.cache_filename = "supervised_trained_model"
