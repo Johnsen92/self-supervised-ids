@@ -91,10 +91,7 @@ class TransformerEncoder(nn.Module):
         self.output_size = output_size
         self.device = device
         self.input_size = input_size
-        self._fc_pretraining = nn.Linear(input_size, input_size)
-        self._fc_expand = nn.Linear(input_size, input_size * 20)
-        self._activation = nn.ReLU()
-        #self._norm = nn.LayerNorm()
+        self._fc = nn.Linear(input_size, input_size)
         self._fc_retract = nn.Linear(input_size * 20, output_size)
         self._dropout = nn.Dropout(dropout)
         self._src_position_embedding = nn.Embedding(max_len, input_size)
@@ -147,10 +144,7 @@ class TransformerEncoder(nn.Module):
             out = self._fc_pretraining(out)
         else:
             # Project input_size to output_size
-            out = self._fc_expand(out)
-            out = self._activation(out)
-            #out = self._norm(out)
-            out = self._fc_retract(out)
+            out = self._fc(out)
             
             # Create logits as average of seq outputs
             out = self._logits(out, seq_lens).to(self.device)
