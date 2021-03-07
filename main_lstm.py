@@ -25,24 +25,28 @@ class ProxyTask(Enum):
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
-parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
 parser.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
 parser.add_argument('-J', '--json_dir', default='./json/', help='Json exports folder')
+# ---------------------- Model parameters ----------------------
+parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
+parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
+# ---------------------- Hyper parameters ----------------------
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size')
+parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
+parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
+# ---------------------- Training config -----------------------
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining percentage of data')
 parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
-parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
-parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
-parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
-parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
-parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.PREDICT, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
+# ---------------------- Stats & cache -------------------------
+parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 args = parser.parse_args(sys.argv[1:])
 
