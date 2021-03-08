@@ -11,7 +11,7 @@ clean:
 	rm ${JSON_DIR}/*
 
 lstm:
-	python3 main_lstm.py -f ./data/flows.pickle --no_cache
+	python3 main_lstm.py -f ./data/flows.pickle
 
 transformer:
-	python3 main_trans.py -f ./data/flows.pickle --no_cache
+	python3 main_trans.py -f ./data/flows.pickle
