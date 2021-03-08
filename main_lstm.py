@@ -46,7 +46,6 @@ parser.add_argument('--remove_changeable', action='store_true', help='If set, re
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 args = parser.parse_args(sys.argv[1:])
 

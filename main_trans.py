@@ -27,7 +27,6 @@ class ProxyTask(Enum):
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
-parser.add_argument('-t', '--train', action='store_true', help='Force training even if cache file exists')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
 parser.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
