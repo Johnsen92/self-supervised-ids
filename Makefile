@@ -1,8 +1,8 @@
 DATA_DIR:=~/ucloud/thesis/code/Datasets-preprocessing/CIC-IDS-2017
-DATASET:=CAIA
 STATS_DIR:=./stats
 CACHE_DIR:=./cache
 JSON_DIR:=./json
+RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
 
 clean:
@@ -10,5 +10,8 @@ clean:
 	rm ${PYCACHE_DIR}/*
 	rm ${JSON_DIR}/*
 
-test:
-	python3 main_lstm.py -f ./data/flows.pickle -b 128 -e 5 -g -s 90 --no_cache -x PREDICT
+lstm:
+	python3 main_lstm.py -f ./data/flows.pickle --no_cache
+
+transformer:
+	python3 main_trans.py -f ./data/flows.pickle --no_cache
