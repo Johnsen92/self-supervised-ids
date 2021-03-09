@@ -91,8 +91,8 @@ class TransformerEncoder(nn.Module):
         self.output_size = output_size
         self.device = device
         self.input_size = input_size
-        self._fc = nn.Linear(input_size, input_size)
-        self._fc_retract = nn.Linear(input_size * 20, output_size)
+        self._fc = nn.Linear(input_size, output_size)
+        self._fc_pretraining = nn.Linear(input_size, input_size)
         self._dropout = nn.Dropout(dropout)
         self._src_position_embedding = nn.Embedding(max_len, input_size)
         self.pretraining = True

@@ -34,7 +34,7 @@ parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of 
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
 # ---------------------- Hyper parameters ----------------------
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
-parser.add_argument('-b', '--batch_size', default=32, type=int, help='Batch size')
+parser.add_argument('-b', '--batch_size', default=128, type=int, help='Batch size')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
