@@ -189,7 +189,7 @@ class Trainer(object):
     def evaluate(self):
         self.stats.save_stats()
         self.stats.save_losses()
-        #self.stats.plot_losses()
+        self.stats.plot_losses()
 
     @TrainerDecorators.validation_wrapper
     def validate(self, batch_data):
