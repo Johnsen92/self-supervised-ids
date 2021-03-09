@@ -70,27 +70,28 @@ with open(args.json_dir + '/args.json', 'w') as f:
 # Datafile basename
 data_filename = os.path.basename(args.data_file)[:-7]
 
-# Init cache
-key_prefix = data_filename + f'_transformer_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
-if args.self_supervised > 0:
-    key_prefix.join(f'_pr{args.self_supervised}')
-cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
+# Identifier for current parameters
+run_id = f'transformer_{data_filename}_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
 
 # Timestamp
 timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
 
 # Unique identifier for this run
-uid = f'{key_prefix}_{timestamp}'
+run_uid = f'{run_id}_{timestamp}'
+
+# Init cache
+cache = utils.Cache(cache_dir=args.cache_dir, md5=False, key_prefix=data_filename, disabled=args.no_cache)
 
 # Extended stats directory for this run
-extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
 
 # Load dataset and normalize data, or load from cache
-if not cache.exists(data_filename + "_normalized", no_prefix=True):
+cache_filename = 'dataset_normalized'
+if not cache.exists(cache_filename):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
-    cache.save(data_filename + "_normalized", dataset, no_prefix=True, msg='Storing normalized dataset')
+    cache.save(cache_filename, dataset, msg='Storing normalized dataset')
 else:
-    dataset = cache.load(data_filename + "_normalized", no_prefix=True, msg='Loading normalized dataset')
+    dataset = cache.load(cache_filename, msg='Loading normalized dataset')
 
 # Get category mapping from dataset 
 category_mapping = dataset.mapping
@@ -186,7 +187,7 @@ stats_training = statistics.Stats(
 )
 
 # Init summary writer for TensorBoard
-writer = SummaryWriter(f'runs/{uid}')
+writer = SummaryWriter(f'runs/{run_uid}')
 
 # Pretraining if enabled
 if args.self_supervised > 0:

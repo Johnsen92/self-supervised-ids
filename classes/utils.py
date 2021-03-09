@@ -1,16 +1,25 @@
 import math
 import pickle
 import os.path
-import hashlib  
-
-
+import hashlib
+import os
+import errno
 
 class Cache():
     def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):
-        self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir+'/'
+        self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir + '/'
+        self.make_cache_dir()
         self.md5 = md5
         self.key_prefix = key_prefix
         self.disabled = disabled
+
+    def make_cache_dir(self):
+        if not os.path.exists(os.path.dirname(self.cache_dir)):
+            try:
+                os.makedirs(os.path.dirname(self.cache_dir))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
 
     def exists(self, key, no_prefix=False):
         key = self.get_real_key(key, no_prefix)
@@ -25,7 +34,7 @@ class Cache():
         with open (cache_file, 'rb') as f:
             pkl = pickle.load(f)
             print('...done')
-        return pkl     
+        return pkl
 
     def save(self, key, obj, no_prefix=False, msg=None):
         key = self.get_real_key(key, no_prefix)

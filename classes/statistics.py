@@ -7,6 +7,7 @@ from timeit import default_timer as timer
 from datetime import timedelta
 import json
 import os
+import errno
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -192,7 +193,7 @@ class ClassStats():
 class Stats():
 
     index = 0
-    
+
     def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()

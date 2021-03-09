@@ -95,7 +95,8 @@ class Flows(Dataset):
         print('done')
 
         # Normalize data between -1 and 1
-        if not self.cache == None and not self.cache.exists('norm'):
+        cache_filename = 'normalization_data'
+        if not self.cache == None and not self.cache.exists(cache_filename):
             print('Calculating normalization data...', end='')
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)
@@ -104,9 +105,9 @@ class Flows(Dataset):
             print('done')
             
             # Store for future use
-            cache.save('norm', (means, stds), msg='Storing normalization data')
+            cache.save(cache_filename, (means, stds), msg='Storing normalization data')
         else:
-            (means, stds) = cache.load('norm', msg='Loading normalization data')
+            (means, stds) = cache.load(cache_filename, msg='Loading normalization data')
 
         assert means.shape[0] == X[0].shape[-1], 'means.shape: {}, x.shape: {}'.format(means.shape, X[0].shape)
         assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
