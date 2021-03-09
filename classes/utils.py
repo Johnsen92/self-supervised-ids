@@ -4,6 +4,15 @@ import os.path
 import hashlib
 import os
 import errno
+import torch
+
+def make_dir(path):
+    if not os.path.exists(os.path.dirname(path)):
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError as exc: # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
 
 class Cache():
     def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):

@@ -24,14 +24,6 @@ class ProxyTask(Enum):
     def __str__(self):
         return self.name
 
-class Control(Enum):
-    NONE = 0,
-    CONTINUE = 1,
-    RESET = 2,
-    REDO = 3
-    def __str__(self):
-        return self.name
-
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
@@ -51,7 +43,7 @@ parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of ep
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
-parser.add_argument('-y', '--proxy_task', default=ProxyTask.INTER, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining percentage of data')
 parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
@@ -80,18 +72,18 @@ timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
 run_uid = f'{run_id}_{timestamp}'
 
 # Init cache
-cache = utils.Cache(cache_dir=args.cache_dir, md5=False, key_prefix=data_filename, disabled=args.no_cache)
+cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disabled=args.no_cache)
 
 # Extended stats directory for this run
 extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
 
 # Load dataset and normalize data, or load from cache
 cache_filename = 'dataset_normalized'
-if not cache.exists(cache_filename):
+if not cache.exists(cache_filename, no_prefix=True):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
-    cache.save(cache_filename, dataset, msg='Storing normalized dataset')
+    cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
-    dataset = cache.load(cache_filename, msg='Loading normalized dataset')
+    dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
 
 # Get category mapping from dataset 
 category_mapping = dataset.mapping
