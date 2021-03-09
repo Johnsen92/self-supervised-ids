@@ -6,6 +6,7 @@ from datetime import datetime
 from timeit import default_timer as timer
 from datetime import timedelta
 import json
+import os
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -130,12 +131,14 @@ class Monitor():
 
 class ClassStats():
     def __init__(self, mapping, stats_dir='./', benign=10):
-        self.benign = benign
         self.stats_dir = stats_dir
+        self.make_stats_dir()
+        self.benign = benign
         self.mapping = mapping
         self.reverse_mapping = { val: key for key, val in mapping.items() }
         self.number = { c : 0 for c in mapping.values() }
         self.right = { c : 0 for c in mapping.values() }
+        
 
     @property
     def labels(self):
@@ -177,14 +180,22 @@ class ClassStats():
             f.write(f'Samples, {n_samples}\n')
             f.write(f'Benign, {benign_rate:.2f}%\n')
             f.write(f'Attack, {attack_rate:.2f}%\n')
-            
 
+    def make_stats_dir(self):
+        if not os.path.exists(os.path.dirname(self.stats_dir)):
+            try:
+                os.makedirs(os.path.dirname(self.stats_dir))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+            
 class Stats():
 
     index = 0
-
+    
     def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
-        self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir+'/'
+        self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
+        self.make_stats_dir()
         self.n_samples = n_samples
         self.n_false_positive = n_false_positive
         self.n_false_negative = n_false_negative
@@ -209,15 +220,25 @@ class Stats():
     def __str__(self): 
         return f'bs{self.batch_size}_ep{self.n_epochs}_tp{self.train_percent}_lr{str(self.learning_rate).replace(".", "")}'
 
+    def make_stats_dir(self):
+        if not os.path.exists(os.path.dirname(self.stats_dir)):
+            try:
+                os.makedirs(os.path.dirname(self.stats_dir))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+
     def plot_stats(self):
         pass
 
     def save_losses(self):
         assert not self.losses == None
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        print('Save loss progression...', end='')
         with open(self.stats_dir + 'losses_' + now + '.csv', 'w') as f:
             for item in self.losses:
                 f.write(f'{item:.6f}\n')
+        print('done.')
 
     def save_stats(self):
         time_h, time_m = formatTime(self.training_time_s)
@@ -225,6 +246,7 @@ class Stats():
         n_right = self.n_samples - n_wrong
         p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        print('Save statistics...', end='')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Hyperparameters,\n')
             f.write(f'Epochs, {self.n_epochs}\n')
@@ -245,6 +267,7 @@ class Stats():
             f.write(f'# false negatives, {self.n_false_negative}\n')
             f.write(f'% false positves, {(self.false_positive * 100):.3f} %\n')
             f.write(f'% false negatives, {(self.false_negative * 100):.3f} %\n')
+        print('done.')
         if not self.class_stats == None:
             self.class_stats.save_stats()
 

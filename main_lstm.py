@@ -59,10 +59,19 @@ with open(args.json_dir + '/args.json', 'w') as f:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_hs{args.hidden_size}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_sp{args.self_supervised}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_lstm_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
+
+# Timestamp
+timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+
+# Unique identifier for this run
+uid = f'{key_prefix}_{timestamp}'
+
+# Extended stats directory for this run
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
 
 # Load dataset and normalize data, or load from cache
 if not cache.exists(data_filename + "_normalized", no_prefix=True) or args.no_cache:
@@ -88,6 +97,7 @@ if args.debug:
     validation_size = supervised_size = pretraining_size = args.batch_size
     args.n_epochs = 1
 
+# Split dataset into pretraining, training and validation set
 unallocated_size -= supervised_size
 train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
 unallocated_size -= pretraining_size
@@ -114,7 +124,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Init class stats
 class_stats_training = statistics.ClassStats(
-    stats_dir = args.stats_dir,
+    stats_dir = extended_stats_dir,
     mapping = category_mapping,
     benign = args.benign_category
 )
@@ -125,9 +135,9 @@ model_parameters = {
     '# Layers' : args.n_layers
 }
 
-# Init stats
+# Init statistics object
 stats_training = statistics.Stats(
-    stats_dir = args.stats_dir,
+    stats_dir = extended_stats_dir,
     class_stats = class_stats_training,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
@@ -140,7 +150,7 @@ stats_training = statistics.Stats(
 )
 
 # Init summary writer for TensorBoard
-writer = SummaryWriter(f'runs/lstm_nl{args.n_layers}_hs{args.hidden_size}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
+writer = SummaryWriter(f'runs/{uid}')
 
 # Pretraining if enabled
 if args.self_supervised > 0:

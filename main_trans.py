@@ -24,6 +24,14 @@ class ProxyTask(Enum):
     def __str__(self):
         return self.name
 
+class Control(Enum):
+    NONE = 0,
+    CONTINUE = 1,
+    RESET = 2,
+    REDO = 3
+    def __str__(self):
+        return self.name
+
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
@@ -63,10 +71,19 @@ with open(args.json_dir + '/args.json', 'w') as f:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Init cache
-key_prefix = data_filename + f'_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_xy{args.proxy_task}_bs{args.batch_size}_ep{args.n_epochs}_tp{args.train_percent}_lr{str(args.learning_rate).replace(".", "")}'
+key_prefix = data_filename + f'_transformer_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
 if args.self_supervised > 0:
     key_prefix.join(f'_pr{args.self_supervised}')
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=key_prefix, disabled=args.no_cache)
+
+# Timestamp
+timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+
+# Unique identifier for this run
+uid = f'{key_prefix}_{timestamp}'
+
+# Extended stats directory for this run
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
 
 # Load dataset and normalize data, or load from cache
 if not cache.exists(data_filename + "_normalized", no_prefix=True):
@@ -95,6 +112,7 @@ if args.debug:
     validation_size = supervised_size = pretraining_size = args.batch_size
     args.n_epochs = 1
 
+# Split dataset into pretraining, training and validation set
 unallocated_size -= supervised_size
 train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
 unallocated_size -= pretraining_size
@@ -140,7 +158,7 @@ optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Init class stats
 class_stats_training = statistics.ClassStats(
-    stats_dir = args.stats_dir,
+    stats_dir = extended_stats_dir,
     mapping = category_mapping,
     benign = args.benign_category
 )
@@ -153,9 +171,9 @@ model_parameters = {
     'Dropout' : args.dropout
 }
 
-# Init stats
+# Init statistics object
 stats_training = statistics.Stats(
-    stats_dir = args.stats_dir,
+    stats_dir = extended_stats_dir,
     class_stats = class_stats_training,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
@@ -168,7 +186,7 @@ stats_training = statistics.Stats(
 )
 
 # Init summary writer for TensorBoard
-writer = SummaryWriter(f'runs/transformer_do{args.dropout}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_{stats_training}_{datetime.now().strftime("%d%m%Y_%H%M%S")}')
+writer = SummaryWriter(f'runs/{uid}')
 
 # Pretraining if enabled
 if args.self_supervised > 0:
@@ -263,5 +281,5 @@ trainer = trainer.Transformer.Supervised(
 trainer.train()
 
 # Print and save stats
-if not args.debug:
-    trainer.evaluate()
+#if not args.debug:
+trainer.evaluate()
