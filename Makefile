@@ -4,6 +4,12 @@ CACHE_DIR:=./cache
 JSON_DIR:=./json
 RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
+LSTM_PRETRAININGS:=OBSCURE MASK PREDICT
+TRANSFORMER_PRETRAININGS:=MASK AUTO
+CYCLE_PRETRAINING_PARAMETERS:=-p 1 -s 89 --no_cache
+CYCLE_TRAINING_PARAMETERS:=-p 1 --no_cache
+
+
 
 clean:
 	rm ${CACHE_DIR}/*
@@ -17,19 +23,33 @@ transformer:
 	python3 main_trans.py -f ./data/flows.pickle
 
 cycle:
-	python3 main_lstm.py -f ./data/flows.pickle -y OBSCURE -p 1 -s 89 --no_cache
-	python3 main_lstm.py -f ./data/flows.pickle -y MASK -p 1 -s 89 --no_cache
-	python3 main_lstm.py -f ./data/flows.pickle -y PREDICT -p 1 -s 89 --no_cache
-	python3 main_lstm.py -f ./data/flows.pickle -p 1 --no_cache
-	python3 main_trans.py -f ./data/flows.pickle -y MASK -p 1 -s 89 --no_cache
-	python3 main_trans.py -f ./data/flows.pickle -y AUTO -p 1 -s 89 --no_cache
-	python3 main_trans.py -f ./data/flows.pickle -p 1 --no_cache
+	for pretraining in ${LSTM_PRETRAININGS} ; do \
+    	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining ; \
+	done
+	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS}
+	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
+    	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining ; \
+	done
+	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS}
+	
 
 test:
-	python3 main_lstm.py -f ./data/flows.pickle -y OBSCURE -p 1 -s 89 --no_cache -d
-	python3 main_lstm.py -f ./data/flows.pickle -y MASK -p 1 -s 89 --no_cache -d
-	python3 main_lstm.py -f ./data/flows.pickle -y PREDICT -p 1 -s 89 --no_cache -d
-	python3 main_lstm.py -f ./data/flows.pickle -p 1 --no_cache -d
-	python3 main_trans.py -f ./data/flows.pickle -y MASK -p 1 -s 89 --no_cache -d
-	python3 main_trans.py -f ./data/flows.pickle -y AUTO -p 1 -s 89 --no_cache -d
-	python3 main_trans.py -f ./data/flows.pickle -p 1 --no_cache -d
+	for pretraining in ${LSTM_PRETRAININGS} ; do \
+    	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+	done
+	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
+    	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+	done
+	echo 'Everything seems to work fine'
+	
+lstm_cycle:
+	for pretraining in ${LSTM_PRETRAININGS} ; do \
+    	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -e 20 -y $$pretraining ; \
+	done
+	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS} -e 20
+
+transformer_cycle:
+	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
+    	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -e 20 -y $$pretraining ; \
+	done
+	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS} -e 20

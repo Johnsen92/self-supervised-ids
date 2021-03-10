@@ -283,7 +283,7 @@ class Stats():
         ax.grid()
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         fig.savefig(self.stats_dir + 'loss_' + now + '.png')
-        plt.show()
+        #plt.show()
 
     @property
     def accuracy(self):

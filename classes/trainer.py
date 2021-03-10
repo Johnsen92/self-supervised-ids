@@ -303,7 +303,7 @@ class Transformer():
             data = data.to(self.device)
 
             # Forward pass
-            out = self.model(data, data)
+            out = self.model(data)
 
             # Create mask for non-padded items only
             loss = self.criterion(out, data_unpacked)
@@ -487,6 +487,8 @@ class LSTM():
             for index, length in enumerate(seq_lens):
                 src_mask[index, :length-1,:] = True
                 trg_mask[index, 1:length,:] = True
+                #src_mask[index, length-2,:] = True
+                #trg_mask[index, length-1,:] = True
             return src_mask, trg_mask
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -518,7 +520,7 @@ class LSTM():
             assert i_end < input_size
             mask = torch.zeros(data.size(), dtype=torch.bool)
             masked_data = data
-            masked_data[:, :, i_start:i_end] = torch.zeros(batch_size, max_seq_length, i_end-i_start)
+            masked_data[:, :, i_start:i_end] = -torch.ones(batch_size, max_seq_length, i_end-i_start)
             mask[:, :, i_start:i_end] = True
             return masked_data, mask
 
@@ -561,7 +563,7 @@ class LSTM():
             for _ in range(n_features):
                 for batch_idx, length in enumerate(seq_lens):
                     seq_idx = random.randint(0, length-1)
-                    masked_data[batch_idx, seq_idx, :] = torch.zeros(input_size)
+                    masked_data[batch_idx, seq_idx, :] = -torch.ones(input_size)
                     mask[batch_idx, seq_idx, :] = True
             return masked_data, mask
 

@@ -274,5 +274,5 @@ trainer = trainer.Transformer.Supervised(
 trainer.train()
 
 # Print and save stats
-#if not args.debug:
-trainer.evaluate()
+if not args.debug:
+    trainer.evaluate()
