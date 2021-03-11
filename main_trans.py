@@ -130,7 +130,7 @@ transformer_model = transformer.Transformer(
     num_heads = args.n_heads,
     num_encoder_layers = args.n_layers,
     num_decoder_layers = args.n_layers,
-    forward_expansion = args.forward_expansion,
+    forward_expansion = input_size * args.forward_expansion,
     dropout = args.dropout,
     max_len = args.max_sequence_length,
     device = device
@@ -254,6 +254,8 @@ training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
 # Switch model into supervised fine-tuning mode
 model.tune()
+
+#model.encoder.layers[args.n_layers-1] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
 
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
