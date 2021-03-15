@@ -259,7 +259,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "Interpolation"
-            self.cache_filename = "interpolate_pretrained_model"
+            self.cache_filename = "pretrained_model"
             self.validate = False
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -292,7 +292,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "Autoencoder"
-            self.cache_filename = "autoencode_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
@@ -315,7 +315,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "ObscureFeature"
-            self.cache_filename = "obscure_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         def obscure(self, data, i_start, i_end):
             assert i_end >= i_start
@@ -369,7 +369,7 @@ class Transformer():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "MaskPacket"
-            self.cache_filename = "mask_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         def mask_packets(self, data, seq_lens, n_features):
             masked_data = data
@@ -479,7 +479,7 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "PredictPacket"
-            self.cache_filename = "predict_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         def masks(self, op_size, seq_lens):
             src_mask = torch.zeros(op_size, dtype=torch.bool)
@@ -512,7 +512,7 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "ObscureFeature"
-            self.cache_filename = "obscure_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         def obscure(self, data, i_start, i_end):
             batch_size, max_seq_length, input_size = data.size()
@@ -554,7 +554,7 @@ class LSTM():
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
             self.title = "MaskPacket"
-            self.cache_filename = "mask_pretrained_model"
+            self.cache_filename = "pretrained_model"
 
         def mask_packets(self, data, seq_lens, n_features):
             masked_data = data

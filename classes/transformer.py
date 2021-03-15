@@ -165,7 +165,6 @@ class Stage2TransformerEncoder(TransformerEncoder):
         super(Stage2TransformerEncoder, self).__init__(encoder, input_size, output_size, dropout, max_len, device)
         self.post_encoder = post_encoder
 
-
     def forward(self, src_packed):
         # Unpack data
         _, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed)

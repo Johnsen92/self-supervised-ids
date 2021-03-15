@@ -185,10 +185,8 @@ writer = SummaryWriter(f'runs/{run_uid}')
 if args.self_supervised > 0:
     # Init pretraining criterion
     pretraining_criterion = nn.L1Loss()
-    
-    # Init pretrainer
     if(args.proxy_task == ProxyTask.INTER):
-        pretrainer = trainer.Transformer.Interpolation(
+        trainer.Transformer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -255,7 +253,14 @@ training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 # Switch model into supervised fine-tuning mode
 model.tune()
 
-#model.encoder.layers[args.n_layers-1] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
+#for i in range(args.n_layers):
+#    model.encoder.layers[i] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
+model.encoder.layers[args.n_layers-1] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
+model.encoder.layers[args.n_layers-2] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
+model.encoder.layers[args.n_layers-3] = nn.TransformerEncoderLayer(input_size, args.n_heads, dim_feedforward=input_size * args.forward_expansion, dropout=args.dropout).to(device)
+
+# Init optimizer
+optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
