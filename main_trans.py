@@ -253,32 +253,6 @@ training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 # Switch model into supervised fine-tuning mode
 model.tune()
 
-# Init model
-transformer_model2 = transformer.Transformer(
-    input_size = input_size,
-    num_heads = args.n_heads,
-    num_encoder_layers = args.n_layers,
-    num_decoder_layers = args.n_layers,
-    forward_expansion = input_size * args.forward_expansion,
-    dropout = args.dropout,
-    max_len = args.max_sequence_length,
-    device = device
-).to(device)
-
-# Init transformer encoder
-model = transformer.Stage2TransformerEncoder(
-    encoder = model.encoder,
-    encoder_post = transformer_model2.transformer.encoder,
-    input_size = input_size,
-    output_size = args.output_size,
-    dropout = args.dropout,
-    max_len = args.max_sequence_length,
-    device = device
-).to(device)
-
-# Init optimizer
-optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
-
 # Init trainer for supervised training
 trainer = trainer.Transformer.Supervised(
     model = model, 

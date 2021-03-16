@@ -120,8 +120,11 @@ class TransformerEncoder(nn.Module):
         # Unpack data
         src, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed)
 
+        # Get device the forward propagation is executed on
+        current_device = src.get_device()
+
         # Get source mask to only consider non-padded data
-        mask = self._src_mask(src.size(), seq_lens).to(self.device)
+        mask = self._src_mask(src.size(), seq_lens).to(current_device)
 
         # Create positional encoding
         src_seq_length, batch_size, _ = src.shape    
@@ -129,8 +132,10 @@ class TransformerEncoder(nn.Module):
             torch.arange(0, src_seq_length)
             .unsqueeze(1)
             .expand(src_seq_length, batch_size)
-            .to(self.device)
+            .to(current_device)
         )
+
+        # Source position embedding and dropout
         embed_src = self._dropout((src + self._src_position_embedding(src_positions)))
 
         # Forward propagation
@@ -147,9 +152,9 @@ class TransformerEncoder(nn.Module):
             out = self._fc(out)
             
             # Create logits as average of seq outputs
-            out = self._logits(out, seq_lens).to(self.device)
+            out = self._logits(out, seq_lens)#.to(self.device)
 
-        return out
+        return out.to(current_device)
 
 class Stage2TransformerEncoder(TransformerEncoder):
     def __init__(

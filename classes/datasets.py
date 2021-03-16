@@ -17,24 +17,22 @@ def overwrite_manipulable_entries(seq, filler=-1):
 # Stack and compress sequences of different length in batch
 def collate_flows(seqs):    
     flows, labels, categories = zip(*seqs)
-    flows_len = [len(flow) for flow in flows]
-    assert not 0 in flows_len
+    flows_lens = [len(flow) for flow in flows]
+    assert not 0 in flows_lens
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows)
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories)
-    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, flows_len, enforce_sorted=False)
-    return (padded_flows, packed_padded_flows), padded_labels, padded_categories
+    return (padded_flows, flows_lens), padded_labels, padded_categories
 
 # Stack and compress sequences of different length in batch
 def collate_flows_batch_first(seqs):    
     flows, labels, categories = zip(*seqs)
-    flows_len = [len(flow) for flow in flows]
-    assert not 0 in flows_len
+    flows_lens = [len(flow) for flow in flows]
+    assert not 0 in flows_lens
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
-    packed_padded_flows = torch.nn.utils.rnn.pack_padded_sequence(padded_flows, flows_len, batch_first=True, enforce_sorted=False)
-    return (padded_flows, packed_padded_flows), padded_labels, padded_categories
+    return (padded_flows, flows_lens), padded_labels, padded_categories
 
 class CAIA(Dataset):
     def __init__(self, csv_file):
