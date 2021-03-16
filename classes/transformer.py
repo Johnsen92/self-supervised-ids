@@ -154,7 +154,7 @@ class TransformerEncoder(nn.Module):
 class Stage2TransformerEncoder(TransformerEncoder):
     def __init__(
         self,
-        post_encoder,
+        encoder_post,
         encoder,
         input_size,
         output_size,
@@ -163,7 +163,9 @@ class Stage2TransformerEncoder(TransformerEncoder):
         device,
     ):
         super(Stage2TransformerEncoder, self).__init__(encoder, input_size, output_size, dropout, max_len, device)
-        self.post_encoder = post_encoder
+        self.encoder_post = encoder_post
+        self._fc_post = nn.Linear(input_size, output_size)
+        self.pretraining = True
 
     def forward(self, src_packed):
         # Unpack data
@@ -174,7 +176,7 @@ class Stage2TransformerEncoder(TransformerEncoder):
             out = super().forward(src_packed)
 
         # Get source mask to only consider non-padded data
-        mask = self.src_mask(out.size(), seq_lens).to(self.device)
+        mask = self._src_mask(out.size(), seq_lens).to(self.device)
 
         # Create positional encoding
         src_seq_length, batch_size, _ = out.shape    
@@ -184,16 +186,16 @@ class Stage2TransformerEncoder(TransformerEncoder):
             .expand(src_seq_length, batch_size)
             .to(self.device)
         )
-        embed_src = self.dropout((out + self.src_position_embedding(src_positions)))
+        embed_src = self._dropout((out + self._src_position_embedding(src_positions)))
 
         # Forward propagation
-        out = self.encoder(embed_src, src_key_padding_mask=mask)
+        out = self.encoder_post(embed_src, src_key_padding_mask=mask)
 
         # Project input_size to output_size
-        out = self.fc(out)
+        out = self._fc_post(out)
         
         # Create logits as average of seq outputs
-        out = self.logits(out, seq_lens).to(self.device)
+        out = self._logits(out, seq_lens).to(self.device)
         return out
 
 

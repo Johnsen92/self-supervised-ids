@@ -89,12 +89,13 @@ class RunControl():
         self.run = Run(cache, stats, model)
 
     def checkpoint(self, epoch):
+        pass
 
     @property
     def random_seed(self):
         if not self.stats is None:
             return self.stats.random_seed
-        else
+        else:
             return 0
 
 class Run():
