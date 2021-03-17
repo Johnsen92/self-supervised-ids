@@ -9,8 +9,6 @@ TRANSFORMER_PRETRAININGS:=MASK AUTO
 CYCLE_PRETRAINING_PARAMETERS:=-p 1 -s 89 --no_cache
 CYCLE_TRAINING_PARAMETERS:=-p 1 --no_cache
 
-
-
 clean:
 	rm ${CACHE_DIR}/*
 	rm ${PYCACHE_DIR}/*
@@ -53,3 +51,15 @@ transformer_cycle:
     	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -e 20 -y $$pretraining ; \
 	done
 	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS} -e 20
+
+lstm_test_cycle:
+	for pretraining in ${LSTM_PRETRAININGS} ; do \
+    	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+	done
+	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS} -d
+
+transformer_test_cycle:
+	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
+    	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+	done
+	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS} -d

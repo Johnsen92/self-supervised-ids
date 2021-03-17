@@ -191,9 +191,9 @@ class Trainer(object):
         self.stats.save_losses()
         self.stats.plot_losses()
 
-    def parallel_forward(self, input, seq_lens):
+    def parallel_forward(self, input, seq_lens, in_batch_first=False, out_batch_first=False):
         # Get batch_size and number of available GPUs 
-        batch_size = input.size()[1]
+        batch_size = input.size()[0] if in_batch_first else input.size()[1]
         n_gpu = torch.cuda.device_count()
         assert batch_size % n_gpu == 0
 
@@ -203,17 +203,20 @@ class Trainer(object):
         replicas = nn.parallel.replicate(self.model, device_ids)
 
         # Split inputs along batch dimension into equal chunks
-        inputs = nn.parallel.scatter(input, device_ids, dim=1)
+        inputs = nn.parallel.scatter(input, device_ids, dim=(0 if in_batch_first else 1))
         chunk_size = batch_size // n_gpu
         inputs = list(inputs)
         for i in range(n_gpu):
-            inputs[i] = (nn.utils.rnn.pack_padded_sequence(inputs[i], seq_lens[chunk_size*i:chunk_size*(i+1)], enforce_sorted=False),)
+            print(f'In:{inputs[i].size()}')
+            inputs[i] = (nn.utils.rnn.pack_padded_sequence(inputs[i], seq_lens[chunk_size*i:chunk_size*(i+1)], enforce_sorted=False, batch_first=in_batch_first),)
         inputs = tuple(inputs)
-        
+                
         # Apply chunks to model replicas and gather outputs on GPU with ID 0
         replicas = replicas[:len(inputs)]
         outputs = nn.parallel.parallel_apply(replicas, inputs)
-        return nn.parallel.gather(outputs, output_device)
+        for out in outputs:
+            print(f'Out:{out.size()}')
+        return nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
 
     @TrainerDecorators.validation_wrapper
     def validate(self, batch_data):
@@ -245,7 +248,7 @@ class Transformer():
             labels = labels[0,:,0].to(self.device)
             
             # Forward prop
-            out = self.parallel_forward(data, seq_lens=seq_lens)
+            out = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
 
             # Calculate loss
             loss = self.criterion(out, labels)
@@ -263,7 +266,7 @@ class Transformer():
             categories = categories.to(self.device)
 
             # Masked forward pass
-            logits = self.parallel_forward(data, seq_lens=seq_lens)
+            logits = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
 
             # Apply sigmoid function and round
             sigmoided_output = torch.sigmoid(logits)
@@ -447,14 +450,14 @@ class LSTM():
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
-            (_, data), labels, _ = batch_data
+            (data, seq_lens), labels, _ = batch_data
 
             # Move data to selected device 
             data = data.to(self.device)
             labels = labels.to(self.device)
                 
             # Forwards pass
-            outputs, seq_lens = self.model(data)
+            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.mask(outputs.size(), seq_lens)
             op_view = outputs[mask].view(-1)
             lab_view = labels[mask].view(-1)
@@ -465,7 +468,7 @@ class LSTM():
         @Trainer.TrainerDecorators.validation_wrapper
         def validate(self, batch_data):
             # Unpack batch data
-            (_, data), labels, categories = batch_data
+            (data, seq_lens), labels, categories = batch_data
 
             # Move data to selected device 
             data = data.to(self.device)
@@ -473,7 +476,7 @@ class LSTM():
             categories = categories.to(self.device)
 
             # Forward pass
-            outputs, seq_lens = self.model(data)
+            outputs = self.parallel_forward(data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
             logit_mask = self.logit_mask(outputs.size(), seq_lens)
 
             # Max returns (value ,index)
@@ -510,16 +513,15 @@ class LSTM():
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
-            (_, data), _, _ = batch_data
+            (data, seq_lens), _, _ = batch_data
 
             # Move data to selected device 
             data = data.to(self.device)
-            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
 
             # Forwards pass
-            outputs, seq_lens = self.model(data)
+            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[src_mask], data_unpacked[trg_mask])
+            loss = self.criterion(outputs[src_mask], data[trg_mask])
 
             return loss
 
@@ -543,25 +545,19 @@ class LSTM():
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
-            (_, data), _, _ = batch_data
-
-            # Unpack data
-            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+            (data, seq_lens), _, _ = batch_data
 
             # Obscure features
-            masked_data, mask = self.obscure(data_unpacked, 6, 9)
-
-            # Pack data
-            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
+            masked_data, mask = self.obscure(data, 6, 9)
 
             # Move data to selected device 
-            masked_data = masked_data.to(self.device)
-            data_unpacked = data_unpacked.to(self.device)
+            masked_data = data.to(self.device)
+            data = data.to(self.device)
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.model(masked_data)
-            loss = self.criterion(outputs[mask], data_unpacked[mask])
+            outputs = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 
@@ -586,24 +582,18 @@ class LSTM():
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
-            (_, data), _, _ = batch_data
-
-            # Unpack data
-            data_unpacked, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(data, batch_first=True)
+            (data, seq_lens), _, _ = batch_data
 
             # Obscure features
-            masked_data, mask = self.mask_packets(data_unpacked, seq_lens, 1)
-
-            # Pack data
-            masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, batch_first=True, enforce_sorted=False)
+            masked_data, mask = self.mask_packets(data, seq_lens, 1)
 
             # Move data to selected device 
             masked_data = masked_data.to(self.device)
-            data_unpacked = data_unpacked.to(self.device)
+            data = data.to(self.device)
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.model(masked_data)
-            loss = self.criterion(outputs[mask], data_unpacked[mask])
+            outputs = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
