@@ -32,7 +32,6 @@ def collate_flows_batch_first(seqs):
     padded_flows = torch.nn.utils.rnn.pad_sequence(flows, batch_first=True)
     padded_labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
-    print(f'batch_size:{len(flows_lens)}')
     return (padded_flows, flows_lens), padded_labels, padded_categories
 
 class CAIA(Dataset):

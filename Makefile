@@ -31,7 +31,7 @@ cycle:
 	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS}
 	
 
-test:
+test_cycle:
 	for pretraining in ${LSTM_PRETRAININGS} ; do \
     	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
 	done

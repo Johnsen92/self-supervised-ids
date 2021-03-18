@@ -134,8 +134,7 @@ transformer_model = transformer.Transformer(
     num_decoder_layers = args.n_layers,
     forward_expansion = input_size * args.forward_expansion,
     dropout = args.dropout,
-    max_len = args.max_sequence_length,
-    device = device
+    max_len = args.max_sequence_length
 ).to(device)
 
 # Init transformer encoder
@@ -144,8 +143,7 @@ model = transformer.TransformerEncoder(
     input_size = input_size,
     output_size = args.output_size,
     dropout = args.dropout,
-    max_len = args.max_sequence_length,
-    device = device
+    max_len = args.max_sequence_length
 ).to(device)
 
 # Init optimizer

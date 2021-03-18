@@ -11,7 +11,13 @@ def pad_packed_output_sequence(packed_output):
     return padded_output
 
 class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers, device):
+    def __init__(
+        self, 
+        input_size, 
+        hidden_size, 
+        output_size, 
+        num_layers
+    ):
         super().__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
@@ -20,11 +26,12 @@ class LSTM(nn.Module):
         # x is of shape (batch_size x seq_len x input_size)
         self._fc = nn.Linear(hidden_size, output_size)
 
-    def forward(self, x):
-        batch_size = len(x.batch_sizes)
+    def forward(self, src_packed):
+        _, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
+        batch_size = len(seq_lens)
         hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size)
         cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size)
-        s1, _ = self._lstm(x, (hidden_init, cell_init))
+        s1, _ = self._lstm(src_packed, (hidden_init, cell_init))
         # out is of shape (batch_size x seq_len x output_size)
         out = self._fc(s1)
         return out
@@ -41,15 +48,20 @@ class ChainLSTM(LSTM):
         return out
 
 class PretrainableLSTM(LSTM):
-    def __init__(self, input_size, hidden_size, output_size, num_layers, device):
-        super().__init__(input_size, hidden_size, output_size, num_layers, device)
+    def __init__(
+        self, 
+        input_size, 
+        hidden_size, 
+        output_size, 
+        num_layers
+    ):
+        super().__init__(input_size, hidden_size, output_size, num_layers)
         self.pretraining = True
         self._fc_pretraining = nn.Linear(hidden_size, input_size)
 
     def forward(self, src_packed):
         _, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
         batch_size = len(seq_lens)
-        print(batch_size)
         current_device = src_packed.data.get_device()
 
         hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)

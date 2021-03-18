@@ -120,7 +120,7 @@ device = torch.device('cuda:0')
 # Init model
 data, _, _ = dataset[0]
 input_size = data.size()[1]
-model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, device).to(device)
+model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
 
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)

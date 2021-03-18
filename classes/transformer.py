@@ -10,21 +10,18 @@ class Transformer(nn.Module):
         num_decoder_layers,
         forward_expansion,
         dropout,
-        max_len,
-        device,
+        max_len
     ):
         super(Transformer, self).__init__()
         self.src_position_embedding = nn.Embedding(max_len, input_size)
         self.trg_position_embedding = nn.Embedding(max_len, input_size)
-
-        self.device = device
         self.transformer = nn.Transformer(
             input_size,
             num_heads,
             num_encoder_layers,
             num_decoder_layers,
             forward_expansion,
-            dropout,
+            dropout
         )
         self.fc_out = nn.Linear(input_size, input_size)
         self.dropout = nn.Dropout(dropout)
@@ -37,6 +34,9 @@ class Transformer(nn.Module):
 
     def forward(self, src, trg):
 
+        # Get device the forward propagation is executed on
+        current_device = src.get_device()
+
         src, src_seq_len = torch.nn.utils.rnn.pad_packed_sequence(src)
         trg, trg_seq_len = torch.nn.utils.rnn.pad_packed_sequence(trg)
 
@@ -47,14 +47,14 @@ class Transformer(nn.Module):
             torch.arange(0, src_seq_length)
             .unsqueeze(1)
             .expand(src_seq_length, batch_size)
-            .to(self.device)
+            .to(current_device)
         )
 
         trg_positions = (
             torch.arange(0, trg_seq_length)
             .unsqueeze(1)
             .expand(trg_seq_length, batch_size)
-            .to(self.device)
+            .to(current_device)
         )
 
         embed_src = self.dropout(
@@ -64,8 +64,8 @@ class Transformer(nn.Module):
             (trg + self.trg_position_embedding(trg_positions))
         )
 
-        src_padding_mask = self.src_mask(src.size(), src_seq_len).to(self.device)
-        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(self.device)
+        src_padding_mask = self.src_mask(src.size(), src_seq_len).to(current_device)
+        trg_mask = self.transformer.generate_square_subsequent_mask(trg_seq_length).to(current_device)
 
         out = self.transformer(
             embed_src,
@@ -83,13 +83,11 @@ class TransformerEncoder(nn.Module):
         input_size,
         output_size,
         dropout,
-        max_len,
-        device,
+        max_len
     ):
         super(TransformerEncoder, self).__init__()
         self.encoder = encoder
         self.output_size = output_size
-        self.device = device
         self.input_size = input_size
         self._fc = nn.Linear(input_size, output_size)
         self._fc_pretraining = nn.Linear(input_size, input_size)
