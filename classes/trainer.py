@@ -207,15 +207,29 @@ class Trainer(object):
         chunk_size = batch_size // n_gpu
         inputs = list(inputs)
         for i in range(n_gpu):
-            print(f'In:{inputs[i].size()}')
             inputs[i] = (nn.utils.rnn.pack_padded_sequence(inputs[i], seq_lens[chunk_size*i:chunk_size*(i+1)], enforce_sorted=False, batch_first=in_batch_first),)
         inputs = tuple(inputs)
                 
         # Apply chunks to model replicas and gather outputs on GPU with ID 0
         replicas = replicas[:len(inputs)]
         outputs = nn.parallel.parallel_apply(replicas, inputs)
-        for out in outputs:
-            print(f'Out:{out.size()}')
+
+        # If the chunks have different maximum sequence lengths, pad the shorter ones so all are the same length
+        if len(outputs[0].size()) > 1:
+            seq_dim = 1 if out_batch_first else 0
+            max_seq_lens = [out.size()[seq_dim] for out in outputs]
+
+            # If the max sequence lengths of all the chunks are the same, we can skip this
+            if not max_seq_lens.count(max_seq_lens[0]) == len(max_seq_lens):
+                max_seq_len = max(max_seq_lens)
+                for i, out in enumerate(outputs):
+                    out = out.to(output_device)
+                    current_max_seq_len = out.size()[seq_dim]
+                    if current_max_seq_len < max_seq_len:
+                        padding = torch.zeros((out.size()[0], max_seq_len - current_max_seq_len, out.size()[2])) if out_batch_first else torch.zeros((max_seq_len - current_max_seq_len, out.size()[1], out.size()[2]))
+                        padding = padding.to(output_device)
+                        outputs[i] = torch.cat((out, padding), seq_dim)
+
         return nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
 
     @TrainerDecorators.validation_wrapper
