@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 import random
+import gc
 
 class Trainer(object):
     class TrainerDecorators(object):
@@ -80,6 +81,9 @@ class Trainer(object):
                                 time_left_h, time_left_m = mon.time_left
                                 print (f'{self.title}, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
                         
+                        # Free up unused variables
+                        gc.collect()
+
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
                         self.scheduler.step(mean_loss_epoch)
@@ -245,7 +249,7 @@ class Trainer(object):
 class Transformer():
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True)
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.title = "Supervised"
             self.cache_filename = "trained_model"

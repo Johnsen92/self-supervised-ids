@@ -60,6 +60,7 @@ class PretrainableLSTM(LSTM):
         self._fc_pretraining = nn.Linear(hidden_size, input_size)
 
     def forward(self, src_packed):
+        #self._lstm.flatten_parameters()
         _, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
         batch_size = len(seq_lens)
         current_device = src_packed.data.get_device()
