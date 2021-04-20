@@ -50,10 +50,17 @@ parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validatio
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+parser.add_argument('--manual_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 100
+
+# Set random seed
+SEED = args.manual_seed
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:

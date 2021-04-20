@@ -12,6 +12,8 @@ import json
 from enum import Enum
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+import numpy as np
+import random
 
 class ProxyTask(Enum):
     NONE = 1,
@@ -32,6 +34,7 @@ parser.add_argument('-J', '--json_dir', default='./json/', help='Json exports fo
 # ---------------------- Model parameters ----------------------
 parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
+parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 # ---------------------- Hyper parameters ----------------------
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-b', '--batch_size', default=128, type=int, help='Batch size')
@@ -46,10 +49,16 @@ parser.add_argument('--remove_changeable', action='store_true', help='If set, re
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
+parser.add_argument('--manual_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 100
+
+# Set random seed
+SEED = args.manual_seed
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
 
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:
