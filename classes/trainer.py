@@ -513,7 +513,7 @@ class LSTM():
 
     class PredictPacket(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = "PredictPacket"
             self.cache_filename = "pretrained_model"
@@ -560,13 +560,26 @@ class LSTM():
             mask[:, :, i_start:i_end] = True
             return masked_data, mask
 
+        def obscure_random(self, data, i_start, i_end, obscuration_rate):
+            batch_size, max_seq_length, input_size = data.shape
+            assert i_end < input_size
+            assert i_end >= i_start
+            masked_data = data
+            mask = torch.zeros(data.size(), dtype=torch.bool)
+            n_packets = math.ceil(max_seq_length * obscuration_rate)
+            for _ in range(n_packets):
+                idx = random.randint(0, max_seq_length-1)
+                masked_data[:, idx, i_start:i_end] = -torch.ones(batch_size, i_end-i_start)
+                mask[:, idx, i_start:i_end] = True
+            return masked_data, mask
+
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
             (data, seq_lens), _, _ = batch_data
 
             # Obscure features
-            masked_data, mask = self.obscure(data, 6, 9)
+            masked_data, mask = self.obscure_random(data, 6, 9, 0.3)
 
             # Move data to selected device 
             masked_data = data.to(self.device)
@@ -581,7 +594,7 @@ class LSTM():
 
     class MaskPacket(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer)
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = "MaskPacket"
             self.cache_filename = "pretrained_model"
