@@ -89,7 +89,7 @@ class Trainer(object):
                         self.scheduler.step(mean_loss_epoch)
 
                         # Calculate validation loss after each epoch
-                        if self.validation:
+                        if self.validation and epoch % 10 == 0:
                             accuracy, loss = self.validate()
                             self.model.train()
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
@@ -599,11 +599,11 @@ class LSTM():
             self.title = "MaskPacket"
             self.cache_filename = "pretrained_model"
 
-        def mask_packets(self, data, seq_lens, n_features):
+        def mask_packets(self, data, seq_lens, n_packets):
             masked_data = data
             mask = torch.zeros(data.size(), dtype=torch.bool)
             _, _, input_size = data.shape
-            for _ in range(n_features):
+            for _ in range(n_packets):
                 for batch_idx, length in enumerate(seq_lens):
                     seq_idx = random.randint(0, length-1)
                     masked_data[batch_idx, seq_idx, :] = -torch.ones(input_size)

@@ -36,7 +36,8 @@ parser.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of 
 parser.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
 parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 # ---------------------- Hyper parameters ----------------------
-parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
+parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs for supervised training')
+parser.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='Number of epochs for pretraining. If 0, n_epochs is used')
 parser.add_argument('-b', '--batch_size', default=128, type=int, help='Batch size')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
@@ -164,6 +165,8 @@ stats_training = statistics.Stats(
 # Init summary writer for TensorBoard
 writer = SummaryWriter(f'runs/{run_uid}')
 
+epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
+
 # Pretraining if enabled
 if args.self_supervised > 0:
     # Init pretraining criterion
@@ -178,7 +181,7 @@ if args.self_supervised > 0:
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
-            epochs = args.n_epochs, 
+            epochs = epochs_pretraining, 
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -192,7 +195,7 @@ if args.self_supervised > 0:
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
-            epochs = args.n_epochs, 
+            epochs = epochs_pretraining, 
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -206,7 +209,7 @@ if args.self_supervised > 0:
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
-            epochs = args.n_epochs, 
+            epochs = epochs_pretraining, 
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
