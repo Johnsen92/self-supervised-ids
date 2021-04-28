@@ -136,7 +136,7 @@ model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, ar
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Init class stats
-class_stats_training = statistics.ClassStats(
+class_stats = statistics.ClassStats(
     stats_dir = extended_stats_dir,
     mapping = category_mapping,
     benign = args.benign_category
@@ -148,15 +148,19 @@ model_parameters = {
     '# Layers' : args.n_layers
 }
 
+# If pretraining epochs argument is set, use it, else default to supervised epochs argument
+epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
+
 # Init statistics object
-stats_training = statistics.Stats(
+stats = statistics.Stats(
     stats_dir = extended_stats_dir,
-    class_stats = class_stats_training,
+    class_stats = class_stats,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
     train_percent = args.train_percent,
     val_percent = args.val_percent,
     n_epochs = args.n_epochs,
+    n_epochs_pretraining = epochs_pretraining,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     model_parameters = model_parameters
@@ -164,8 +168,6 @@ stats_training = statistics.Stats(
 
 # Init summary writer for TensorBoard
 writer = SummaryWriter(f'runs/{run_uid}')
-
-epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
 
 # Pretraining if enabled
 if args.self_supervised > 0:
@@ -182,7 +184,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -196,7 +198,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -210,7 +212,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -236,7 +238,7 @@ trainer = trainer.LSTM.Supervised(
     criterion = training_criterion, 
     optimizer = optimizer, 
     epochs = args.n_epochs, 
-    stats = stats_training, 
+    stats = stats, 
     cache = cache,
     json = args.json_dir,
     writer = writer

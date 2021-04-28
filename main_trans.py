@@ -174,6 +174,9 @@ model_parameters = {
     'Dropout' : args.dropout
 }
 
+# If pretraining epochs argument is set, use it, else default to supervised epochs argument
+epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
+
 # Init statistics object
 stats_training = statistics.Stats(
     stats_dir = extended_stats_dir,
@@ -183,6 +186,7 @@ stats_training = statistics.Stats(
     train_percent = args.train_percent,
     val_percent = args.val_percent,
     n_epochs = args.n_epochs,
+    n_epochs_pretraining = epochs_pretraining,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     model_parameters = model_parameters
@@ -190,8 +194,6 @@ stats_training = statistics.Stats(
 
 # Init summary writer for TensorBoard
 writer = SummaryWriter(f'runs/{run_uid}')
-
-epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
 
 # Pretraining if enabled
 if args.self_supervised > 0:

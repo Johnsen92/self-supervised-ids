@@ -164,23 +164,37 @@ class ClassStats():
                 accuracy = self.right[val] / self.number[val] * 100.0 if not self.number[val] == 0 else 100.0
                 f.write(f'{key}, {val}, {self.number[val]}, {self.right[val]}, {accuracy:.3f}\n')
 
-            n_samples = sum(self.number.values())
-            n_right = sum(self.right.values())
-            n_attack = n_samples - self.number[self.benign]
-            n_right_attack = n_right - self.right[self.benign]
-            accuracy_benign = self.right[self.benign] / self.number[self.benign] * 100.0 if not self.number[self.benign] == 0 else 100.0
-            accuracy_attack = n_right_attack / n_attack * 100.0 if not n_attack == 0 else 100.0
-            accuracy = float(n_right) / float(n_samples) * 100.0
+            n_attack = self.n_samples - self.number[self.benign]
+            n_right_attack = self.n_right - self.right[self.benign]
+            accuracy_benign = (self.right[self.benign] * 100.0) / self.number[self.benign] if not self.number[self.benign] == 0 else 100.0
+            accuracy_attack = (n_right_attack * 100.0) / n_attack if not n_attack == 0 else 100.0
+            accuracy = (float(self.n_right) * 100.0) / float(self.n_samples)
             f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {accuracy_benign:.3f}%\n')
             f.write(f'Attack, !{self.benign}, {n_attack}, {n_right_attack}, {accuracy_attack:.3f}%\n')
-            f.write(f'Overall, ALL, {n_samples}, {n_right}, {accuracy:.3f}%\n')
+            f.write(f'Overall, ALL, {self.n_samples}, {self.n_right}, {accuracy:.3f}%\n')
             f.write('\n')
-            benign_rate = float(self.number[self.benign]) / float(n_samples) * 100.0
-            attack_rate = float(n_attack) / float(n_samples) * 100.0
+            benign_rate = float(self.number[self.benign]) / float(self.n_samples) * 100.0
+            attack_rate = float(n_attack) / float(self.n_samples) * 100.0
             
-            f.write(f'Samples, {n_samples}\n')
+            f.write(f'Samples, {self.n_samples}\n')
             f.write(f'Benign, {benign_rate:.2f}%\n')
             f.write(f'Attack, {attack_rate:.2f}%\n')
+
+    @property
+    def n_samples(self):
+        return sum(self.number.values())
+
+    @property
+    def n_false(self):
+        return self.n_samples - self.n_right
+    
+    @property
+    def n_right(self):
+        return sum(self.right.values())
+
+    @property
+    def accuracy(self):
+        return float(self.n_right) / float(self.n_samples)
 
     def make_stats_dir(self):
         if not os.path.exists(os.path.dirname(self.stats_dir)):
@@ -194,7 +208,7 @@ class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
+    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
         self.n_samples = n_samples
@@ -205,6 +219,7 @@ class Stats():
         self.proxy_task = proxy_task
         self.val_percent = val_percent
         self.n_epochs = n_epochs
+        self.n_epochs_pretraining = n_epochs_pretraining
         self.batch_size = batch_size
         self.learning_rate = learning_rate  
         self.losses = losses
@@ -228,6 +243,15 @@ class Stats():
             except OSError as exc: # Guard against race condition
                 if exc.errno != errno.EEXIST:
                     raise
+    def print_comparison(self):
+        print(f'Class stats samples: {self.class_stats.n_samples}')
+        print(f'Stats samples: {self.n_samples}')
+        print(f'Class stats false {self.class_stats.n_false}')
+        print(f'Stats false {self.n_false_positive + self.n_false_negative}')
+        print(f'Class stats false {self.class_stats.n_right}')
+        print(f'Stats false {self.n_samples - (self.n_false_positive + self.n_false_negative)}')
+        print(f'Class stats accuracy {self.class_stats.accuracy:.4f}')
+        print(f'Stats accuracy {self.accuracy:.4f}')
 
     def plot_stats(self):
         pass
@@ -250,7 +274,8 @@ class Stats():
         print('Save statistics...', end='')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Hyperparameters,\n')
-            f.write(f'Epochs, {self.n_epochs}\n')
+            f.write(f'Epochs Supervised, {self.n_epochs}\n')
+            f.write(f'Epochs Pretraining, {self.n_epochs_pretraining}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Pretraining percentage, {self.pretrain_percent}\n')
             f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')
@@ -289,19 +314,19 @@ class Stats():
     def accuracy(self):
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
         n_right = self.n_samples - self.n_false_negative - self.n_false_positive
-        return float(n_right)/float(self.n_samples)
+        return float(n_right) / float(self.n_samples)
 
     @property
     def false_positive(self):
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
         # Avoid division by 0 by adding minor float value
-        return float(self.n_false_positive)/(float(self.n_false_positive + self.n_false_negative) + 0.00001)
+        return float(self.n_false_positive) / (float(self.n_false_positive + self.n_false_negative) + 0.00001)
 
     @property
     def false_negative(self):
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
         # Avoid division by 0 by adding minor float value
-        return float(self.n_false_negative)/(float(self.n_false_positive + self.n_false_negative) + 0.00001)
+        return float(self.n_false_negative) / (float(self.n_false_positive + self.n_false_negative) + 0.00001)
 
     @property
     def false_alarm_rate(self):
