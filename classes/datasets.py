@@ -1,12 +1,14 @@
 import torch
 import pandas as pd
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 from torch.utils.data.sampler import Sampler, RandomSampler
 from sklearn.preprocessing import StandardScaler
 import pickle
 import numpy as np
 import json
 import os.path
+from sklearn.model_selection import train_test_split
+from torch._utils import _accumulate
 
 def overwrite_manipulable_entries(seq, filler=-1):
     forward_direction = seq[0,5]
@@ -127,3 +129,14 @@ class Flows(Dataset):
         tensor_labels = torch.FloatTensor(self.y[i])
         tensor_data = torch.FloatTensor(self.x[i])
         return tensor_data, tensor_labels, tensor_categories
+
+    def split(self, split_sizes, stratify=False):
+        X_idx_rest = np.arange(self.n_samples)
+        y_rest = np.squeeze(np.array([c[0] for c in self.categories], dtype=np.intc))
+
+        splits = []
+        for size in split_sizes:
+            X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
+            splits.append(Subset(self, X_idx_split))
+        assert sum([len(s) for s in splits]) == sum(split_sizes)
+        return tuple(splits)

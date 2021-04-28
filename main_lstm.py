@@ -111,12 +111,10 @@ if args.debug:
     args.n_epochs = 1
 
 # Split dataset into pretraining, training and validation set
-unallocated_size -= supervised_size
-train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
-unallocated_size -= pretraining_size
-pretrain_data, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
-unallocated_size -= validation_size
-val_data, unallocated = random_split(unallocated, [validation_size, unallocated_size])
+if args.self_supervised > 0:
+    train_data, pretrain_data, val_data = dataset.split([supervised_size, pretraining_size, validation_size], stratify=True)
+else:
+    train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
 # Init data loaders
 if args.self_supervised > 0:
