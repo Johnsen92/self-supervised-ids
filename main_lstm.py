@@ -45,6 +45,7 @@ parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
+parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
@@ -181,6 +182,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats, 
             cache = cache,
             json = args.json_dir,
@@ -195,6 +197,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats, 
             cache = cache,
             json = args.json_dir,
@@ -209,6 +212,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats, 
             cache = cache,
             json = args.json_dir,
@@ -235,6 +239,7 @@ trainer = trainer.LSTM.Supervised(
     criterion = training_criterion, 
     optimizer = optimizer, 
     epochs = args.n_epochs, 
+    val_epochs = args.val_epochs,
     stats = stats, 
     cache = cache,
     json = args.json_dir,

@@ -50,6 +50,7 @@ parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda pr
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
+parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
@@ -204,6 +205,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -218,6 +220,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -232,6 +235,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -246,6 +250,7 @@ if args.self_supervised > 0:
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
             stats = stats_training, 
             cache = cache,
             json = args.json_dir,
@@ -272,6 +277,7 @@ trainer = trainer.Transformer.Supervised(
     criterion = training_criterion, 
     optimizer = optimizer, 
     epochs = args.n_epochs, 
+    val_epochs = args.val_epochs,
     stats = stats_training, 
     cache = cache,
     json = args.json_dir,
