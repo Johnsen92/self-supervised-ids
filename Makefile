@@ -6,7 +6,7 @@ RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
 LSTM_PRETRAININGS:=OBSCURE MASK PREDICT
 TRANSFORMER_PRETRAININGS:=MASK AUTO
-CYCLE_PRETRAINING_PARAMETERS:=-p 1 -s 89 -E 10 -e 101 --no_cache
+CYCLE_PRETRAINING_PARAMETERS:=-p 1 -s 899 -E 10 -e 101 --no_cache
 CYCLE_TRAINING_PARAMETERS:=-p 1 -e 101 --no_cache
 
 clean:
@@ -30,7 +30,6 @@ cycle:
 	done
 	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_TRAINING_PARAMETERS}
 	
-
 test_cycle:
 	for pretraining in ${LSTM_PRETRAININGS} ; do \
     	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
@@ -39,7 +38,7 @@ test_cycle:
     	python3 main_trans.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
 	done
 	echo 'Everything seems to work fine'
-	
+
 lstm_cycle:
 	for pretraining in ${LSTM_PRETRAININGS} ; do \
     	python3 main_lstm.py -f ./data/flows.pickle ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining ; \

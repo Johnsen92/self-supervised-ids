@@ -133,10 +133,13 @@ class Flows(Dataset):
     def split(self, split_sizes, stratify=False):
         X_idx_rest = np.arange(self.n_samples)
         y_rest = np.squeeze(np.array([c[0] for c in self.categories], dtype=np.intc))
-
         splits = []
-        for size in split_sizes:
+        for i, size in enumerate(split_sizes):
             X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
             splits.append(Subset(self, X_idx_split))
-        assert sum([len(s) for s in splits]) == sum(split_sizes)
+            # If the whole dataset is used, we have to stop splitting one iteration early, otherwise one split would produce an empty-set which upsets sklearn
+            if i == len(split_sizes)-2 and sum(split_sizes) == self.n_samples:
+                splits.append(Subset(self, X_idx_rest))
+                break
+        assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)

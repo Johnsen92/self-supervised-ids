@@ -47,9 +47,9 @@ parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='In
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
-parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
-parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining percentage of data')
-parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
+parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
+parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
+parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
@@ -57,7 +57,7 @@ parser.add_argument('--manual_seed', default=0, type=int, help='Seed for random 
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 args = parser.parse_args(sys.argv[1:])
 
-assert args.train_percent + args.self_supervised + args.val_percent <= 100
+assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
 # Set random seed
 SEED = args.manual_seed
@@ -106,11 +106,10 @@ n_samples = len(dataset)
 # Won't get far without GPU, so I assume you have one...
 device = torch.device('cuda:0')
 
-# Split dataset into pretraining, training and validation parts
-unallocated_size = n_samples
-validation_size = (n_samples * args.val_percent) // 100
-supervised_size = (n_samples * args.train_percent) // 100
-pretraining_size = (n_samples * args.self_supervised) // 100
+# Split dataset into training and validation parts
+validation_size = int(round((n_samples * args.val_percent) / 1000.0))
+supervised_size = int(round((n_samples * args.train_percent) / 1000.0))
+pretraining_size = int(round((n_samples * args.self_supervised) / 1000.0))
 
 # If debug flag is set, use exactly one batch for pretraining, training and validation
 if args.debug:
@@ -118,13 +117,10 @@ if args.debug:
     args.n_epochs = 1
 
 # Split dataset into pretraining, training and validation set
-unallocated_size -= supervised_size
-train_data, unallocated = random_split(dataset, [supervised_size, unallocated_size])
-unallocated_size -= pretraining_size
-pretrain_data, unallocated = random_split(unallocated, [pretraining_size, unallocated_size])
-unallocated_size -= validation_size
-val_data, unallocated = random_split(unallocated, [validation_size, unallocated_size])
-
+if args.self_supervised > 0:
+    train_data, pretrain_data, val_data = dataset.split([supervised_size, pretraining_size, validation_size], stratify=True)
+else:
+    train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 # Init data loaders
 if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)

@@ -89,7 +89,8 @@ class Trainer(object):
                         self.scheduler.step(mean_loss_epoch)
 
                         # Calculate validation loss after each epoch
-                        if self.validation and epoch % 10 == 0:
+                        if self.validation and epoch == self.epochs-1:
+                        #if self.validation and (epoch+1) % 20 == 0:
                             accuracy, loss = self.validate()
                             self.model.train()
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)

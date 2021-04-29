@@ -42,9 +42,9 @@ parser.add_argument('-b', '--batch_size', default=128, type=int, help='Batch siz
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
-parser.add_argument('-p', '--train_percent', default=90, type=int, help='Training percentage of data')
-parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining percentage of data')
-parser.add_argument('-v', '--val_percent', default=10, type=int, help='Validation percentage of data')
+parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
+parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
+parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
@@ -53,7 +53,7 @@ parser.add_argument('--no_cache', action='store_true', help='Flag to ignore exis
 parser.add_argument('--manual_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 args = parser.parse_args(sys.argv[1:])
 
-assert args.train_percent + args.self_supervised + args.val_percent <= 100
+assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
 # Set random seed
 SEED = args.manual_seed
@@ -100,10 +100,9 @@ category_mapping = dataset.mapping
 n_samples = len(dataset)
 
 # Split dataset into training and validation parts
-unallocated_size = n_samples
-validation_size = (n_samples * args.val_percent) // 100
-supervised_size = (n_samples * args.train_percent) // 100
-pretraining_size = (n_samples * args.self_supervised) // 100
+validation_size = int(round((n_samples * args.val_percent) / 1000.0))
+supervised_size = int(round((n_samples * args.train_percent) / 1000.0))
+pretraining_size = int(round((n_samples * args.self_supervised) / 1000.0))
 
 # If debug flag is set, use exactly one batch for pretraining, training and validation
 if args.debug:
