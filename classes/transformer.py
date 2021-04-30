@@ -200,6 +200,3 @@ class Stage2TransformerEncoder(TransformerEncoder):
         # Create logits as average of seq outputs
         out = self._logits(out, seq_lens).to(self.device)
         return out
-
-
-

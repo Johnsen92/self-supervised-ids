@@ -116,6 +116,7 @@ pretraining_size = int(round((n_samples * args.self_supervised) / 1000.0))
 if args.debug:
     validation_size = supervised_size = pretraining_size = args.batch_size
     args.n_epochs = 1
+    args.n_epochs_pretraining = 1
 
 # Split dataset into pretraining, training and validation set
 if args.self_supervised > 0:

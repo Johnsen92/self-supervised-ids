@@ -140,6 +140,9 @@ class ClassStats():
         self.number = { c : 0 for c in mapping.values() }
         self.right = { c : 0 for c in mapping.values() }
         
+    def reset(self):
+        self.number = { c : 0 for c in self.mapping.values() }
+        self.right = { c : 0 for c in self.mapping.values() }
 
     @property
     def labels(self):
@@ -243,15 +246,6 @@ class Stats():
             except OSError as exc: # Guard against race condition
                 if exc.errno != errno.EEXIST:
                     raise
-    def print_comparison(self):
-        print(f'Class stats samples: {self.class_stats.n_samples}')
-        print(f'Stats samples: {self.n_samples}')
-        print(f'Class stats false {self.class_stats.n_false}')
-        print(f'Stats false {self.n_false_positive + self.n_false_negative}')
-        print(f'Class stats false {self.class_stats.n_right}')
-        print(f'Stats false {self.n_samples - (self.n_false_positive + self.n_false_negative)}')
-        print(f'Class stats accuracy {self.class_stats.accuracy:.4f}')
-        print(f'Stats accuracy {self.accuracy:.4f}')
 
     def plot_stats(self):
         pass
@@ -275,7 +269,7 @@ class Stats():
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Hyperparameters,\n')
             f.write(f'Epochs Supervised, {self.n_epochs}\n')
-            f.write(f'Epochs Pretraining, {self.n_epochs_pretraining}\n')
+            f.write(f'Epochs Pretraining, {0 if self.proxy_task == 0 else self.n_epochs_pretraining}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Pretraining percentage, {self.pretrain_percent}\n')
             f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')

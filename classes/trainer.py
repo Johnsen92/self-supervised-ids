@@ -130,6 +130,7 @@ class Trainer(object):
                 with torch.no_grad():
                     n_correct = n_samples = n_false_positive = n_false_negative = 0
                     validation_losses = []
+                    self.stats.class_stats.reset()
                     for batch_data in self.validation_data:
 
                         # -------------------------- Decorated function --------------------------
