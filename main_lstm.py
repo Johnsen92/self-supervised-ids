@@ -19,7 +19,8 @@ class ProxyTask(Enum):
     NONE = 1,
     PREDICT = 2,
     OBSCURE = 3,
-    MASK = 4
+    MASK = 4,
+    AUTO = 5
 
     def __str__(self):
         return self.name
@@ -206,6 +207,21 @@ if args.self_supervised > 0:
         )
     elif(args.proxy_task == ProxyTask.MASK):
         pretrainer = trainer.LSTM.MaskPacket(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
+            stats = stats, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
+    elif(args.proxy_task == ProxyTask.AUTO):
+        pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,

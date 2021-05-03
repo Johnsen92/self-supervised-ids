@@ -527,8 +527,6 @@ class LSTM():
             for index, length in enumerate(seq_lens):
                 src_mask[index, :length-1,:] = True
                 trg_mask[index, 1:length,:] = True
-                #src_mask[index, length-2,:] = True
-                #trg_mask[index, length-1,:] = True
             return src_mask, trg_mask
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -543,6 +541,34 @@ class LSTM():
             outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[src_mask], data[trg_mask])
+
+            return loss
+
+    class AutoEncoder(Trainer):
+        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+            # Strings to be used for file and console outputs
+            self.title = "AutoEncoder"
+            self.cache_filename = "pretrained_model"
+
+        def masks(self, op_size, seq_lens):
+            mask = torch.zeros(op_size, dtype=torch.bool)
+            for index, length in enumerate(seq_lens):
+                mask[index, :length,:] = True
+            return mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (data, seq_lens), _, _ = batch_data
+
+            # Move data to selected device 
+            data = data.to(self.device)
+
+            # Forwards pass
+            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            mask = self.masks(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 
