@@ -54,17 +54,21 @@ parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate mo
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-parser.add_argument('--manual_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
+parser.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
 # Set random seed
-SEED = args.manual_seed
+if args.random_seed == 0:
+    SEED = random.randint(1, pow(2,16)-1)
+else:
+    SEED = args.random_seed
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+random_seed = SEED
 
 # Serialize arguments and store them in json export folder
 with open(args.json_dir + '/args.json', 'w') as f:
@@ -158,7 +162,7 @@ model = transformer.TransformerEncoder(
 optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # Init class stats
-class_stats_training = statistics.ClassStats(
+class_stats = statistics.ClassStats(
     stats_dir = extended_stats_dir,
     mapping = category_mapping,
     benign = args.benign_category
@@ -176,9 +180,9 @@ model_parameters = {
 epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
 
 # Init statistics object
-stats_training = statistics.Stats(
+stats = statistics.Stats(
     stats_dir = extended_stats_dir,
-    class_stats = class_stats_training,
+    class_stats = class_stats,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
     train_percent = args.train_percent,
@@ -187,7 +191,8 @@ stats_training = statistics.Stats(
     n_epochs_pretraining = epochs_pretraining,
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
-    model_parameters = model_parameters
+    model_parameters = model_parameters,
+    random_seed = random_seed
 )
 
 # Init summary writer for TensorBoard
@@ -207,7 +212,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -222,7 +227,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -237,7 +242,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -252,7 +257,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats_training, 
+            stats = stats, 
             cache = cache,
             json = args.json_dir,
             writer = writer
@@ -279,7 +284,7 @@ trainer = trainer.Transformer.Supervised(
     optimizer = optimizer, 
     epochs = args.n_epochs, 
     val_epochs = args.val_epochs,
-    stats = stats_training, 
+    stats = stats, 
     cache = cache,
     json = args.json_dir,
     writer = writer

@@ -211,7 +211,7 @@ class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None):
+    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None, random_seed=None):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
         self.n_samples = n_samples
@@ -228,6 +228,7 @@ class Stats():
         self.losses = losses
         self.class_stats = class_stats
         self.model_parameters = model_parameters
+        self.random_seed = random_seed
         self.monitors = []
 
         if title == None:
@@ -277,6 +278,7 @@ class Stats():
             f.write(f'Validation percentage, {self.val_percent}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
+            f.write(f'Random Seed, {self.random_seed}\n')
             f.write(f'\nModelparameters,\n')
             if not self.model_parameters is None:
                 for key, val in self.model_parameters.items():
