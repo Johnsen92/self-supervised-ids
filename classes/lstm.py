@@ -31,6 +31,7 @@ class LSTM(nn.Module):
         batch_size = len(seq_lens)
         hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size)
         cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size)
+        self._lstm.flatten_parameters()
         s1, _ = self._lstm(src_packed, (hidden_init, cell_init))
         # out is of shape (batch_size x seq_len x output_size)
         out = self._fc(s1)

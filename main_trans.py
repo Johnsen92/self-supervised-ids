@@ -218,6 +218,8 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == ProxyTask.AUTO):
+        # Introduce dropout for denoicsing autoencoder
+        model.dropout = nn.Dropout(0.2)
         pretrainer = trainer.Transformer.Autoencode(
             model = model, 
             training_data = pretrain_loader, 
@@ -267,6 +269,10 @@ if args.self_supervised > 0:
 
     # Pretrain
     pretrainer.train()
+
+    if args.proxy_task == ProxyTask.AUTO:
+        model.dropout = nn.Dropout(args.dropout)      
+
 
 # Init training criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")

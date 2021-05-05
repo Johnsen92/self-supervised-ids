@@ -11,6 +11,18 @@ from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 import random
 import gc
+from pympler import muppy, summary
+from pandas import DataFrame
+
+def memory_dump():
+    # Add to leaky code within python_script_being_profiled.py
+    all_objects = muppy.get_objects()
+    sum1 = summary.summarize(all_objects)# Prints out a summary of the large objects
+    summary.print_(sum1)# Get references to certain types of objects such as dataframe
+    dataframes = [ao for ao in all_objects if isinstance(ao, DataFrame)]
+    for d in dataframes:
+        print(d.columns.values)
+        print(len(d))
 
 class Trainer(object):
     class TrainerDecorators(object):
@@ -91,10 +103,12 @@ class Trainer(object):
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
                         if self.validation and (epoch == self.epochs-1 or validate_periodically):
+                            memory_dump()
                             accuracy, loss = self.validate()
                             self.model.train()
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
                             self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
+                            memory_dump()
 
 
                     # Get stats
