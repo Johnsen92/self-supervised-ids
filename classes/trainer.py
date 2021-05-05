@@ -41,6 +41,7 @@ class Trainer(object):
 
                     # Train the model
                     print('Training model...')
+                    observed_acc = []
                     for epoch in range(self.epochs):
                         losses_epoch = []
                         for batch_data in self.training_data:
@@ -105,13 +106,17 @@ class Trainer(object):
                         if self.validation and (epoch == self.epochs-1 or validate_periodically):
                             accuracy, loss = self.validate()
                             self.model.train()
+                            observed_acc.append((epoch, accuracy))
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
                             self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
 
+                    # Assert that validation has been executed at least once
+                    assert len(observed_acc) > 0
 
-                    # Get stats
+                    # Set stats
                     self.stats.add_monitor(mon)
                     self.stats.losses = mon.measurements
+                    self.stats.accuracies = observed_acc
 
                     # Store trained model
                     print(f'Storing model to cache {chache_file_name}...',end='')

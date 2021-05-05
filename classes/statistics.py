@@ -230,6 +230,7 @@ class Stats():
         self.model_parameters = model_parameters
         self.random_seed = random_seed
         self.monitors = []
+        self.accuracies = []
 
         if title == None:
             self.title = "Statistics #" + str(Stats.index)
@@ -284,7 +285,8 @@ class Stats():
                 for key, val in self.model_parameters.items():
                     f.write(f'{key}, {val}\n')
             f.write(f'\nResults,\n')
-            f.write(f'Accuracy, {p_acc:.3f} %\n')
+            f.write(f'Final accuracy, {p_acc:.3f} %\n')
+            f.write(f'Highest observed acc., {self.highest_observed_accuracy:.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
             f.write(f'% false positves, {(self.false_positive * 100):.3f} %\n')
@@ -337,3 +339,10 @@ class Stats():
         for mon in self.monitors:
             time_s += mon.duration_s
         return time_s
+
+    @property
+    def highest_observed_accuracy(self):
+        if len(self.accuracies) == 0:
+            return 0.0
+        else:
+            return max([acc for _, acc in self.accuracies]) * 100.0
