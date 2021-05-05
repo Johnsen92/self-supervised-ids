@@ -103,12 +103,10 @@ class Trainer(object):
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
                         if self.validation and (epoch == self.epochs-1 or validate_periodically):
-                            memory_dump()
                             accuracy, loss = self.validate()
                             self.model.train()
                             self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
                             self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
-                            memory_dump()
 
 
                     # Get stats
