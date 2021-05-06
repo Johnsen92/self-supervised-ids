@@ -111,7 +111,8 @@ class Trainer(object):
                             self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
 
                     # Assert that validation has been executed at least once
-                    assert len(observed_acc) > 0
+                    if self.validation:
+                        assert len(observed_acc) > 0
 
                     # Set stats
                     self.stats.add_monitor(mon)
