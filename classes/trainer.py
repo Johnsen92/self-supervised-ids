@@ -575,6 +575,14 @@ class LSTM():
                 mask[index, :length,:] = True
             return mask
 
+        def reverse_sequences(self, seqs, seq_lens):
+            seqs_reversed = torch.zeros(seqs.size(), dtype=torch.float32)
+            for i, seq_len in enumerate(seq_lens):
+                rev_idx = [i for i in range(seq_len-1, -1, -1)]
+                rev_idx = torch.LongTensor(rev_idx).to(seqs.get_device())
+                seqs_reversed[i, :seq_len, :] = torch.index_select(seqs[i, :seq_len, :],0,rev_idx)
+            return seqs_reversed
+
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
             # Unpack batch data
@@ -582,11 +590,12 @@ class LSTM():
 
             # Move data to selected device 
             data = data.to(self.device)
+            data_reversed = self.reverse_sequences(data, seq_lens).to(self.device)
 
             # Forwards pass
             outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[mask], data[mask])
+            loss = self.criterion(outputs[mask], data_reversed[mask])
 
             return loss
 

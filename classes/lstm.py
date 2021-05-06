@@ -76,3 +76,72 @@ class PretrainableLSTM(LSTM):
         else:
             out = self._fc(out)
         return out
+
+class AutoEncoderLSTM(nn.Module):
+    def __init__(
+        self, 
+        input_size, 
+        hidden_size, 
+        output_size, 
+        num_layers
+    ):
+        super().__init__()
+        self._encoder_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self._decoder_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self._encoder_fc = nn.Linear(hidden_size, output_size)
+        self._decoder_fc = nn.Linear(hidden_size, input_size)
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.pretraining = True
+
+    def reverse_seq_order(self, seqs_packed):
+        seqs, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(seqs_packed, batch_first=True)
+        current_device = seqs.get_device()
+        seqs_reversed = torch.zeros(seqs.size(), dtype=torch.float32)
+        for i, seq_len in enumerate(seq_lens):
+            rev_idx = [i for i in range(seq_len-1, -1, -1)]
+            rev_idx = torch.LongTensor(rev_idx).to(current_device)
+            seqs_reversed[i, :seq_len, :] = torch.index_select(seqs[i, :seq_len, :],0,rev_idx)
+        seqs_reversed_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_reversed, seq_lens, batch_first=True, enforce_sorted=False).to(current_device)
+        return seqs_reversed_packed
+
+    def forward(self, src_packed):
+
+        # Get batch_size
+        src, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
+        batch_size = len(seq_lens)
+
+        # Get current device
+        current_device = src.get_device()
+
+        # Zero-init cell and hidden state of encoder LSTM
+        encoder_hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
+        encoder_cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
+
+        # Forward pass for encoder LSTM
+        #self._encoder_lstm.flatten_parameters()
+        encoder_out, (h_state, c_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
+
+        if self.pretraining:
+            #print(h_state.size())
+            #print(c_state.size())
+            #decoder_hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
+            #decoder_cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
+            #print(decoder_hidden_init.size())
+            #print(decoder_cell_init.size())
+
+            decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
+            decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
+
+            src_packed_reverse = self.reverse_seq_order(src_packed)
+            #self._decoder_lstm.flatten_parameters()
+            decoder_out, _ = self._decoder_lstm(src_packed_reverse, (decoder_hidden_init, decoder_cell_init))
+
+            decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
+            # out is of shape (batch_size x seq_len x output_size)
+            out = self._decoder_fc(decoder_out_unpacked)
+        else:
+            encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
+            out = self._encoder_fc(encoder_out_unpacked)
+        return out

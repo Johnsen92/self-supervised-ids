@@ -226,6 +226,8 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == ProxyTask.AUTO):
+        model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
