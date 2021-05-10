@@ -112,6 +112,8 @@ if args.self_supervised > 0:
 else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
+dataset.specialized_set(val_data, {-1: 10, 10: 450})
+
 # Init data loaders
 if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)

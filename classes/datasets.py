@@ -113,3 +113,26 @@ class Flows(Dataset):
                 break
         assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)
+
+    def specialized_set(self, dataset, dist):
+        if -1 in [c for c, _ in dist.items()]:
+            default = dist[-1]
+        else:
+            default = 0
+        subset_num = {}
+        subset_count = {}
+        subset_samples = []
+        for _, val in self.mapping.items():
+            if val in [c for c, _ in dist.items()]:
+                subset_num[val] = dist[val]
+            else:
+                subset_num[val] = default
+            subset_count[val] = 0
+
+        for idx, (_, _, cat) in enumerate(dataset):
+            c = cat[0].item()
+            if subset_count[c] < subset_num[c]:
+                subset_count[c] += 1
+                subset_samples.append(idx)
+
+        return Subset(dataset, subset_samples)
