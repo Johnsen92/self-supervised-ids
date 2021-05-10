@@ -13,6 +13,7 @@ import random
 import gc
 from pympler import muppy, summary
 from pandas import DataFrame
+from enum import Enum
 
 def memory_dump():
     # Add to leaky code within python_script_being_profiled.py
@@ -268,6 +269,17 @@ class Trainer(object):
         pass
 
 class Transformer():
+    class ProxyTask(Enum):
+        NONE = 0,
+        AUTO = 1,
+        PREDICT = 2,
+        OBSCURE = 3,
+        MASK = 4,
+        INTER = 5
+
+        def __str__(self):
+            return self.name
+
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
@@ -353,12 +365,18 @@ class Transformer():
 
             return loss
 
-    class Autoencode(Trainer):
+    class AutoEncode(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "Autoencoder"
+            self.title = "AutoEncoder"
             self.cache_filename = "pretrained_model"
+
+        def mask(self, op_size, seq_lens):
+            mask = torch.zeros(op_size, dtype=torch.bool)
+            for index, length in enumerate(seq_lens):
+                mask[:length, index,:] = True
+            return mask
 
         @Trainer.TrainerDecorators.training_wrapper
         def train(self, batch_data):
@@ -371,7 +389,10 @@ class Transformer():
             out = self.parallel_forward(data, seq_lens=seq_lens)
 
             # Create mask for non-padded items only
-            loss = self.criterion(out, data)
+            mask = self.mask(data.size(), seq_lens)
+
+            # Calculate loss
+            loss = self.criterion(out[mask], data[mask])
 
             return loss
 
@@ -423,8 +444,8 @@ class Transformer():
             # Forwards pass
             outputs = self.parallel_forward(data, seq_lens=seq_lens)
 
-            op_mask = self.mask(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[op_mask], data[op_mask])
+            mask = self.mask(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 
@@ -466,6 +487,17 @@ class Transformer():
             return loss
             
 class LSTM():
+    class ProxyTask(Enum):
+        NONE = 1,
+        PREDICT = 2,
+        OBSCURE = 3,
+        MASK = 4,
+        AUTO = 5,
+        BIAUTO = 6
+
+        def __str__(self):
+            return self.name
+
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
@@ -562,11 +594,11 @@ class LSTM():
 
             return loss
 
-    class AutoEncoder(Trainer):
+    class BidirectionalAutoEncoder(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "AutoEncoder"
+            self.title = "BidirectionalAutoEncoder"
             self.cache_filename = "pretrained_model"
 
         def masks(self, op_size, seq_lens):
@@ -596,6 +628,34 @@ class LSTM():
             outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data_reversed[mask])
+
+            return loss
+
+    class AutoEncoder(Trainer):
+        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+            # Strings to be used for file and console outputs
+            self.title = "AutoEncoder"
+            self.cache_filename = "pretrained_model"
+
+        def masks(self, op_size, seq_lens):
+            mask = torch.zeros(op_size, dtype=torch.bool)
+            for index, length in enumerate(seq_lens):
+                mask[index, :length,:] = True
+            return mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (data, seq_lens), _, _ = batch_data
+
+            # Move data to selected device 
+            data = data.to(self.device)
+
+            # Forwards pass
+            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            mask = self.masks(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 

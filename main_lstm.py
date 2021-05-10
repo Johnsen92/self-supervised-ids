@@ -15,16 +15,6 @@ from datetime import datetime
 import numpy as np
 import random
 
-class ProxyTask(Enum):
-    NONE = 1,
-    PREDICT = 2,
-    OBSCURE = 3,
-    MASK = 4,
-    AUTO = 5
-
-    def __str__(self):
-        return self.name
-
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
@@ -47,7 +37,7 @@ parser.add_argument('-p', '--train_percent', default=900, type=int, help='Traini
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
-parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
@@ -93,7 +83,7 @@ extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stat
 
 # Load dataset and normalize data, or load from cache
 cache_filename = 'dataset_normalized'
-if not cache.exists(cache_filename, no_prefix=True):
+if not args.no_cache and not cache.exists(cache_filename, no_prefix=True):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
@@ -180,7 +170,7 @@ if args.self_supervised > 0:
     pretraining_criterion = nn.L1Loss()
     
     # Init pretrainer
-    if(args.proxy_task == ProxyTask.PREDICT):
+    if(args.proxy_task == trainer.LSTM.ProxyTask.PREDICT):
         pretrainer = trainer.LSTM.PredictPacket(
             model = model, 
             training_data = pretrain_loader, 
@@ -195,7 +185,7 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.OBSCURE):
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.OBSCURE):
         pretrainer = trainer.LSTM.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
@@ -210,7 +200,7 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.MASK):
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.MASK):
         pretrainer = trainer.LSTM.MaskPacket(
             model = model, 
             training_data = pretrain_loader, 
@@ -225,10 +215,25 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.AUTO):
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
+        pretrainer = trainer.LSTM.AutoEncoder(
+            model = model, 
+            training_data = pretrain_loader, 
+            validation_data = val_loader,
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
+            stats = stats, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.BIAUTO):
         model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-        pretrainer = trainer.LSTM.AutoEncoder(
+        pretrainer = trainer.LSTM.BidirectionalAutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,

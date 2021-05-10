@@ -36,36 +36,6 @@ def collate_flows_batch_first(seqs):
     padded_categories = torch.nn.utils.rnn.pad_sequence(categories, batch_first=True)
     return (padded_flows, flows_lens), padded_labels, padded_categories
 
-class CAIA(Dataset):
-    def __init__(self, csv_file):
-        super().__init__()
-
-        print('Loading csv file...', end='')
-
-        # read csv file and load data into variables
-        csv = pd.read_csv(csv_file)
-        x = csv.iloc[2:, 8:34].values
-        x[x != x] = -1
-        y = csv.iloc[2:, 36].values
-
-        # scale
-        sc = StandardScaler()
-        x = sc.fit_transform(x)
-
-        # convert to torch tensors
-        self.n_samples = len(y)
-        self.X = torch.tensor(x, dtype=torch.float32)
-        self.y = torch.tensor(y)
-
-        print('done')
-        
-
-    def __len__(self):
-        return self.n_samples
-
-    def __getitem__(self, i):
-        return self.X[i], self.y[i]
-
 class Flows(Dataset):
     def __init__(self, data_pickle, cache=None, max_length=100, remove_changeable=False):
         super().__init__()

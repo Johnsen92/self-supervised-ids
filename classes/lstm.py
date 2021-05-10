@@ -124,22 +124,19 @@ class AutoEncoderLSTM(nn.Module):
         encoder_out, (h_state, c_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
 
         if self.pretraining:
-            #print(h_state.size())
-            #print(c_state.size())
-            #decoder_hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
-            #decoder_cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
-            #print(decoder_hidden_init.size())
-            #print(decoder_cell_init.size())
+            decoder_hidden_init = torch.zeros(h_state.size()).to(current_device)
+            decoder_cell_init = torch.zeros(c_state.size()).to(current_device)
+            decoder_hidden_init[0, :, :] = h_state[-1, :, :]
+            decoder_cell_init[0, :, :] = c_state[-1, :, :]
 
-            decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
-            decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
+            #decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
+            #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
 
             src_packed_reverse = self.reverse_seq_order(src_packed)
-            #self._decoder_lstm.flatten_parameters()
+            self._decoder_lstm.flatten_parameters()
             decoder_out, _ = self._decoder_lstm(src_packed_reverse, (decoder_hidden_init, decoder_cell_init))
 
             decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
-            # out is of shape (batch_size x seq_len x output_size)
             out = self._decoder_fc(decoder_out_unpacked)
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)

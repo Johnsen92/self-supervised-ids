@@ -9,22 +9,10 @@ import torch
 import os.path
 import jsons
 import json
-from enum import Enum
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import numpy as np
 import random
-
-class ProxyTask(Enum):
-    NONE = 0,
-    AUTO = 1,
-    PREDICT = 2,
-    OBSCURE = 3,
-    MASK = 4,
-    INTER = 5
-
-    def __str__(self):
-        return self.name
 
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
@@ -46,7 +34,7 @@ parser.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='N
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
-parser.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+parser.add_argument('-y', '--proxy_task', default=trainer.Transformer.ProxyTask.NONE, type=lambda proxy_task: trainer.Transformer.ProxyTask[proxy_task], choices=list(trainer.Transformer.ProxyTask))
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
@@ -96,7 +84,7 @@ extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stat
 
 # Load dataset and normalize data, or load from cache
 cache_filename = 'dataset_normalized'
-if not cache.exists(cache_filename, no_prefix=True):
+if not args.no_cache and not cache.exists(cache_filename, no_prefix=True):
     dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
@@ -202,7 +190,7 @@ writer = SummaryWriter(f'runs/{run_uid}')
 if args.self_supervised > 0:
     # Init pretraining criterion
     pretraining_criterion = nn.L1Loss()
-    if(args.proxy_task == ProxyTask.INTER):
+    if(args.proxy_task == trainer.Transformer.ProxyTask.INTER):
         trainer.Transformer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
@@ -217,10 +205,10 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.AUTO):
-        # Introduce dropout for denoicsing autoencoder
+    elif(args.proxy_task == trainer.Transformer.ProxyTask.AUTO):
+        # Introduce dropout for denoising autoencoder
         model.dropout = nn.Dropout(0.2)
-        pretrainer = trainer.Transformer.Autoencode(
+        pretrainer = trainer.Transformer.AutoEncode(
             model = model, 
             training_data = pretrain_loader, 
             validation_data = val_loader,
@@ -234,7 +222,7 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.OBSCURE):
+    elif(args.proxy_task == trainer.Transformer.ProxyTask.OBSCURE):
         pretrainer = trainer.Transformer.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
@@ -249,7 +237,7 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == ProxyTask.MASK):
+    elif(args.proxy_task == trainer.Transformer.ProxyTask.MASK):
         pretrainer = trainer.Transformer.MaskPacket(
             model = model, 
             training_data = pretrain_loader, 
@@ -270,7 +258,7 @@ if args.self_supervised > 0:
     # Pretrain
     pretrainer.train()
 
-    if args.proxy_task == ProxyTask.AUTO:
+    if args.proxy_task == trainer.Transformer.ProxyTask.AUTO:
         model.dropout = nn.Dropout(args.dropout)      
 
 
