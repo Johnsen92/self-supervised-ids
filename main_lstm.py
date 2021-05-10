@@ -112,7 +112,7 @@ if args.self_supervised > 0:
 else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
-dataset.specialized_set(val_data, {-1: 10, 10: 450})
+train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
 
 # Init data loaders
 if args.self_supervised > 0:
