@@ -38,6 +38,7 @@ parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretra
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
+parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
@@ -70,10 +71,10 @@ if args.debug:
     run_id += '_debug'
 
 # Timestamp
-timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Unique identifier for this run
-run_uid = f'{run_id}_{timestamp}'
+run_uid = f'{timestamp}_{run_id}'
 
 # Init cache
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disabled=args.no_cache)
@@ -112,7 +113,9 @@ if args.self_supervised > 0:
 else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
-train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
+# If the subset flag is set, only use this small selected dataset for supervised learning
+if args.subset:
+    train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
 
 # Init data loaders
 if args.self_supervised > 0:

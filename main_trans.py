@@ -39,6 +39,7 @@ parser.add_argument('-p', '--train_percent', default=900, type=int, help='Traini
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
+parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
@@ -71,10 +72,10 @@ if args.debug:
     run_id += '_debug'
     
 # Timestamp
-timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # Unique identifier for this run
-run_uid = f'{run_id}_{timestamp}'
+run_uid = f'{timestamp}_{run_id}'
 
 # Init cache
 cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disabled=args.no_cache)
@@ -115,6 +116,11 @@ if args.self_supervised > 0:
     train_data, pretrain_data, val_data = dataset.split([supervised_size, pretraining_size, validation_size], stratify=True)
 else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
+
+# If the subset flag is set, only use this small selected dataset for supervised learning
+if args.subset:
+    train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
+
 # Init data loaders
 if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
