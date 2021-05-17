@@ -186,7 +186,8 @@ stats = statistics.Stats(
     batch_size = args.batch_size,
     learning_rate = args.learning_rate,
     model_parameters = model_parameters,
-    random_seed = random_seed
+    random_seed = random_seed,
+    subset = args.subset
 )
 
 # Init summary writer for TensorBoard

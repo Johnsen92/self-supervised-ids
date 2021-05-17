@@ -211,7 +211,7 @@ class Stats():
 
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None, random_seed=None):
+    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None, random_seed=None, subset=False):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
         self.n_samples = n_samples
@@ -231,6 +231,7 @@ class Stats():
         self.random_seed = random_seed
         self.monitors = []
         self.accuracies = []
+        self.subset = subset
 
         if title == None:
             self.title = "Statistics #" + str(Stats.index)
@@ -277,6 +278,7 @@ class Stats():
             f.write(f'Pretraining percentage, {(self.pretrain_percent / 10.0):.2f} %\n')
             f.write(f'Training percentage, {(self.train_percent / 10.0):.2f} %\n')
             f.write(f'Validation percentage, {(self.val_percent / 10.0):.2f} %\n')
+            f.write(f'Specialized subset, {self.subset}\n')
             f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
             f.write(f'Random Seed, {self.random_seed}\n')
