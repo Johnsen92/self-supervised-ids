@@ -6,8 +6,8 @@ RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
 LSTM_PRETRAININGS:=OBSCURE MASK PREDICT AUTO
 TRANSFORMER_PRETRAININGS:=MASK AUTO
-CYCLE_PRETRAINING_PARAMETERS:=-p 10 -s 890 -E 10 -e 100 -V 5 --no_cache --subset --random_seed 556
-CYCLE_TRAINING_PARAMETERS:=-p 10 -e 100 -V 5 --no_cache --subset --random_seed 556
+CYCLE_PRETRAINING_PARAMETERS:=-p 10 -s 890 -E 10 -e 300 -V 25 --no_cache --subset --random_seed 556
+CYCLE_TRAINING_PARAMETERS:=-p 10 -e 300 -V 25 --no_cache --subset --random_seed 556
 
 clean:
 	rm ${CACHE_DIR}/*

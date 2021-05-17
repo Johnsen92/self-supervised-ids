@@ -40,6 +40,7 @@ parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate mo
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
 parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
+parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
@@ -83,9 +84,9 @@ cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disab
 extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
 
 # Load dataset and normalize data, or load from cache
-cache_filename = 'dataset_normalized'
-if not args.no_cache and not cache.exists(cache_filename, no_prefix=True):
-    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
+cache_filename = 'dataset_normalized' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
+if not cache.exists(cache_filename, no_prefix=True):
+    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')

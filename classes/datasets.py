@@ -37,7 +37,7 @@ def collate_flows_batch_first(seqs):
     return (padded_flows, flows_lens), padded_labels, padded_categories
 
 class Flows(Dataset):
-    def __init__(self, data_pickle, cache=None, max_length=100, remove_changeable=False):
+    def __init__(self, data_pickle, cache=None, max_length=100, remove_changeable=False, expansion_factor=1):
         super().__init__()
         print('Loading data file...', end='')
 
@@ -62,6 +62,11 @@ class Flows(Dataset):
 
         X = [item[:, :-2] for item in all_data]
         Y = [item[:, -1:] for item in all_data]
+
+        # If feature expansion is needed, expand features with random data
+        if expansion_factor > 1:
+            X = [np.concatenate((item, np.random.rand(item.shape[0], item.shape[1] * (expansion_factor - 1))), axis=1) for item in X]
+
         print('done')
 
         # Normalize data between -1 and 1
