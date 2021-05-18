@@ -68,6 +68,8 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
 run_id = f'lstm_{data_filename}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
+if args.subset:
+    run_id += '_subset'
 if args.debug:
     run_id += '_debug'
 

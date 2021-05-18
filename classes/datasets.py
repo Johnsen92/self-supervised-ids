@@ -63,7 +63,7 @@ class Flows(Dataset):
         X = [item[:, :-2] for item in all_data]
         Y = [item[:, -1:] for item in all_data]
 
-        # If feature expansion is needed, expand features with random data
+        # If feature expansion is enabled, expand feature size by expansion_factor with random data
         if expansion_factor > 1:
             X = [np.concatenate((item, np.random.rand(item.shape[0], item.shape[1] * (expansion_factor - 1))), axis=1) for item in X]
 
