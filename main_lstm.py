@@ -49,6 +49,10 @@ args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
+# If subset is enabled, use this configuration for selecting subset
+subset_categories = {-1: 0, 5: 100, 10: 300}
+ditch_categories = [-1, 5, 10]
+
 # Set random seed
 if args.random_seed == 0:
     SEED = random.randint(1, pow(2,16)-1)
@@ -118,7 +122,7 @@ else:
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
 if args.subset:
-    train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
+    train_data = dataset.specialized_set(train_data, subset_categories, ditch=ditch_categories)
 
 # Init data loaders
 if args.self_supervised > 0:

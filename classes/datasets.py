@@ -119,11 +119,28 @@ class Flows(Dataset):
         assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)
 
-    def specialized_set(self, dataset, dist):
+
+    # dist: contains the dictionary of category - values pairs for samples to keep in the set.  
+    # -1 is the new default value for all categories that are not listed in the dictionary
+    # If -1 does not appear in the dictionary, the default value is ALL (large int)
+    # ditch: contains a list of all categories to be removed from the set completely. 
+    # If the list contains -1, the function is inverted so all categories that do not appear 
+    # in the list are ditched. ditch and dist can be used simultaneously
+    def specialized_set(self, dataset, dist, ditch=[]):
         if -1 in [c for c, _ in dist.items()]:
             default = dist[-1]
         else:
-            default = 0
+            default = pow(2,16)
+
+        # If ditch contains -1, ditch all categories which are not in the ditch list (inverted operation)
+        subset_ditch = ditch
+        if -1 in ditch:
+            subset_ditch = [v for _,v in self.mapping.items()]
+            ditch.remove(-1)
+            for c in ditch:
+                subset_ditch.remove(c)        
+
+        # Parse how many samples from each category should be collected
         subset_num = {}
         subset_count = {}
         subset_samples = []
@@ -133,6 +150,12 @@ class Flows(Dataset):
             else:
                 subset_num[val] = default
             subset_count[val] = 0
+
+        # Set all categories that appear in the ditch list to 0
+        for c in subset_ditch:
+            subset_num[c] = 0
+
+        assert sum([v for _, v in subset_num]) > 0
 
         for idx, (_, _, cat) in enumerate(dataset):
             c = cat[0].item()
