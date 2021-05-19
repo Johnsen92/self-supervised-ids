@@ -7,8 +7,10 @@ import pickle
 import numpy as np
 import json
 import os.path
+import re
 from sklearn.model_selection import train_test_split
 from torch._utils import _accumulate
+from enum import Enum
 
 def overwrite_manipulable_entries(seq, filler=-1):
     forward_direction = seq[0,5]
@@ -155,7 +157,7 @@ class Flows(Dataset):
         for c in subset_ditch:
             subset_num[c] = 0
 
-        assert sum([v for _, v in subset_num]) > 0
+        assert sum([v for _, v in subset_num.items()]) > 0
 
         for idx, (_, _, cat) in enumerate(dataset):
             c = cat[0].item()
@@ -164,3 +166,124 @@ class Flows(Dataset):
                 subset_samples.append(idx)
 
         return Subset(dataset, subset_samples)
+
+# dist: contains the dictionary of category - values pairs for samples to keep in the set.  
+# -1 is the new default value for all categories that are not listed in the dictionary
+# If -1 does not appear in the dictionary, the default value is ALL (large int)
+# ditch: contains a list of all categories to be removed from the set completely. 
+# If the list contains -1, the function is inverted so all categories that do not appear 
+# in the list are ditched. ditch and dist can be used simultaneously
+class FlowsSubset(Subset):
+    class ParseMode(Enum):
+        NONE = 0,
+        DIST = 1,
+        DITCH = 2
+
+    # Parse subset configuration from file
+    def parse(file):
+        assert os.path.isfile(file)
+        config = open(file, 'r')
+        lines = config.readlines()
+        dist = {}
+        ditch = []
+        parse_mode = FlowsSubset.ParseMode.NONE
+        for l in lines:
+            l = l.replace('\n', '')
+            if not re.search('DIST', l) is None:
+                parse_mode = FlowsSubset.ParseMode.DIST
+                continue
+            elif not re.search('DITCH', l) is None:
+                parse_mode = FlowsSubset.ParseMode.DITCH
+                continue
+            elif not re.search('END', l) is None:
+                parse_mode = FlowsSubset.ParseMode.NONE
+
+            if not re.search('^ *$', l) is None:
+                continue
+
+            if parse_mode == FlowsSubset.ParseMode.DIST:
+                found = re.search(r'(?P<class>-?\d+),(?P<value>-?\d+)', l)
+                dist[int(found.group("class"))] = int(found.group("value"))
+            elif parse_mode == FlowsSubset.ParseMode.DITCH:
+                found = re.search(r'(-?\d+)', l)
+                ditch.append(int(found.group(0)))
+
+        return dist, ditch
+
+    # parse config from file an stringify config
+    def subset_string(dist, ditch=[], config_file=None):
+        if not config_file is None:
+            dist, ditch = FlowsSubset.parse(config_file)
+        return FlowsSubset.string(dist, ditch)
+
+    # stringify config
+    def string(dist, ditch):
+        subset_string = '_subset'
+
+        # stringify class distribution
+        for c,v in dist.items():
+            subset_string += f'{c};{v}|'
+        if subset_string[-1] == '|':
+            subset_string = subset_string[:-1]
+
+        # stringify ditch list
+        if len(ditch) > 0:
+            subset_string += '_ditch'
+        for c in ditch:
+            subset_string += f'{c}|'
+        if subset_string[-1] == '|':
+            subset_string = subset_string[:-1]
+
+        return subset_string
+
+    def __init__(self, flows_dataset, mapping, dist, ditch=[], config_file=None):
+        self.mapping = mapping
+        if not config_file is None:
+            dist, ditch = self.parse(config_file)
+        
+        if -1 in [c for c, _ in dist.items()]:
+            default = dist[-1]
+        else:
+            default = pow(2,16)
+
+        # If ditch contains -1, ditch all categories which are not in the ditch list (inverted operation)
+        subset_ditch = ditch
+        if -1 in ditch:
+            subset_ditch = [v for _,v in self.mapping.items()]
+            ditch.remove(-1)
+            for c in ditch:
+                subset_ditch.remove(c)        
+
+        # Parse how many samples from each category should be collected
+        self._dist = dist
+        self._ditch = ditch
+        self.subset_num = {}
+        self.subset_count = {}
+        self.subset_samples = []
+        for _, val in self.mapping.items():
+            if val in [c for c, _ in dist.items()]:
+                self.subset_num[val] = dist[val]
+            else:
+                self.subset_num[val] = default
+            self.subset_count[val] = 0
+
+        # Set all categories that appear in the ditch list to 0
+        for c in subset_ditch:
+            self.subset_num[c] = 0
+
+        assert sum([v for _, v in self.subset_num.items()]) > 0
+
+        # Gather number of flows of each category from dataset according to subset_num
+        print(f'Loading {str(self)[1:]}...',end='')
+        for idx, (_, _, cat) in enumerate(flows_dataset):
+            c = cat[0].item()
+            if self.subset_count[c] < self.subset_num[c]:
+                self.subset_count[c] += 1
+                self.subset_samples.append(idx)
+        super().__init__(flows_dataset, self.subset_samples)
+        print('done')
+
+    def __str__(self):
+        return FlowsSubset.string(self._dist, self._ditch)
+
+    

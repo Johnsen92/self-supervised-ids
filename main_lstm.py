@@ -4,6 +4,7 @@ import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
 from classes import datasets, lstm, statistics, utils, trainer
+from classes.datasets import Flows, FlowsSubset
 import torchvision
 import torch
 import os.path
@@ -39,6 +40,7 @@ parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validati
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
 parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
+parser.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
@@ -50,7 +52,7 @@ args = parser.parse_args(sys.argv[1:])
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
 # If subset is enabled, use this configuration for selecting subset
-subset_categories = {-1: 0, 5: 100, 10: 300}
+subset_categories = {-1: 20, 10: 800}
 ditch_categories = [-1, 5, 10]
 
 # Set random seed
@@ -73,7 +75,7 @@ data_filename = os.path.basename(args.data_file)[:-7]
 # Identifier for current parameters
 run_id = f'lstm_{data_filename}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
 if args.subset:
-    run_id += '_subset'
+    run_id += FlowsSubset.subset_string(subset_categories, ditch_categories, args.subset_config)
 if args.debug:
     run_id += '_debug'
 
@@ -92,7 +94,7 @@ extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stat
 # Load dataset and normalize data, or load from cache
 cache_filename = 'dataset_normalized' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
 if not cache.exists(cache_filename, no_prefix=True):
-    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
+    dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
@@ -122,7 +124,7 @@ else:
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
 if args.subset:
-    train_data = dataset.specialized_set(train_data, subset_categories, ditch=ditch_categories)
+    train_data = FlowsSubset(train_data, category_mapping, subset_categories, ditch=ditch_categories)
 
 # Init data loaders
 if args.self_supervised > 0:
