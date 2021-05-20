@@ -100,7 +100,7 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
-                        self.scheduler.step(mean_loss_epoch)
+                        #self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False

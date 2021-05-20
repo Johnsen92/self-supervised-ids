@@ -271,6 +271,8 @@ class FlowsSubset(Subset):
         for c in subset_ditch:
             self.subset_num[c] = 0
 
+        print(self.subset_num)
+
         assert sum([v for _, v in self.subset_num.items()]) > 0
 
         # Gather number of flows of each category from dataset according to subset_num

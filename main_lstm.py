@@ -52,8 +52,8 @@ args = parser.parse_args(sys.argv[1:])
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
 
 # If subset is enabled, use this configuration for selecting subset
-subset_categories = {-1: 20, 10: 800}
-ditch_categories = [-1, 5, 10]
+subset_categories = {-1: 10, 10: 390}
+ditch_categories = []
 
 # Set random seed
 if args.random_seed == 0:
