@@ -116,7 +116,7 @@ class Trainer(object):
                 self.stats.losses = mon.measurements
                 self.stats.accuracies = observed_acc
 
-                print(f'Highest accuracy observed with validation period {self.self.val_epochs}: {self.stats.highest_observed_accuracy*100.0:.3f}%')
+                print(f'Highest accuracy observed with validation period {self.val_epochs}: {self.stats.highest_observed_accuracy:.3f}%')
             return wrapper
 
         @classmethod       

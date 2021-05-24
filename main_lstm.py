@@ -39,7 +39,6 @@ parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretra
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
-parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
 parser.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
@@ -50,10 +49,6 @@ parser.add_argument('--random_seed', default=0, type=int, help='Seed for random 
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
-
-# If subset is enabled, use this configuration for selecting subset
-subset_categories = {-1: 10, 10: 390}
-ditch_categories = []
 
 # Set random seed
 if args.random_seed == 0:
@@ -74,8 +69,8 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
 run_id = f'lstm_{data_filename}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
-if args.subset:
-    run_id += FlowsSubset.subset_string(subset_categories, ditch_categories, args.subset_config)
+if not args.subset_config is None:
+    run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
 if args.debug:
     run_id += '_debug'
 
@@ -127,8 +122,11 @@ else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
-if args.subset:
-    train_data = FlowsSubset(train_data, category_mapping, subset_categories, ditch=ditch_categories)
+if not args.subset_config is None:
+    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN")
+    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE")
+    if args.self_supervised > 0:
+        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN")
 
 # Init data loaders
 if args.self_supervised > 0:
@@ -177,7 +175,7 @@ stats = statistics.Stats(
     learning_rate = args.learning_rate,
     model_parameters = model_parameters,
     random_seed = random_seed,
-    subset = args.subset
+    subset = os.path.basename(args.subset_config)[:-5]
 )
 
 # Init summary writer for TensorBoard

@@ -28,8 +28,6 @@ class Monitor():
         self.agr = agr
         self._percent_interval = iterations // 100 if iterations // 100 > 0 else 1
         self._interval = iterations // n_measurements if iterations // n_measurements > 0 else 1
-        self._prev_timer = timer()
-        self._timer = timer()
         self._seq = []
         self._agr_seq = [] 
         self._i = 0
@@ -37,7 +35,6 @@ class Monitor():
         self._end_time = None  
         self._progress = 0
         self._time_left_s = -1
-        self._time_left_s_last = -1
         if not json_dir == None:
             self._json_dir = json_dir if json_dir[-1] == '/' else json_dir+'/'
 
@@ -83,11 +80,9 @@ class Monitor():
         if (self._i-1) % self._interval == 0:
 
             # Calculate expected time left
-            self._prev_timer = self._timer
-            self._timer = timer()
-            interval_time = self._timer - self._prev_timer
-            self._time_left_s_last = self._time_left_s
-            self._time_left_s = int(float(interval_time) * float(self.iterations - self._i) / float(self._interval))
+            time_passed = timer() - self._start_time
+            time_per_iteration = float(time_passed) / float(self._i)
+            self._time_left_s = int(time_per_iteration * float(self.iterations - self._i))
             
             # Calculate aggregate
             if self.agr == self.Aggregate.NONE:
@@ -106,11 +101,7 @@ class Monitor():
     @property
     def time_left(self):
         if self._time_left_s >= 0:
-            # If last value available, return avg.
-            if self._time_left_s_last >= 0:
-                return formatTime((self._time_left_s + self._time_left_s_last) // 2)
-            else:
-                return formatTime(self._time_left_s)
+            return formatTime(self._time_left_s)
         # If called before first call of __call__ function, return 0
         else:
             return formatTime(0)

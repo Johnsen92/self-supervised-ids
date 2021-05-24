@@ -4,6 +4,7 @@ import pickle
 from torch.utils.data import random_split, DataLoader
 from torch import optim, nn
 from classes import datasets, lstm, statistics, utils, transformer, trainer
+from classes.datasets import Flows, FlowsSubset
 import torchvision
 import torch
 import os.path
@@ -36,6 +37,7 @@ parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='
 # ---------------------- Training config -----------------------
 parser.add_argument('-y', '--proxy_task', default=trainer.Transformer.ProxyTask.NONE, type=lambda proxy_task: trainer.Transformer.ProxyTask[proxy_task], choices=list(trainer.Transformer.ProxyTask))
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
+parser.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
@@ -88,7 +90,7 @@ extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stat
 # Load dataset and normalize data, or load from cache
 cache_filename = 'dataset_normalized'
 if not args.no_cache and not cache.exists(cache_filename, no_prefix=True):
-    dataset = datasets.Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
+    dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
@@ -125,7 +127,10 @@ else:
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
 if args.subset:
-    train_data = dataset.specialized_set(train_data, {-1: 10, 10: 390})
+    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN")
+    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE")
+    if args.self_supervised > 0:
+        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN")
 
 # Init data loaders
 if args.self_supervised > 0:
@@ -193,7 +198,7 @@ stats = statistics.Stats(
     learning_rate = args.learning_rate,
     model_parameters = model_parameters,
     random_seed = random_seed,
-    subset = args.subset
+    subset = os.path.basename(args.subset_config)[:-5]
 )
 
 # Init summary writer for TensorBoard
