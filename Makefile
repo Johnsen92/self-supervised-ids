@@ -6,9 +6,9 @@ RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
 LSTM_PRETRAININGS:=OBSCURE MASK PREDICT AUTO
 TRANSFORMER_PRETRAININGS:=MASK AUTO
-CYCLE_PRETRAINING_PARAMETERS:=-s 899 -E 10 -e 300 -V 25
-CYCLE_TRAINING_PARAMETERS:=-p 1 -e 300 -V 25 --no_cache --random_seed 556
-DATASET:=./data/flows15.pickle
+CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10 -e 300 -V 10
+CYCLE_TRAINING_PARAMETERS:=-p 100 -e 300 -V 10 --no_cache --random_seed 556 --subset
+DATASET:=./data/flows.pickle
 
 clean:
 	rm ${CACHE_DIR}/*

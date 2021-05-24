@@ -110,6 +110,10 @@ validation_size = int(round((n_samples * args.val_percent) / 1000.0))
 supervised_size = int(round((n_samples * args.train_percent) / 1000.0))
 pretraining_size = int(round((n_samples * args.self_supervised) / 1000.0))
 
+# correct for rounding error
+if (validation_size + supervised_size + pretraining_size) - n_samples == 1:
+    validation_size -= 1
+
 # If debug flag is set, use exactly one batch for pretraining, training and validation
 if args.debug:
     validation_size = supervised_size = pretraining_size = args.batch_size
