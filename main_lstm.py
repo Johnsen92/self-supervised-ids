@@ -87,7 +87,7 @@ cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disab
 extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
 
 # Load dataset and normalize data, or load from cache
-cache_filename = 'dataset_normalized' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
+cache_filename = f'dataset_normalized_{data_filename}' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
 if not cache.exists(cache_filename, no_prefix=True):
     dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')

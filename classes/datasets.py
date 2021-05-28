@@ -134,7 +134,10 @@ class FlowsSubset(Subset):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
-        dist = config[key]["dist"]
+        dist_string = config[key]["dist"]
+        dist = {}
+        for k, v in dist_string.items():
+            dist[int(k)] = v
         ditch = config[key]["ditch"]
 
         return dist, ditch
