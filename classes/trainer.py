@@ -37,86 +37,104 @@ class Trainer(object):
                 mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title=self.title, json_dir=self.json)
 
                 # Train the model
-                print('Training model...')
-                observed_acc = []
-                for epoch in range(self.epochs):
-                    losses_epoch = []
-                    for batch_data in self.training_data:
-                        if self._scaler is None:
-                            # --------- Decorated function -----------
-                            loss = training_function(self, batch_data)
-                            # ----------------------------------------
-
-                            # Reset optimizer loss
-                            self.optimizer.zero_grad()
-
-                            # Unscaled backward propagation
-                            loss.backward()
-                            
-                            # Clip gradient to prevent exploding gradient
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
-                            
-                            # Optimizer step in direction of gradient
-                            self.optimizer.step()
-                        else:
-                            with torch.cuda.amp.autocast():
+                chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_' + self.cache_filename + str(self.training_data.dataset) + '.sdc'
+                if self.cache.disabled or not os.path.isfile(chache_file_name):
+                    print('Training model...')
+                    observed_acc = []
+                    for epoch in range(self.epochs):
+                        losses_epoch = []
+                        for batch_data in self.training_data:
+                            if self._scaler is None:
                                 # --------- Decorated function -----------
                                 loss = training_function(self, batch_data)
                                 # ----------------------------------------
 
-                            # Reset optimizer loss
-                            self.optimizer.zero_grad()
+                                # Reset optimizer loss
+                                self.optimizer.zero_grad()
 
-                            # Scaled backward propagation
-                            self._scaler.scale(loss).backward()
+                                # Unscaled backward propagation
+                                loss.backward()
+                                
+                                # Clip gradient to prevent exploding gradient
+                                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+                                
+                                # Optimizer step in direction of gradient
+                                self.optimizer.step()
+                            else:
+                                with torch.cuda.amp.autocast():
+                                    # --------- Decorated function -----------
+                                    loss = training_function(self, batch_data)
+                                    # ----------------------------------------
 
-                            # Unscales the gradients of optimizer's assigned params in-place
-                            self._scaler.unscale_(self.optimizer)
+                                # Reset optimizer loss
+                                self.optimizer.zero_grad()
 
-                            # Clip gradient to prevent exploding gradient
-                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
+                                # Scaled backward propagation
+                                self._scaler.scale(loss).backward()
 
-                            # Scaled optimizer update step
-                            self._scaler.step(self.optimizer)
-                            self._scaler.update()
+                                # Unscales the gradients of optimizer's assigned params in-place
+                                self._scaler.unscale_(self.optimizer)
 
-                        # Plot to tensorboard
-                        self.writer.add_scalar(self.title + ' loss', loss, global_step=mon.iter)
+                                # Clip gradient to prevent exploding gradient
+                                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1)
 
-                        # Append loss for avg epoch loss calculation to be used in learning rate scheduler
-                        losses_epoch.append(loss.item())
+                                # Scaled optimizer update step
+                                self._scaler.step(self.optimizer)
+                                self._scaler.update()
 
-                        # Calculate time left and save avg. loss of last interval
-                        if mon(loss.item()):
-                            time_left_h, time_left_m = mon.time_left
-                            print (f'{self.title}, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
-                    
-                    # Free up unused variables
-                    gc.collect()
+                            # Plot to tensorboard
+                            self.writer.add_scalar(self.title + ' loss', loss, global_step=mon.iter)
 
-                    # Update scheduler
-                    mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
-                    #self.scheduler.step(mean_loss_epoch)
+                            # Append loss for avg epoch loss calculation to be used in learning rate scheduler
+                            losses_epoch.append(loss.item())
 
-                    # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
-                    validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
-                    if self.validation and (epoch == self.epochs-1 or validate_periodically):
-                        accuracy, loss = self.validate()
-                        self.model.train()
-                        observed_acc.append((epoch, accuracy))
-                        self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
-                        self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
+                            # Calculate time left and save avg. loss of last interval
+                            if mon(loss.item()):
+                                time_left_h, time_left_m = mon.time_left
+                                print (f'{self.title}, Epoch [{epoch+1}/{self.epochs}], Step [{mon.iter}/{self.epochs*self.n_batches}], Moving avg. Loss: {mon.measurements[-1]:.4f}, Time left: {time_left_h}h {time_left_m}m')
+                        
+                        # Free up unused variables
+                        gc.collect()
 
-                # Assert that validation has been executed at least once
-                if self.validation:
-                    assert len(observed_acc) > 0
+                        # Update scheduler
+                        mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
+                        #self.scheduler.step(mean_loss_epoch)
 
-                # Set stats
-                self.stats.add_monitor(mon)
-                self.stats.losses = mon.measurements
-                self.stats.accuracies = observed_acc
+                        # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
+                        validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
+                        if self.validation and (epoch == self.epochs-1 or validate_periodically):
+                            accuracy, loss = self.validate()
+                            self.model.train()
+                            observed_acc.append((epoch, accuracy))
+                            self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
+                            self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
 
-                print(f'Highest accuracy observed with validation period {self.val_epochs}: {self.stats.highest_observed_accuracy:.3f}%')
+                    # Assert that validation has been executed at least once
+                    if self.validation:
+                        assert len(observed_acc) > 0
+                        self.stats.accuracies = observed_acc
+                        print(f'Highest accuracy observed with validation period {self.val_epochs}: {self.stats.highest_observed_accuracy:.3f}%')
+
+                    # Set stats
+                    self.stats.add_monitor(mon)
+                    self.stats.losses = mon.measurements   
+
+                    # Store trained model
+                    print(f'Storing model to cache {chache_file_name}...',end='')
+                    torch.save(self.model.state_dict(), chache_file_name)
+                    print('done')
+
+                    # Store statistics object
+                    self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+                else:
+                    # Load cached model
+                    print(f'(Cache) Loading trained model {chache_file_name}...',end='')
+                    self.model.load_state_dict(torch.load(chache_file_name))
+                    print('done')
+
+                    if self.cache.exists('stats'):
+                        # Load statistics object
+                        self.stats = self.cache.load('stats', msg='Loading statistics object')
             return wrapper
 
         @classmethod       

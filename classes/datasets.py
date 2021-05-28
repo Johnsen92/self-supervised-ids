@@ -47,6 +47,7 @@ class Flows(Dataset):
         self.data_pickle = data_pickle
         self.max_length = max_length
         self.remove_changeable = remove_changeable
+        self.data_filename = os.path.basename(data_pickle)[:-7]
 
         # Load pickled dataset
         with open(data_pickle, 'rb') as f:
@@ -120,6 +121,9 @@ class Flows(Dataset):
                 break
         assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)
+
+    def __str__(self):
+        return self.data_filename
 
 # dist: contains the dictionary of (category, value) pairs for how many samples to keep in the set (if available).  
 # (-1, def) def is the new default value for all categories that are not listed in the dictionary
