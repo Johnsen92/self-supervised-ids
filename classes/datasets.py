@@ -121,31 +121,40 @@ class Flows(Dataset):
         assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)
 
-# dist: contains the dictionary of category - values pairs for samples to keep in the set.  
-# -1 is the new default value for all categories that are not listed in the dictionary
-# If -1 does not appear in the dictionary, the default value is ALL (large int)
+# dist: contains the dictionary of (category, value) pairs for how many samples to keep in the set (if available).  
+# (-1, def) def is the new default value for all categories that are not listed in the dictionary
+# If key -1 does not appear in the dictionary, the default value is ALL (large int)
 # ditch: contains a list of all categories to be removed from the set completely. 
-# If the list contains -1, the function is inverted so all categories that do not appear 
+# If the list contains -1, the selection is inverted so all categories that do not appear 
 # in the list are ditched. ditch and dist can be used simultaneously
 class FlowsSubset(Subset):
     # Parse subset configuration from json file
-    def parse(config_file, key):
+    def parse(config_file, key, index=-1):
         assert os.path.isfile(config_file)
         with open(config_file, 'r') as f:
             config = json.load(f)
 
-        dist_string = config[key]["dist"]
+        # If config file contains multiple configs, select given index
+        if index == -1:
+            dist_string = config[key]["dist"]
+            ditch = config[key]["ditch"]
+        elif index >= 0:
+            dist_string = config[str(index)][key]["dist"]
+            ditch = config[str(index)][key]["ditch"]
+        else:
+            print(f'Invalid subset config index: {index}')
+
+        # Cast string to int for dist dictionary
         dist = {}
         for k, v in dist_string.items():
             dist[int(k)] = v
-        ditch = config[key]["ditch"]
 
         return dist, ditch
 
     # parse config from file an stringify config
-    def subset_string(dist={}, ditch=[], config_file=None):
+    def subset_string(dist={}, ditch=[], config_file=None, config_index=-1):
         if not config_file is None:
-            dist, ditch = FlowsSubset.parse(config_file)
+            dist, ditch = FlowsSubset.parse(config_file, config_index)
         return FlowsSubset.string(dist, ditch)
 
     # stringify config
@@ -168,10 +177,10 @@ class FlowsSubset(Subset):
 
         return subset_string
 
-    def __init__(self, flows_dataset, mapping, dist={}, ditch=[], config_file=None, key="TRAIN"):
+    def __init__(self, flows_dataset, mapping, dist={}, ditch=[], config_file=None, key="TRAIN", config_index=-1):
         self.mapping = mapping
         if not config_file is None:
-            dist, ditch = FlowsSubset.parse(config_file, key)
+            dist, ditch = FlowsSubset.parse(config_file, key, config_index)
         
         if -1 in [c for c, _ in dist.items()]:
             default = dist[-1]

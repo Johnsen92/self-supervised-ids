@@ -40,6 +40,7 @@ parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validati
 parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
 parser.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
+parser.add_argument('-i', '--subset_config_index', default=-1, type=int, help='If the subset configuration file contains multiple configurations, this index is needed')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
@@ -123,10 +124,10 @@ else:
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
 if not args.subset_config is None:
-    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN")
-    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE")
+    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN", config_index=args.subset_config_index)
+    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE", config_index=args.subset_config_index)
     if args.self_supervised > 0:
-        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN")
+        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN", config_index=args.subset_config_index)
 
 # Init data loaders
 if args.self_supervised > 0:
