@@ -140,11 +140,13 @@ class FlowsSubset(Subset):
 
         # If config file contains multiple configs, select given index
         if index == -1:
-            dist_string = config[key]["dist"]
-            ditch = config[key]["ditch"]
+            dist_string = config[key]["dist"] if "dist" in config[key].keys() else {}
+            ditch = config[key]["ditch"] if "ditch" in config[key].keys() else []
+            mult_string = config[key]["mult"] if "mult" in config[key].keys() else {}
         elif index >= 0:
-            dist_string = config[str(index)][key]["dist"]
-            ditch = config[str(index)][key]["ditch"]
+            dist_string = config[str(index)][key]["dist"] if "dist" in config[str(index)][key].keys() else {}
+            ditch = config[str(index)][key]["ditch"] if "ditch" in config[str(index)][key].keys() else []
+            mult_string = config[str(index)][key]["mult"] if "mult" in config[str(index)][key].keys() else {}
         else:
             print(f'Invalid subset config index: {index}')
 
@@ -153,19 +155,24 @@ class FlowsSubset(Subset):
         for k, v in dist_string.items():
             dist[int(k)] = v
 
-        return dist, ditch
+        # Cast string to int for mult dictionary
+        mult = {}
+        for k, v in mult_string.items():
+            mult[int(k)] = v
+
+        return dist, ditch, mult
 
     # parse config from file an stringify config
-    def subset_string(dist={}, ditch=[], config_file=None, config_index=-1):
+    def subset_string(dist={}, ditch=[], mult={}, config_file=None, config_index=-1):
         if not config_file is None:
-            dist, ditch = FlowsSubset.parse(config_file, config_index)
-        return FlowsSubset.string(dist, ditch)
+            dist, ditch, mult = FlowsSubset.parse(config_file, config_index)
+        return FlowsSubset.string(dist, ditch, mult)
 
     # stringify config
-    def string(dist, ditch):
+    def string(dist, ditch, mult):
         subset_string = ''
 
-        # stringify class distribution
+        # stringify dist dictionary
         if len(dist.items()) > 0:
             subset_string += '_dist['
             for c,v in dist.items():
@@ -179,12 +186,19 @@ class FlowsSubset(Subset):
                 subset_string += f'{c},'
             subset_string = subset_string[:-1] + ']'
 
+        # stringify mult dictionary
+        if len(mult.items()) > 0:
+            subset_string += '_mult['
+            for c,v in mult.items():
+                subset_string += f'{c}:{v[0]}x{v[1]},'
+            subset_string = subset_string[:-1] + ']'
+
         return subset_string
 
-    def __init__(self, flows_dataset, mapping, dist={}, ditch=[], config_file=None, key="TRAIN", config_index=-1):
+    def __init__(self, flows_dataset, mapping, dist={}, ditch=[], mult={}, config_file=None, key="TRAIN", config_index=-1):
         self.mapping = mapping
         if not config_file is None:
-            dist, ditch = FlowsSubset.parse(config_file, key, config_index)
+            dist, ditch, mult = FlowsSubset.parse(config_file, key, config_index)
         
         if -1 in [c for c, _ in dist.items()]:
             default = dist[-1]
@@ -200,9 +214,11 @@ class FlowsSubset(Subset):
             for c in ditch:
                 subset_ditch.remove(c)
 
-        # Parse how many samples from each category should be collected
+        # Parse absolute number of samples of each category should be collected from dist (and set defaults)
         self._dist = dist
         self._ditch = ditch
+        self._mult = mult
+        self.set_count = {}
         self.subset_num = {}
         self.subset_count = {}
         self.subset_samples = []
@@ -211,9 +227,25 @@ class FlowsSubset(Subset):
                 self.subset_num[val] = dist[val]
             else:
                 self.subset_num[val] = default
-            self.subset_count[val] = 0
 
-        # Set all categories that appear in the ditch list to 0
+            # Init set and subset counters
+            self.subset_count[val] = 0
+            self.set_count[val] = 0
+
+        # If mult is not empty, count items in set to determine if there are more or less flows of the categories to be used for multiplication
+        if len(mult.items()) > 0:
+            for idx, (_, _, cat) in enumerate(flows_dataset):
+                c = cat[0].item()
+                self.set_count[c] += 1
+
+            # Parse relative number of samples of each category should be collected from mult
+            for _, val in self.mapping.items():
+                if val in [c for c, _ in mult.items()]:
+                    base_index = mult[val][0]
+                    factor = mult[val][1]
+                    self.subset_num[val] = min(self.set_count[base_index], self.subset_num[base_index]) * factor
+
+        # Set all categories that appear in the ditch list to 0 (or don't appear in the list if the list contains -1)
         for c in subset_ditch:
             self.subset_num[c] = 0
 
@@ -227,10 +259,13 @@ class FlowsSubset(Subset):
                 self.subset_count[c] += 1
                 self.subset_samples.append(idx)
         super().__init__(flows_dataset, self.subset_samples)
+
+        
+
         print('done')
         print(f'Gathered for {key}: {self.subset_count}')
 
     def __str__(self):
-        return FlowsSubset.string(self._dist, self._ditch)
+        return FlowsSubset.string(self._dist, self._ditch, self._mult)
 
     

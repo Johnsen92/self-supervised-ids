@@ -2,7 +2,7 @@
 	"0":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,0,10]
+			"ditch":["-1","a0","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -10,13 +10,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,0,10]
+			"ditch":["-1","a0","ax10"]
 		}
 	},
 	"1":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,1,10]
+			"ditch":["-1","a1","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -24,13 +24,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,1,10]
+			"ditch":["-1","a1","ax10"]
 		}
 	},
 	"2":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,2,10]
+			"ditch":["-1","a2","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -38,13 +38,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,2,10]
+			"ditch":["-1","a2","ax10"]
 		}
 	},
 	"3":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,3,10]
+			"ditch":["-1","a3","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -52,13 +52,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,3,10]
+			"ditch":["-1","a3","ax10"]
 		}
 	},
 	"4":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,4,10]
+			"ditch":["-1","a4","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -66,13 +66,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,4,10]
+			"ditch":["-1","a4","ax10"]
 		}
 	},
 	"5":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,5,10]
+			"ditch":["-1","a5","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -80,13 +80,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,5,10]
+			"ditch":["-1","a5","ax10"]
 		}
 	},
 	"6":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,6,10]
+			"ditch":["-1","a6","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -94,13 +94,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,6,10]
+			"ditch":["-1","a6","ax10"]
 		}
 	},
 	"7":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,7,10]
+			"ditch":["-1","a7","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -108,13 +108,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,7,10]
+			"ditch":["-1","a7","ax10"]
 		}
 	},
 	"8":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,8,10]
+			"ditch":["-1","a8","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -122,13 +122,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,8,10]
+			"ditch":["-1",8,"ax10"]
 		}
 	},
 	"9":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,9,10]
+			"ditch":["-1",9,"ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -136,13 +136,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,9,10]
+			"ditch":["-1",9,"ax10"]
 		}
 	},
 	"10":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,11,10]
+			"ditch":["-1",11,"ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -150,13 +150,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,11,10]
+			"ditch":["-1",11,"ax10"]
 		}
 	},
 	"11":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,12,10]
+			"ditch":["-1","a12","ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -164,13 +164,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,12,10]
+			"ditch":["-1","a12","ax10"]
 		}
 	},
 	"12":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,13,10]
+			"ditch":["-1",13,"ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -178,13 +178,13 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,13,10]
+			"ditch":["-1",13,"ax10"]
 		}
 	},
 	"13":{
 		"TRAIN":{
 			"dist":{},
-			"ditch":[-1,14,10]
+			"ditch":["-1",14,"ax10"]
 		},
 		"PRETRAIN":{
 			"dist":{},
@@ -192,7 +192,7 @@
 		},
 		"VALIDATE":{
 			"dist":{},
-			"ditch":[-1,14,10]
+			"ditch":["-1",14,"ax10"]
 		}
 	}	
 }
