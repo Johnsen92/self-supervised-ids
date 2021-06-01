@@ -68,3 +68,7 @@ lstm_single_category:
 	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
     	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} -i $$index ; \
 	done
+
+debug:
+	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
+

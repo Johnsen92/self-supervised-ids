@@ -4,6 +4,7 @@ from timeit import default_timer as timer
 from datetime import timedelta
 from .utils import Cache
 from .statistics import Stats, Monitor
+from .datasets import Flows
 import math
 from torch import nn
 from torch.utils.data import DataLoader
@@ -24,6 +25,13 @@ def memory_dump():
     for d in dataframes:
         print(d.columns.values)
         print(len(d))
+
+def get_nth_split(dataset, n_fold, index, maxSize):
+	dataset_size = len(dataset)
+	indices = list(range(dataset_size))
+	bottom, top = int(math.floor(float(dataset_size)*index/n_fold)), int(math.floor(float(dataset_size)*(index+1)/n_fold))
+	train_indices, test_indices = indices[0:bottom]+indices[top:], indices[bottom:top]
+	return train_indices[:maxSize], test_indices[:maxSize]
 
 class Trainer(object):
     class TrainerDecorators(object):
@@ -139,6 +147,7 @@ class Trainer(object):
 
         @classmethod       
         def validation_wrapper(cls, validation_function):
+            @torch.no_grad()
             def wrapper(self, *args, **kw):
                 # Put model into evaluation mode
                 self.model.eval()
@@ -150,9 +159,9 @@ class Trainer(object):
                     validation_losses = []
                     self.stats.class_stats.reset()
                     for batch_data in self.validation_data:
-
+                        
                         # -------------------------- Decorated function --------------------------
-                        loss, predicted, target, categories = validation_function(self, batch_data)
+                        loss, normalized_logits, predicted, target, categories = validation_function(self, batch_data)
                         # ------------------------------------------------------------------------
 
                         # Evaluate results
@@ -177,7 +186,7 @@ class Trainer(object):
                 print(f'Validation size {self.stats.val_percent}%: Accuracy {(self.stats.accuracy * 100.0):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%, Mean loss: {mean_loss:.3f}')
                 return self.stats.accuracy, mean_loss
             return wrapper
-    
+
     def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False):
         # Strings to be used for file and console outputs
         self.title = "Training"
@@ -329,7 +338,7 @@ class Transformer():
             # Calculate loss
             loss = self.criterion(logits, targets)
 
-            return loss, predicted, targets, categories
+            return loss, sigmoided_output, predicted, targets, categories
 
     class Interpolation(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
@@ -561,7 +570,74 @@ class LSTM():
             lab_view = labels[mask].view(-1)
             loss = self.criterion(op_view, lab_view)
 
-            return loss, predicted, targets, categories
+            return loss, sigmoided_output, predicted, targets, categories
+
+        @torch.no_grad()
+        def pdp(self):
+
+            feature_names = ["srcPort", "dstPort"]
+            n_fold = 3
+            fold = 0
+            self.model.eval()
+
+            _, test_indices = get_nth_split(self.validation_data, n_fold, fold)
+            subset = torch.utils.data.Subset(self.validation_data, test_indices)
+
+            attack_numbers = self.stats.mapping.values()
+
+            results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+            feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+
+            minmax = {feat_ind: (min((sample[0,feat_ind] for sample in subset.x)), max((sample[0,feat_ind] for sample in subset.x))) for feat_ind in [0,1] }
+            # TODO: consider fold
+            for attack_number in range(max(attack_numbers)+1):
+
+                matching = [item for item in subset if int(item[2][0,0]) == attack_number]
+                if len(matching) <= 0:
+                    break
+                matching = matching[:1000]
+                good_subset = Flows(*zip(*matching))
+                print("len(good_subset)", len(good_subset))
+
+                print("attack_number", attack_number)
+                results_for_attack_type = []
+                for feat_name, feat_ind in zip(feature_names, (0, 1)):
+                    feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in matching])*stds[feat_ind] + means[feat_ind])
+
+                    feat_min, feat_max = minmax[feat_ind]
+
+                    values = np.linspace(feat_min, feat_max, 100)
+
+                    # subset = [ torch.FloatTensor(sample) for sample in x[:opt.batchSize] ]
+
+                    pdp = np.zeros([values.size])
+
+                    for i in range(values.size):
+                        # good_subset.data consists of torch tensors. We are therefore able to
+                        # modify the dataset directly using the return value of __getitem__().
+                        # This does not modify the global dataset, which holds the data as numpy
+                        # arrays.
+                        for index, sample in enumerate(good_subset):
+                            # if index % 1000 == 0:
+                            # 	print("attack_number", attack_number, "feat_name", feat_name, "index", index)
+                            for j in range(sample[0].shape[0]):
+                                sample[0][j,feat_ind] = values[i]
+                        outputs = eval_nn(good_subset)
+                        # TODO: avg. or end output?
+                        pdp[i] = np.mean( np.array([numpy_sigmoid(output[-1]) for output in outputs] ))
+
+                    rescaled = values * stds[feat_ind] + means[feat_ind]
+                    # os.makedirs(PDP_DIR, exist_ok=True)
+                    results_for_attack_type.append(np.vstack((rescaled,pdp)))
+                    # print("result.shape", result.shape)
+                    # np.save('%s/%s.npy' % (PDP_DIR, feat_name), result)
+
+                else:
+                    results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
+
+            file_name = opt.dataroot[:-7]+"_pdp_outcomes_{}_{}.pickle".format(opt.fold, opt.nFold)
+            with open(file_name, "wb") as f:
+                pickle.dump({"results_by_attack_number": results_by_attack_number, "feature_names": feature_names, "feature_values_by_attack_number": feature_values_by_attack_number}, f)
 
     class PredictPacket(Trainer):
         def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):

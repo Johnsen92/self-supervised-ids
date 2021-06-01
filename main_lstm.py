@@ -176,7 +176,7 @@ stats = statistics.Stats(
     learning_rate = args.learning_rate,
     model_parameters = model_parameters,
     random_seed = random_seed,
-    subset = os.path.basename(args.subset_config)[:-5]
+    subset = os.path.basename(args.subset_config)[:-5] if not args.subset_config is None else ''
 )
 
 # Init summary writer for TensorBoard

@@ -8,9 +8,8 @@ from datetime import timedelta
 import json
 import os
 import errno
-from collections import Counter
-from matplotlib.lines import Line2D
-from matplotlib.patches import Rectangle
+from sklearn.inspection import plot_partial_dependence
+import matplotlib.pyplot as plt
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -303,6 +302,14 @@ class Stats():
         fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         #plt.show()
 
+    def plot_pdp(self, X, Y, mapping, features=[0], category=0):
+        pdp_plot = PDPlot(X, Y, mapping)
+        pdp_plot.plot(features, category)
+
+    @property
+    def mapping(self):
+        return self.class_stats.mapping if not self.class_stats is None else {}
+
     @property
     def accuracy(self):
         assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
@@ -342,16 +349,51 @@ class Stats():
         else:
             return max([acc for _, acc in self.accuracies]) * 100.0
 
-class DPPlot():
-    def __init__(self, categories_mapping, mapping, results_by_attack_number, feature_names, feature_values_by_attack_number, file_name):
-        reverse_mapping = {v: k for k, v in mapping.items()}
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+class PDPlot():
+    def __init__(self, X, Y, mapping):
+        self.X = X
+        self.Y = Y
+        self.mapping = mapping
 
-        DIR_NAME = "plots/plot_pdp"
+    def plot(self, features=[0], category=0):
+        plot_partial_dependence(self.Y, self.X, features, target=category)
+        plt.gcf()
+        plt.gca()
 
-        display_names = {'srcPort': 'Source port', 'dstPort': 'Destination port'}
 
-        for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
+class OldPDPlot():
+    def __init__(self, categories_mapping, mapping, file_name, plot_dir="plots/plot_pdp"):
+        self.categories_mapping = categories_mapping
+        self.mapping = mapping
+        self.reverse_mapping = {v: k for k, v in mapping.items()}
+        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        self.plot_dir = plot_dir
+        self.display_names = {'srcPort': 'Source port', 'dstPort': 'Destination port'}
+        attack_numbers = mapping.values()
+        self.results_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+        self.label_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+        self.sample_indices_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+        self.feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+        self.samples = 0
+
+    def add_batch(self, input, output, seq_lens, categories, labels):
+        # Data is (Sequence Index, Batch Index, Feature Index)
+        for batch_index in range(output.shape[0]):
+            flow_length = seq_lens[batch_index]
+            flow_input = input[batch_index,:flow_length,:].detach().cpu().numpy()
+            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+            assert (categories[batch_index, 0,:] == categories[batch_index, :flow_length,:]).all()
+            flow_category = int(categories[batch_index, 0,:].squeeze().item())
+            flow_label = int(labels[batch_index, 0,:].squeeze().item())
+
+            self.results_by_attack_number[flow_category].append(np.concatenate((flow_input, flow_output), axis=-1))
+            self.label_by_attack_number[flow_category] = flow_label
+            self.sample_indices_by_attack_number[flow_category].append(test_indices[samples])
+
+            self.samples += 1
+
+    def plot(self):
+        for attack_type, (all_features, all_features_values) in enumerate(zip(self.results_by_attack_number, self.feature_values_by_attack_number)):
 
             print("attack_type", attack_type)
             fig, ax1 = plt.subplots(figsize=(5,2.4))
@@ -371,7 +413,7 @@ class DPPlot():
             # print("all_features.shape", all_features.shape)
             all_legends = []
             all_labels = []
-            for feature_name, feature_index in zip(feature_names, range(all_features.shape[0])):
+            for feature_name, feature_index in zip(self.feature_names, range(self.all_features.shape[0])):
 
                 as_ints = list(all_features_values[feature_index].astype(np.int32))
 
@@ -383,13 +425,13 @@ class DPPlot():
                 values = counted.values()
 
                 # print("keys", keys, "values", values)
-                ret1 = ax1.bar(keys, values, width=1000, color=colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
+                ret1 = ax1.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
 
-                ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=colors[feature_index], label="{} confidence".format(feature_name))
+                ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
                 # all_legends.append(feature_name)
                 # print("legend", legend)
-                all_legends.append(Rectangle((0,0), 1, 1, color=colors[feature_index]))
-                all_labels.append(display_names[feature_name])
+                all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[feature_index]))
+                all_labels.append(self.display_names[feature_name])
                 # all_legends += ret2
 
             # plt.title(reverse_mapping[attack_type])
@@ -407,6 +449,7 @@ class DPPlot():
             #plt.savefig('%s.pdf' % os.path.splitext(fn)[0])
             # plt.show()
 
-            os.makedirs(DIR_NAME, exist_ok=True)
-            plt.savefig(DIR_NAME+'/{}_{}_{}.pdf'.format(file_name.split("/")[-1], attack_type, reverse_mapping[attack_type].replace("/", "-").replace(":", "-")), bbox_inches = 'tight', pad_inches = 0)
+            os.makedirs(self.plot_dir, exist_ok=True)
+            plt.savefig(self.plot_dir+'/{}_{}_{}.pdf'.format(self.file_name.split("/")[-1], attack_type, self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")), bbox_inches = 'tight', pad_inches = 0)
             plt.clf()
+
