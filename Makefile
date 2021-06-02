@@ -9,8 +9,8 @@ LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PRETRAININGS:=MASK AUTO
 SUBSET_FILE=single_category_cic2017_ratio.json
-CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10 -V 10
-CYCLE_TRAINING_PARAMETERS:=-p 100 -e 100 -V 10 --random_seed 556 -G ./subsets/${SUBSET_FILE} -b 256
+CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10
+CYCLE_TRAINING_PARAMETERS:=-p 100 -e 100 -V 10 --random_seed 556 -G ./subsets/${SUBSET_FILE} -b 100
 DATASET:=./data/flows.pickle
 
 clean:
@@ -59,7 +59,12 @@ transformer_test_cycle:
 	done
 	python3 main_trans.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} -d
 
+lstm_single_category_pretraining:
+	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
+    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y AUTO -i $$index ; \
+	done
+
 lstm_single_category:
 	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
-    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y PREDICT -i $$index ; \
+    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} -i $$index ; \
 	done
