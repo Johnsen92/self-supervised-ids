@@ -61,7 +61,7 @@ transformer_test_cycle:
 
 lstm_single_category_pretraining:
 	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
-    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y AUTO -i $$index ; \
+    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y BIAUTO -i $$index ; \
 	done
 
 lstm_single_category:
