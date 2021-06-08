@@ -2,9 +2,10 @@ import os.path
 import torch
 from timeit import default_timer as timer
 from datetime import timedelta
-from .utils import Cache
+from classes import utils, datasets
 from .statistics import Stats, Monitor
-from .datasets import Flows
+from .datasets import Flows, FlowsSubset
+from .utils import Cache
 import math
 from torch import nn
 from torch.utils.data import DataLoader
@@ -15,6 +16,9 @@ import gc
 from pympler import muppy, summary
 from pandas import DataFrame
 from enum import Enum
+from torch.utils.data import Dataset, Subset
+import numpy as np
+import pickle
 
 def memory_dump():
     # Add to leaky code within python_script_being_profiled.py
@@ -574,35 +578,28 @@ class LSTM():
 
         @torch.no_grad()
         def pdp(self):
-
-            feature_names = ["srcPort", "dstPort"]
-            n_fold = 3
-            fold = 0
             self.model.eval()
-
-            _, test_indices = get_nth_split(self.validation_data, n_fold, fold)
-            subset = torch.utils.data.Subset(self.validation_data, test_indices)
-
-            attack_numbers = self.stats.mapping.values()
-
+            attack_numbers = self.stats.class_stats.mapping.values()
+            feature_names = ["srcPort", "dstPort"]
             results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
             feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+            #batch_size = self.validation_data.batch_size
+            batch_size = 24
+            minmax = self.validation_data.dataset.minmax
+            stds = self.validation_data.dataset.stds
+            means = self.validation_data.dataset.stds
 
-            minmax = {feat_ind: (min((sample[0,feat_ind] for sample in subset.x)), max((sample[0,feat_ind] for sample in subset.x))) for feat_ind in [0,1] }
-            # TODO: consider fold
             for attack_number in range(max(attack_numbers)+1):
-
-                matching = [item for item in subset if int(item[2][0,0]) == attack_number]
-                if len(matching) <= 0:
-                    break
-                matching = matching[:1000]
-                good_subset = Flows(*zip(*matching))
+                good_subset = FlowsSubset(self.validation_data.dataset, self.stats.class_stats.mapping, dist={attack_number: 1000}, ditch=[-1, attack_number])
+                #matching = [item for item in subset if int(item[2][0,0]) == attack_number]
                 print("len(good_subset)", len(good_subset))
-
+                if len(good_subset) < batch_size:
+                    print(f'Did not find enough samples ({len(good_subset)}) for attack category {attack_number}. Continuing...')
+                    continue
                 print("attack_number", attack_number)
                 results_for_attack_type = []
                 for feat_name, feat_ind in zip(feature_names, (0, 1)):
-                    feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in matching])*stds[feat_ind] + means[feat_ind])
+                    feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
 
                     feat_min, feat_max = minmax[feat_ind]
 
@@ -622,9 +619,20 @@ class LSTM():
                             # 	print("attack_number", attack_number, "feat_name", feat_name, "index", index)
                             for j in range(sample[0].shape[0]):
                                 sample[0][j,feat_ind] = values[i]
-                        outputs = eval_nn(good_subset)
-                        # TODO: avg. or end output?
-                        pdp[i] = np.mean( np.array([numpy_sigmoid(output[-1]) for output in outputs] ))
+
+                        loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                        outputs = []
+                        for (input_data, seq_lens), _, _ in loader:
+                            output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                            # Data is (Sequence Index, Batch Index, Feature Index)
+                            # TODO: not right yet
+                            for batch_index in range(output.shape[0]):
+                                flow_length = seq_lens[batch_index]
+                                #flow_input = input_data[:flow_length,batch_index,:].detach().cpu().numpy()
+                                flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                                outputs.append(flow_output)    
+
+                        pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
 
                     rescaled = values * stds[feat_ind] + means[feat_ind]
                     # os.makedirs(PDP_DIR, exist_ok=True)
@@ -635,7 +643,10 @@ class LSTM():
                 else:
                     results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
 
-            file_name = opt.dataroot[:-7]+"_pdp_outcomes_{}_{}.pickle".format(opt.fold, opt.nFold)
+            feature_names_string = ''
+            for ft in feature_names:
+                feature_names_string += '_' + ft
+            file_name = self.validation_data.dataset.data_pickle[:-7]+'_pdp_outcomes' + feature_names_string + '.pickle'
             with open(file_name, "wb") as f:
                 pickle.dump({"results_by_attack_number": results_by_attack_number, "feature_names": feature_names, "feature_values_by_attack_number": feature_values_by_attack_number}, f)
 
@@ -665,6 +676,8 @@ class LSTM():
             # Forwards pass
             outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
+
+            # Calculate loss
             loss = self.criterion(outputs[src_mask], data[trg_mask])
 
             return loss

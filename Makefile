@@ -8,9 +8,9 @@ PYCACHE_DIR:=./classes/__pycache__
 LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PRETRAININGS:=MASK AUTO
-SUBSET_FILE=single_category_cic2017_ratio.json
+SUBSET_FILE=10_flows.json
 CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10
-CYCLE_TRAINING_PARAMETERS:=-p 100 -e 100 -V 10 --random_seed 556 -G ./subsets/${SUBSET_FILE} -b 100
+CYCLE_TRAINING_PARAMETERS:=-p 100 -e 200 -V 10 --random_seed 557 -G ./subsets/${SUBSET_FILE} -b 256
 DATASET:=./data/flows.pickle
 
 clean:

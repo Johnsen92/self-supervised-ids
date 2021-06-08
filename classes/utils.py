@@ -6,6 +6,7 @@ import os
 import errno
 import torch
 from enum import Enum
+import numpy as np
 
 def make_dir(path):
     if not os.path.exists(os.path.dirname(path)):
@@ -14,6 +15,9 @@ def make_dir(path):
         except OSError as exc: # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
+
+def numpy_sigmoid(x):
+    return 1/(1+np.exp(-x))
 
 class Cache():
     def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):
@@ -121,3 +125,5 @@ class Run():
         while self.exists(key, epoch):
             epoch += 1
         return epoch - 1
+
+    

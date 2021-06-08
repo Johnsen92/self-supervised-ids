@@ -10,6 +10,9 @@ import os
 import errno
 from sklearn.inspection import plot_partial_dependence
 import matplotlib.pyplot as plt
+from collections import Counter
+from matplotlib.lines import Line2D
+from matplotlib.patches import Rectangle
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -349,7 +352,7 @@ class Stats():
         else:
             return max([acc for _, acc in self.accuracies]) * 100.0
 
-class PDPlot():
+class PDPlotSK():
     def __init__(self, X, Y, mapping):
         self.X = X
         self.Y = Y
@@ -360,37 +363,11 @@ class PDPlot():
         plt.gcf()
         plt.gca()
 
-
-class OldPDPlot():
-    def __init__(self, categories_mapping, mapping, file_name, plot_dir="plots/plot_pdp"):
-        self.categories_mapping = categories_mapping
-        self.mapping = mapping
-        self.reverse_mapping = {v: k for k, v in mapping.items()}
-        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        self.plot_dir = plot_dir
-        self.display_names = {'srcPort': 'Source port', 'dstPort': 'Destination port'}
-        attack_numbers = mapping.values()
-        self.results_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-        self.label_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-        self.sample_indices_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-        self.feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-        self.samples = 0
-
-    def add_batch(self, input, output, seq_lens, categories, labels):
-        # Data is (Sequence Index, Batch Index, Feature Index)
-        for batch_index in range(output.shape[0]):
-            flow_length = seq_lens[batch_index]
-            flow_input = input[batch_index,:flow_length,:].detach().cpu().numpy()
-            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
-            assert (categories[batch_index, 0,:] == categories[batch_index, :flow_length,:]).all()
-            flow_category = int(categories[batch_index, 0,:].squeeze().item())
-            flow_label = int(labels[batch_index, 0,:].squeeze().item())
-
-            self.results_by_attack_number[flow_category].append(np.concatenate((flow_input, flow_output), axis=-1))
-            self.label_by_attack_number[flow_category] = flow_label
-            self.sample_indices_by_attack_number[flow_category].append(test_indices[samples])
-
-            self.samples += 1
+class PDPlot():
+    def __init__(self, results_by_attack_number, feature_names, feature_values_by_attack_number, plot_dir="plots/plot_pdp"):
+        self.feature_names = feature_names
+        self.results_by_attack_number = results_by_attack_number
+        self.feature_values_by_attack_number = feature_values_by_attack_number
 
     def plot(self):
         for attack_type, (all_features, all_features_values) in enumerate(zip(self.results_by_attack_number, self.feature_values_by_attack_number)):
@@ -413,7 +390,7 @@ class OldPDPlot():
             # print("all_features.shape", all_features.shape)
             all_legends = []
             all_labels = []
-            for feature_name, feature_index in zip(self.feature_names, range(self.all_features.shape[0])):
+            for feature_name, feature_index in zip(self.feature_names, range(all_features.shape[0])):
 
                 as_ints = list(all_features_values[feature_index].astype(np.int32))
 

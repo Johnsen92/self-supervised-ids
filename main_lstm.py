@@ -45,6 +45,7 @@ parser.add_argument('--remove_changeable', action='store_true', help='If set, re
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
+parser.add_argument('--pdp', action='store_true', help='Plot PDP if set')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 args = parser.parse_args(sys.argv[1:])
@@ -295,6 +296,10 @@ trainer = trainer.LSTM.Supervised(
 
 # Train model
 trainer.train()
+
+# Partial Dependency Plot
+if args.pdp:
+    trainer.pdp()
 
 # Evaluate model
 if not args.debug:

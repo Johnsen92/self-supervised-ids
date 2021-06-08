@@ -92,12 +92,18 @@ class Flows(Dataset):
         assert not (stds==0).any(), 'stds: {}'.format(stds)
 
         # Store in class members
+        self.means = means
+        self.stds = stds
         self.x = [(item-means)/stds for item in X]
         self.y = Y
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.mapping = mapping
         self.n_samples = len(self.x)
+
+    @property
+    def minmax(self):
+        return {feat_ind: (min((sample[0,feat_ind] for sample in self.x)), max((sample[0,feat_ind] for sample in self.x))) for feat_ind in range(self.x[0].shape[1]) }
 
     def __len__(self):
         return self.n_samples
@@ -114,10 +120,10 @@ class Flows(Dataset):
         splits = []
         for i, size in enumerate(split_sizes):
             X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
-            splits.append(Subset(self, X_idx_split))
+            splits.append(FlowsSubset(self, self.mapping, X_idx_split, verbose=False))
             # If the whole dataset is used, we have to stop splitting one iteration early, otherwise one split would produce an empty-set which upsets sklearn
             if i == len(split_sizes)-2 and sum(split_sizes) == self.n_samples:
-                splits.append(Subset(self, X_idx_rest))
+                splits.append(FlowsSubset(self, self.mapping, X_idx_rest, verbose=False))
                 break
         assert sum([len(s) for s in splits]) == sum(split_sizes) 
         return tuple(splits)
@@ -195,8 +201,26 @@ class FlowsSubset(Subset):
 
         return subset_string
 
-    def __init__(self, flows_dataset, mapping, dist={}, ditch=[], mult={}, config_file=None, key="TRAIN", config_index=-1):
+    @property
+    def minmax(self):
+        return self.dataset.minmax
+
+    @property
+    def stds(self):
+        return self.dataset.stds
+
+    @property
+    def means(self):
+        return self.dataset.means
+
+    @property
+    def data_pickle(self):
+        return self.dataset.data_pickle
+
+    def __init__(self, flows_dataset, mapping, indices=[], dist={}, ditch=[], mult={}, config_file=None, key="TRAIN", config_index=-1, verbose=True):
         self.mapping = mapping
+        self.indices = indices if len(indices) > 0 else range(len(flows_dataset))
+
         if not config_file is None:
             dist, ditch, mult = FlowsSubset.parse(config_file, key, config_index)
         
@@ -218,6 +242,8 @@ class FlowsSubset(Subset):
         self._dist = dist
         self._ditch = ditch
         self._mult = mult
+        self._verbose = verbose
+        self._config_index = config_index
         self.set_count = {}
         self.subset_num = {}
         self.subset_count = {}
@@ -234,7 +260,7 @@ class FlowsSubset(Subset):
 
         # If mult is not empty, count items in set to determine if there are more or less flows of the categories to be used for multiplication
         if len(mult.items()) > 0:
-            for idx, (_, _, cat) in enumerate(flows_dataset):
+            for idx, (_, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
                 c = cat[0].item()
                 self.set_count[c] += 1
 
@@ -252,18 +278,23 @@ class FlowsSubset(Subset):
         assert sum([v for _, v in self.subset_num.items()]) > 0
 
         # Gather number of flows of each category from dataset according to subset_num
-        print(f'Loading subset {key} with config {str(self)[1:]}...',end='')
-        for idx, (_, _, cat) in enumerate(flows_dataset):
+        if self._verbose:
+            print(f'Loading subset', end='')
+            if not config_file is None:
+                print(f' {key} with config {str(self)[1:]}{" indx " + str(self._config_index) if self._config_index >= 0 else ""}...', end='')
+            else:
+                print(f'...', end='')
+
+        for idx, (_, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
             c = cat[0].item()
             if self.subset_count[c] < self.subset_num[c]:
                 self.subset_count[c] += 1
                 self.subset_samples.append(idx)
         super().__init__(flows_dataset, self.subset_samples)
-
-        
-
-        print('done')
-        print(f'Gathered for {key}: {self.subset_count}')
+      
+        if self._verbose:
+            print('done')
+            print(f'Gathered for {key}: {self.subset_count}')
 
     def __str__(self):
         return FlowsSubset.string(self._dist, self._ditch, self._mult)
