@@ -587,7 +587,7 @@ class LSTM():
             batch_size = 24
             minmax = self.validation_data.dataset.minmax
             stds = self.validation_data.dataset.stds
-            means = self.validation_data.dataset.stds
+            means = self.validation_data.dataset.means
 
             for attack_number in range(max(attack_numbers)+1):
                 good_subset = FlowsSubset(self.validation_data.dataset, self.stats.class_stats.mapping, dist={attack_number: 1000}, ditch=[-1, attack_number])
