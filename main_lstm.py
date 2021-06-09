@@ -45,7 +45,7 @@ parser.add_argument('--remove_changeable', action='store_true', help='If set, re
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
-parser.add_argument('--pdp', action='store_true', help='Plot PDP if set')
+parser.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 args = parser.parse_args(sys.argv[1:])
@@ -135,6 +135,7 @@ if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 
 # Won't get far without GPU, so I assume you have one...
 device = torch.device('cuda:0')
@@ -193,7 +194,6 @@ if args.self_supervised > 0:
         pretrainer = trainer.LSTM.PredictPacket(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -208,7 +208,6 @@ if args.self_supervised > 0:
         pretrainer = trainer.LSTM.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -223,7 +222,6 @@ if args.self_supervised > 0:
         pretrainer = trainer.LSTM.MaskPacket(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -238,7 +236,6 @@ if args.self_supervised > 0:
         pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -255,7 +252,6 @@ if args.self_supervised > 0:
         pretrainer = trainer.LSTM.BidirectionalAutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device,
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -283,6 +279,7 @@ trainer = trainer.LSTM.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
+    test_data = test_loader,
     device = device, 
     criterion = training_criterion, 
     optimizer = optimizer, 
@@ -298,8 +295,8 @@ trainer = trainer.LSTM.Supervised(
 trainer.train()
 
 # Partial Dependency Plot
-if args.pdp:
-    trainer.pdp()
+if not args.pdp_config is None:
+    trainer.pdp(run_id, args.pdp_config)
 
 # Evaluate model
 if not args.debug:

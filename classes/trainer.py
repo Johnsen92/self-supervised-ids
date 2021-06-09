@@ -19,6 +19,7 @@ from enum import Enum
 from torch.utils.data import Dataset, Subset
 import numpy as np
 import pickle
+import json
 
 def memory_dump():
     # Add to leaky code within python_script_being_profiled.py
@@ -118,8 +119,8 @@ class Trainer(object):
                             accuracy, loss = self.validate()
                             self.model.train()
                             observed_acc.append((epoch, accuracy))
-                            self.writer.add_scalar("Validation accuracy", accuracy, global_step=epoch)
-                            self.writer.add_scalar("Validation mean loss", loss, global_step=epoch)
+                            self.writer.add_scalar('Validation accuracy', accuracy, global_step=epoch)
+                            self.writer.add_scalar('Validation mean loss', loss, global_step=epoch)
 
                     # Assert that validation has been executed at least once
                     if self.validation:
@@ -191,17 +192,19 @@ class Trainer(object):
                 return self.stats.accuracy, mean_loss
             return wrapper
 
-    def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False):
+    def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False):
         # Strings to be used for file and console outputs
-        self.title = "Training"
-        self.cache_filename = "trained_model"
+        self.title = 'Training'
+        self.cache_filename = 'trained_model'
         self.validation = False
         self.model = model
         assert isinstance(model, nn.Module)
         self.training_data = training_data
         self.validation_data = validation_data
+        self.test_data = test_data
         assert isinstance(training_data, DataLoader)
-        assert isinstance(validation_data, DataLoader)
+        assert isinstance(validation_data, DataLoader) or validation_data is None
+        assert isinstance(test_data, DataLoader) or validation_data is None
         self.criterion = criterion
         self.optimizer = optimizer
         assert isinstance(optimizer, Optimizer)
@@ -293,11 +296,11 @@ class Transformer():
             return self.name
 
     class Supervised(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
+        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
             # Strings to be used for file and console outputs
-            self.title = "Supervised"
-            self.cache_filename = "trained_model"
+            self.title = 'Supervised'
+            self.cache_filename = 'trained_model'
             self.validation = True
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -345,11 +348,11 @@ class Transformer():
             return loss, sigmoided_output, predicted, targets, categories
 
     class Interpolation(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "Interpolation"
-            self.cache_filename = "pretrained_model"
+            self.title = 'Interpolation'
+            self.cache_filename = 'pretrained_model'
             self.validate = False
 
         @Trainer.TrainerDecorators.training_wrapper
@@ -378,11 +381,11 @@ class Transformer():
             return loss
 
     class AutoEncode(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "AutoEncoder"
-            self.cache_filename = "pretrained_model"
+            self.title = 'AutoEncoder'
+            self.cache_filename = 'pretrained_model'
 
         def mask(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
@@ -409,11 +412,11 @@ class Transformer():
             return loss
 
     class ObscureFeature(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "ObscureFeature"
-            self.cache_filename = "pretrained_model"
+            self.title = 'ObscureFeature'
+            self.cache_filename = 'pretrained_model'
 
         def obscure(self, data, i_start, i_end):
             assert i_end >= i_start
@@ -462,11 +465,11 @@ class Transformer():
             return loss
 
     class MaskPacket(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "MaskPacket"
-            self.cache_filename = "pretrained_model"
+            self.title = 'MaskPacket'
+            self.cache_filename = 'pretrained_model'
 
         def mask_packets(self, data, seq_lens, n_features):
             masked_data = data
@@ -511,11 +514,11 @@ class LSTM():
             return self.name
 
     class Supervised(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "Supervised"
-            self.cache_filename = "supervised_trained_model"
+            self.title = 'Supervised'
+            self.cache_filename = 'supervised_trained_model'
             self.validation = True
 
         def mask(self, op_size, seq_lens):
@@ -577,85 +580,92 @@ class LSTM():
             return loss, sigmoided_output, predicted, targets, categories
 
         @torch.no_grad()
-        def pdp(self):
+        def pdp(self, id, config_file):
+
+            features = {}
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+
             self.model.eval()
             attack_numbers = self.stats.class_stats.mapping.values()
-            feature_names = ["srcPort", "dstPort"]
             results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
             feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
             #batch_size = self.validation_data.batch_size
             batch_size = 24
-            minmax = self.validation_data.dataset.minmax
-            stds = self.validation_data.dataset.stds
-            means = self.validation_data.dataset.means
+            minmax = self.test_data.dataset.minmax
+            stds = self.test_data.dataset.stds
+            means = self.test_data.dataset.means
 
-            for attack_number in range(max(attack_numbers)+1):
-                good_subset = FlowsSubset(self.validation_data.dataset, self.stats.class_stats.mapping, dist={attack_number: 1000}, ditch=[-1, attack_number])
-                #matching = [item for item in subset if int(item[2][0,0]) == attack_number]
-                print("len(good_subset)", len(good_subset))
-                if len(good_subset) < batch_size:
-                    print(f'Did not find enough samples ({len(good_subset)}) for attack category {attack_number}. Continuing...')
-                    continue
-                print("attack_number", attack_number)
-                results_for_attack_type = []
-                for feat_name, feat_ind in zip(feature_names, (0, 1)):
-                    feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
+            for features in config:
+                print(features)
+                for attack_number in range(max(attack_numbers)+1):
+                    good_subset = FlowsSubset(self.test_data.dataset, self.stats.class_stats.mapping, dist={attack_number: 1000}, ditch=[-1, attack_number])
+                    #matching = [item for item in subset if int(item[2][0,0]) == attack_number]
+                    print('len(good_subset)', len(good_subset))
+                    if len(good_subset) < batch_size:
+                        print(f'Did not find enough samples ({len(good_subset)}) for attack category {attack_number}. Continuing...')
+                        continue
+                    print('attack_number', attack_number)
+                    results_for_attack_type = []
+                    for feat_ind_str, feat_name in enumerate(features.items()):
+                        feat_ind = int(feat_ind_str)
+                        feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
 
-                    feat_min, feat_max = minmax[feat_ind]
+                        feat_min, feat_max = minmax[feat_ind]
 
-                    values = np.linspace(feat_min, feat_max, 100)
+                        values = np.linspace(feat_min, feat_max, 100)
 
-                    # subset = [ torch.FloatTensor(sample) for sample in x[:opt.batchSize] ]
+                        # subset = [ torch.FloatTensor(sample) for sample in x[:opt.batchSize] ]
 
-                    pdp = np.zeros([values.size])
+                        pdp = np.zeros([values.size])
 
-                    for i in range(values.size):
-                        # good_subset.data consists of torch tensors. We are therefore able to
-                        # modify the dataset directly using the return value of __getitem__().
-                        # This does not modify the global dataset, which holds the data as numpy
-                        # arrays.
-                        for index, sample in enumerate(good_subset):
-                            # if index % 1000 == 0:
-                            # 	print("attack_number", attack_number, "feat_name", feat_name, "index", index)
-                            for j in range(sample[0].shape[0]):
-                                sample[0][j,feat_ind] = values[i]
+                        for i in range(values.size):
+                            # good_subset.data consists of torch tensors. We are therefore able to
+                            # modify the dataset directly using the return value of __getitem__().
+                            # This does not modify the global dataset, which holds the data as numpy
+                            # arrays.
+                            for index, sample in enumerate(good_subset):
+                                # if index % 1000 == 0:
+                                # 	print('attack_number', attack_number, 'feat_name', feat_name, 'index', index)
+                                for j in range(sample[0].shape[0]):
+                                    sample[0][j,feat_ind] = values[i]
 
-                        loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-                        outputs = []
-                        for (input_data, seq_lens), _, _ in loader:
-                            output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
-                            # Data is (Sequence Index, Batch Index, Feature Index)
-                            # TODO: not right yet
-                            for batch_index in range(output.shape[0]):
-                                flow_length = seq_lens[batch_index]
-                                #flow_input = input_data[:flow_length,batch_index,:].detach().cpu().numpy()
-                                flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
-                                outputs.append(flow_output)    
+                            loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                            outputs = []
+                            for (input_data, seq_lens), _, _ in loader:
+                                output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                                # Data is (Sequence Index, Batch Index, Feature Index)
+                                # TODO: not right yet
+                                for batch_index in range(output.shape[0]):
+                                    flow_length = seq_lens[batch_index]
+                                    #flow_input = input_data[:flow_length,batch_index,:].detach().cpu().numpy()
+                                    flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                                    outputs.append(flow_output)    
 
-                        pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
+                            pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
 
-                    rescaled = values * stds[feat_ind] + means[feat_ind]
-                    # os.makedirs(PDP_DIR, exist_ok=True)
-                    results_for_attack_type.append(np.vstack((rescaled,pdp)))
-                    # print("result.shape", result.shape)
-                    # np.save('%s/%s.npy' % (PDP_DIR, feat_name), result)
+                        rescaled = values * stds[feat_ind] + means[feat_ind]
+                        # os.makedirs(PDP_DIR, exist_ok=True)
+                        results_for_attack_type.append(np.vstack((rescaled,pdp)))
+                        # print('result.shape', result.shape)
+                        # np.save('%s/%s.npy' % (PDP_DIR, feat_name), result)
 
-                else:
-                    results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
+                    else:
+                        results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
 
-            feature_names_string = ''
-            for ft in feature_names:
-                feature_names_string += '_' + ft
-            file_name = self.validation_data.dataset.data_pickle[:-7]+'_pdp_outcomes' + feature_names_string + '.pickle'
-            with open(file_name, "wb") as f:
-                pickle.dump({"results_by_attack_number": results_by_attack_number, "feature_names": feature_names, "feature_values_by_attack_number": feature_values_by_attack_number}, f)
+                feature_names_string = ''
+                for _, ft in features.items():
+                    feature_names_string += '_' + ft
+                file_name = self.test_data.dataset.data_pickle[:-7]+'_pdp_' + id + '_' + feature_names_string + '.pickle'
+                with open(file_name, 'wb') as f:
+                    pickle.dump({'results_by_attack_number': results_by_attack_number, 'feature_names': [feature_name for _, feature_name in features.items()], 'feature_values_by_attack_number': feature_values_by_attack_number}, f)
 
     class PredictPacket(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "PredictPacket"
-            self.cache_filename = "pretrained_model"
+            self.title = 'PredictPacket'
+            self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
             src_mask = torch.zeros(op_size, dtype=torch.bool)
@@ -683,11 +693,11 @@ class LSTM():
             return loss
 
     class BidirectionalAutoEncoder(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "BidirectionalAutoEncoder"
-            self.cache_filename = "pretrained_model"
+            self.title = 'BidirectionalAutoEncoder'
+            self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
@@ -720,11 +730,11 @@ class LSTM():
             return loss
 
     class AutoEncoder(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "AutoEncoder"
-            self.cache_filename = "pretrained_model"
+            self.title = 'AutoEncoder'
+            self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
@@ -748,11 +758,11 @@ class LSTM():
             return loss
 
     class ObscureFeature(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
             # Strings to be used for file and console outputs
-            self.title = "ObscureFeature"
-            self.cache_filename = "pretrained_model"
+            self.title = 'ObscureFeature'
+            self.cache_filename = 'pretrained_model'
 
         def obscure(self, data, i_start, i_end):
             batch_size, max_seq_length, input_size = data.size()
@@ -797,11 +807,11 @@ class LSTM():
             return loss
 
     class MaskPacket(Trainer):
-        def __init__(self, model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = "MaskPacket"
-            self.cache_filename = "pretrained_model"
+            self.title = 'MaskPacket'
+            self.cache_filename = 'pretrained_model'
 
         def mask_packets(self, data, seq_lens, n_packets):
             masked_data = data

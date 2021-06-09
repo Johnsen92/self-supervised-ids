@@ -10,7 +10,8 @@ LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
 TRANSFORMER_PRETRAININGS:=MASK AUTO
 SUBSET_FILE=10_flows.json
 CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10
-CYCLE_TRAINING_PARAMETERS:=-p 100 -e 200 -V 10 --random_seed 557 -G ./subsets/${SUBSET_FILE} -b 256
+CYCLE_TRAINING_PARAMETERS:=-p 100 -e 200 -V 10 --random_seed 557 -b 256
+SUBSET_PARAMETERS:=-G ./subsets/${SUBSET_FILE}
 DATASET:=./data/flows.pickle
 
 clean:
@@ -49,13 +50,13 @@ transformer_cycle:
 
 lstm_test_cycle:
 	for pretraining in ${LSTM_PRETRAININGS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+    	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
 	done
 	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} -d
 
 transformer_test_cycle:
 	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
-    	python3 main_trans.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
+    	python3 main_trans.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
 	done
 	python3 main_trans.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} -d
 
