@@ -352,81 +352,83 @@ class Stats():
         else:
             return max([acc for _, acc in self.accuracies]) * 100.0
 
-class PDPlotSK():
-    def __init__(self, X, Y, mapping):
-        self.X = X
-        self.Y = Y
-        self.mapping = mapping
-
-    def plot(self, features=[0], category=0):
-        plot_partial_dependence(self.Y, self.X, features, target=category)
-        plt.gcf()
-        plt.gca()
-
 class PDPlot():
-    def __init__(self, results_by_attack_number, feature_names, feature_values_by_attack_number, plot_dir="plots/plot_pdp"):
-        self.feature_names = feature_names
+    def __init__(self, results_by_attack_number, feature_values_by_attack_number, mapping, feature_names, plot_dir='plots/pdp/', output_basename='pdp'):
         self.results_by_attack_number = results_by_attack_number
         self.feature_values_by_attack_number = feature_values_by_attack_number
+        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        os.makedirs(plot_dir, exist_ok=True)
+        self.plot_dir = plot_dir
+        self.output_basename = output_basename
+        self.mapping = mapping
+        self.reverse_mapping = {v: k for k, v in mapping.items()}
+        self.feature_names = feature_names
 
-    def plot(self):
-        for attack_type, (all_features, all_features_values) in enumerate(zip(self.results_by_attack_number, self.feature_values_by_attack_number)):
+    def plot(self, attack_type):
 
-            print("attack_type", attack_type)
-            fig, ax1 = plt.subplots(figsize=(5,2.4))
+        plt.rcParams["font.family"] = "serif"
+        #for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
+        all_features = self.results_by_attack_number[attack_type]
+        all_features_values = self.feature_values_by_attack_number[attack_type]
 
-            ax2 = ax1.twinx()
+        print("attack_type", attack_type)
+        fig, ax1 = plt.subplots(figsize=(5,2.4))
 
-            ax2.set_ylabel('Prediction')
-            ax1.set_ylabel("Flow number")
+        ax2 = ax1.twinx()
 
-            ax1.yaxis.tick_right()
-            ax1.yaxis.set_label_position("right")
-            ax2.yaxis.tick_left()
-            ax2.yaxis.set_label_position("left")
+        ax2.set_ylabel('Prediction')
+        ax1.set_ylabel("Flow number")
 
-            if all_features is None:
-                continue
-            # print("all_features.shape", all_features.shape)
-            all_legends = []
-            all_labels = []
-            for feature_name, feature_index in zip(self.feature_names, range(all_features.shape[0])):
+        ax1.yaxis.tick_right()
+        ax1.yaxis.set_label_position("right")
+        ax2.yaxis.tick_left()
+        ax2.yaxis.set_label_position("left")
 
-                as_ints = list(all_features_values[feature_index].astype(np.int32))
+        if all_features is None:
+            print('All features are None. Returning with nothing done...')
+            return
+        # print("all_features.shape", all_features.shape)
+        all_legends = []
+        all_labels = []
+        for feature_name, feature_index in zip(self.feature_names, range(all_features.shape[0])):
 
-                # print("all_features_values[feature_index]", all_features_values[feature_index])
-                # ret1 = ax1.hist(all_features_values[feature_index], bins=range(int(round(all_features_values[feature_index].max())+1)), width=1, color=colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
+            as_ints = list(all_features_values[feature_index].astype(np.int32))
 
-                counted = Counter(as_ints)
-                keys = counted.keys()
-                values = counted.values()
+            # print("all_features_values[feature_index]", all_features_values[feature_index])
+            # ret1 = ax1.hist(all_features_values[feature_index], bins=range(int(round(all_features_values[feature_index].max())+1)), width=1, color=colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
 
-                # print("keys", keys, "values", values)
-                ret1 = ax1.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
+            counted = Counter(as_ints)
+            keys = counted.keys()
+            values = counted.values()
 
-                ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
-                # all_legends.append(feature_name)
-                # print("legend", legend)
-                all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[feature_index]))
-                all_labels.append(self.display_names[feature_name])
-                # all_legends += ret2
+            # print("keys", keys, "values", values)
+            ret1 = ax1.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
 
-            # plt.title(reverse_mapping[attack_type])
-            # print("all_legends", all_legends)
-            ax1.set_yscale('log')
-            ax1.set_ylim((ax1.get_ylim()[0], 1000))
-            ax2.set_ylim((ax2.get_ylim()[0], 0.7))
-            # all_labels = [item.get_label() for item in all_legends]
-            ax2.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
-            ax1.set_xlabel('Port number')
-            ax2.set_ylabel('Partial dependence')
-            ax2.set_ylabel_legend(Line2D([0],[0], color='gray'))
-            ax1.set_ylabel_legend(Rectangle((0,0), 1,1, fc='gray', alpha=0.2), handlelength=0.7)
-            plt.tight_layout()
-            #plt.savefig('%s.pdf' % os.path.splitext(fn)[0])
-            # plt.show()
+            ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
+            # all_legends.append(feature_name)
+            # print("legend", legend)
+            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[feature_index]))
+            all_labels.append(feature_name)
+            # all_legends += ret2
 
-            os.makedirs(self.plot_dir, exist_ok=True)
-            plt.savefig(self.plot_dir+'/{}_{}_{}.pdf'.format(self.file_name.split("/")[-1], attack_type, self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")), bbox_inches = 'tight', pad_inches = 0)
-            plt.clf()
+        # plt.title(reverse_mapping[attack_type])
+        # print("all_legends", all_legends)
+        ax1.set_yscale('log')
+        ax1.set_ylim((ax1.get_ylim()[0], 1000))
+        ax2.set_ylim((ax2.get_ylim()[0], 1.0))
+        # all_labels = [item.get_label() for item in all_legends]
+        ax2.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
+        ax1.set_xlabel('Port number')
+        ax2.set_ylabel('Partial dependence')
+        #ax2.set_ylabel_legend(Line2D([0],[0], color='gray'))
+        #ax1.set_ylabel_legend(Rectangle((0,0), 1,1, fc='gray', alpha=0.2), handlelength=0.7)
+        plt.tight_layout()
+        #plt.savefig('%s.pdf' % os.path.splitext(fn)[0])
+        # plt.show()
+
+        feature_names_string = ''
+        for _, ft in self.feature_names.items():
+            feature_names_string += '_' + ft
+        plt.savefig(self.plot_dir + self.output_basename + f'{feature_names_string}_{attack_type}_{self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")}.pdf', bbox_inches = 'tight', pad_inches = 0)
+        plt.clf()
 

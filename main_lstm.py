@@ -264,12 +264,6 @@ if args.self_supervised > 0:
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
-    
-    # Pretrain
-    pretrainer.train()
-
-# Disable pretraining mode
-model.pretraining = False
 
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -301,6 +295,8 @@ if not args.pdp_config is None:
 # Evaluate model
 if not args.debug:
     trainer.evaluate()
+
+print('Run with ID {run_id} has ended successfully')
 
     
 

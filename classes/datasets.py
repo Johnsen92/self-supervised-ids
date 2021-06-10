@@ -156,15 +156,18 @@ class FlowsSubset(Subset):
         else:
             print(f'Invalid subset config index: {index}')
 
-        # Cast string to int for dist dictionary
-        dist = {}
-        for k, v in dist_string.items():
-            dist[int(k)] = v
+        # Cast string to int for dictionary keys
+        dist = {int(k): v for k, v in dist_string.items()}
+        mult = {int(k): v for k, v in mult_string.items()}
+
+
+        #for k, v in dist_string.items():
+        #    dist[int(k)] = v
 
         # Cast string to int for mult dictionary
-        mult = {}
-        for k, v in mult_string.items():
-            mult[int(k)] = v
+        #mult = {}
+        #for k, v in mult_string.items():
+        #    mult[int(k)] = v
 
         return dist, ditch, mult
 
@@ -221,6 +224,14 @@ class FlowsSubset(Subset):
         self.mapping = mapping
         self.indices = indices if len(indices) > 0 else range(len(flows_dataset))
 
+        # Gather number of flows of each category from dataset according to subset_num
+        if verbose:
+            print(f'Loading subset', end='')
+            if not config_file is None:
+                print(f' {key} with config {str(self)[1:]}{" indx " + str(self._config_index) if self._config_index >= 0 else ""}...', end='')
+            else:
+                print(f'...', end='')
+
         if not config_file is None:
             dist, ditch, mult = FlowsSubset.parse(config_file, key, config_index)
         
@@ -242,7 +253,6 @@ class FlowsSubset(Subset):
         self._dist = dist
         self._ditch = ditch
         self._mult = mult
-        self._verbose = verbose
         self._config_index = config_index
         self.set_count = {}
         self.subset_num = {}
@@ -277,14 +287,6 @@ class FlowsSubset(Subset):
 
         assert sum([v for _, v in self.subset_num.items()]) > 0
 
-        # Gather number of flows of each category from dataset according to subset_num
-        if self._verbose:
-            print(f'Loading subset', end='')
-            if not config_file is None:
-                print(f' {key} with config {str(self)[1:]}{" indx " + str(self._config_index) if self._config_index >= 0 else ""}...', end='')
-            else:
-                print(f'...', end='')
-
         for idx, (_, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
             c = cat[0].item()
             if self.subset_count[c] < self.subset_num[c]:
@@ -292,7 +294,7 @@ class FlowsSubset(Subset):
                 self.subset_samples.append(idx)
         super().__init__(flows_dataset, self.subset_samples)
       
-        if self._verbose:
+        if verbose:
             print('done')
             print(f'Gathered for {key}: {self.subset_count}')
 

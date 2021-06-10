@@ -582,7 +582,6 @@ class LSTM():
         @torch.no_grad()
         def pdp(self, id, config_file):
 
-            features = {}
             with open(config_file, 'r') as f:
                 config = json.load(f)
 
@@ -656,7 +655,7 @@ class LSTM():
                 feature_names_string = ''
                 for _, ft in features.items():
                     feature_names_string += '_' + ft
-                file_name = self.test_data.dataset.data_pickle[:-7]+'_pdp_' + id + '_' + feature_names_string + '.pickle'
+                file_name = self.test_data.dataset.data_pickle[:-7]+'_pdp_' + id + feature_names_string + '.pickle'
                 with open(file_name, 'wb') as f:
                     pickle.dump({'results_by_attack_number': results_by_attack_number, 'feature_names': [feature_name for _, feature_name in features.items()], 'feature_values_by_attack_number': feature_values_by_attack_number}, f)
 
