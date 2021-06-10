@@ -29,7 +29,6 @@ with open(dataroot_basename + "_categories_mapping.json", "r") as f:
 	categories_mapping_content = json.load(f)
 categories_mapping, mapping = categories_mapping_content["categories_mapping"], categories_mapping_content["mapping"]
 reverse_mapping = {v: k for k, v in mapping.items()}
-print("reverse_mapping", reverse_mapping)
 
 for features in config:
 	feature_names_string = ''
