@@ -135,7 +135,10 @@ if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+if args.debug:
+    test_loader = val_loader
+else:
+    test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 
 # Won't get far without GPU, so I assume you have one...
 device = torch.device('cuda:0')
@@ -299,7 +302,7 @@ if not args.pdp_config is None:
 if not args.debug:
     trainer.evaluate()
 
-print('Run with ID {run_id} has ended successfully')
+print(f'Run with ID \"{run_id}\" has ended successfully')
 
     
 

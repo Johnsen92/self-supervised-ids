@@ -9,7 +9,7 @@ LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PRETRAININGS:=MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
-PDP_FILE:=./data/flows_features.json
+PDP_FILE:=./data/flows_pdp.json
 CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10
 CYCLE_TRAINING_PARAMETERS:=-p 100 -e 300 -V 10 --random_seed 557 -b 128
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
@@ -77,4 +77,7 @@ debug:
 
 lstm_pdp:
 	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS}
+
+lstm_pdp_debug:
+	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
 

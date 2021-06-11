@@ -166,7 +166,7 @@ class Trainer(object):
                     for batch_data in self.validation_data:
                         
                         # -------------------------- Decorated function --------------------------
-                        loss, normalized_logits, predicted, target, categories = validation_function(self, batch_data)
+                        loss, _, predicted, target, categories = validation_function(self, batch_data)
                         # ------------------------------------------------------------------------
 
                         # Evaluate results
@@ -589,43 +589,46 @@ class LSTM():
             attack_numbers = self.stats.class_stats.mapping.values()
             results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
             feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-            #batch_size = self.validation_data.batch_size
-            batch_size = 24
             minmax = self.test_data.dataset.minmax
             stds = self.test_data.dataset.stds
             means = self.test_data.dataset.means
+            basename = os.path.basename(self.test_data.dataset.data_pickle)[:-7]
+            pdp_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/' + id + '/'
+            os.makedirs(pdp_dir, exist_ok=True)
+
+            # PDP data generation parameters
+            max_batch_size = 512
+            max_samples = 1024
 
             for features in config:
                 print(features)
                 for attack_number in range(max(attack_numbers)+1):
-                    good_subset = FlowsSubset(self.test_data.dataset, self.stats.class_stats.mapping, dist={attack_number: 1000}, ditch=[-1, attack_number])
-                    #matching = [item for item in subset if int(item[2][0,0]) == attack_number]
-                    print('len(good_subset)', len(good_subset))
-                    if len(good_subset) < batch_size:
+                    # Get at most max_samples flows of attack_number
+                    good_subset = FlowsSubset(self.test_data.dataset, self.stats.class_stats.mapping, dist={attack_number: max_samples}, ditch=[-1, attack_number])
+
+                    # Calculate optimal batch size but at most max_batch_size
+                    batch_size = len(good_subset)
+                    div = 2
+                    while batch_size > max_batch_size:
+                        batch_size = len(good_subset) // div
+                        div += 1
+
+                    # If too few samples, continue
+                    if len(good_subset) < 128:
                         print(f'Did not find enough samples ({len(good_subset)}) for attack category {attack_number}. Continuing...')
                         continue
-                    print('attack_number', attack_number)
+
+
+                    print(f'Generating PDP data for flow category {attack_number}...',end='')
                     results_for_attack_type = []
                     for feat_ind_str, feat_name in enumerate(features.items()):
                         feat_ind = int(feat_ind_str)
                         feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
-
                         feat_min, feat_max = minmax[feat_ind]
-
                         values = np.linspace(feat_min, feat_max, 100)
-
-                        # subset = [ torch.FloatTensor(sample) for sample in x[:opt.batchSize] ]
-
                         pdp = np.zeros([values.size])
-
                         for i in range(values.size):
-                            # good_subset.data consists of torch tensors. We are therefore able to
-                            # modify the dataset directly using the return value of __getitem__().
-                            # This does not modify the global dataset, which holds the data as numpy
-                            # arrays.
                             for index, sample in enumerate(good_subset):
-                                # if index % 1000 == 0:
-                                # 	print('attack_number', attack_number, 'feat_name', feat_name, 'index', index)
                                 for j in range(sample[0].shape[0]):
                                     sample[0][j,feat_ind] = values[i]
 
@@ -634,28 +637,27 @@ class LSTM():
                             for (input_data, seq_lens), _, _ in loader:
                                 output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
                                 # Data is (Sequence Index, Batch Index, Feature Index)
-                                # TODO: not right yet
                                 for batch_index in range(output.shape[0]):
                                     flow_length = seq_lens[batch_index]
-                                    #flow_input = input_data[:flow_length,batch_index,:].detach().cpu().numpy()
                                     flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
-                                    outputs.append(flow_output)    
+                                    outputs.append(flow_output)
 
                             pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
 
                         rescaled = values * stds[feat_ind] + means[feat_ind]
-                        # os.makedirs(PDP_DIR, exist_ok=True)
                         results_for_attack_type.append(np.vstack((rescaled,pdp)))
-                        # print('result.shape', result.shape)
-                        # np.save('%s/%s.npy' % (PDP_DIR, feat_name), result)
 
                     else:
                         results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
+                    print(f'done')
 
+                # Comprise feature string
                 feature_names_string = ''
                 for _, ft in features.items():
                     feature_names_string += '_' + ft
-                file_name = self.test_data.dataset.data_pickle[:-7]+'_pdp_' + id + feature_names_string + '.pickle'
+
+                # Save data
+                file_name = pdp_dir + basename + '_pdp' + feature_names_string + '.pickle'
                 with open(file_name, 'wb') as f:
                     pickle.dump({'results_by_attack_number': results_by_attack_number, 'feature_names': [feature_name for _, feature_name in features.items()], 'feature_values_by_attack_number': feature_values_by_attack_number}, f)
 

@@ -364,12 +364,12 @@ class PDPlot():
         self.reverse_mapping = {v: k for k, v in mapping.items()}
         self.feature_names = feature_names
 
-    def plot(self, attack_type):
+    def plot(self, attack_type, results_by_attack_number=None, feature_values_by_attack_number=None, save=True):
 
         plt.rcParams["font.family"] = "serif"
         #for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
-        all_features = self.results_by_attack_number[attack_type]
-        all_features_values = self.feature_values_by_attack_number[attack_type]
+        all_features = results_by_attack_number if not results_by_attack_number is None else self.results_by_attack_number[attack_type]
+        all_features_values = feature_values_by_attack_number if not feature_values_by_attack_number is None else self.feature_values_by_attack_number[attack_type]
 
         print("attack_type", attack_type)
         fig, ax1 = plt.subplots(figsize=(5,2.4))
@@ -390,8 +390,8 @@ class PDPlot():
         # print("all_features.shape", all_features.shape)
         all_legends = []
         all_labels = []
-        for feature_name, feature_index in zip(self.feature_names, range(all_features.shape[0])):
-
+        for feature_key, feature_name in self.feature_names.items():
+            feature_index = int(feature_key)
             as_ints = list(all_features_values[feature_index].astype(np.int32))
 
             # print("all_features_values[feature_index]", all_features_values[feature_index])
@@ -404,7 +404,9 @@ class PDPlot():
             # print("keys", keys, "values", values)
             ret1 = ax1.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
 
-            ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
+            #ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
+            print(feature_index)
+            ret2 = ax2.plot(all_features[feature_index,0,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
             # all_legends.append(feature_name)
             # print("legend", legend)
             all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[feature_index]))
@@ -418,7 +420,7 @@ class PDPlot():
         ax2.set_ylim((ax2.get_ylim()[0], 1.0))
         # all_labels = [item.get_label() for item in all_legends]
         ax2.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
-        ax1.set_xlabel('Port number')
+        ax1.set_xlabel([v for _, v in self.feature_names.items()][0])
         ax2.set_ylabel('Partial dependence')
         #ax2.set_ylabel_legend(Line2D([0],[0], color='gray'))
         #ax1.set_ylabel_legend(Rectangle((0,0), 1,1, fc='gray', alpha=0.2), handlelength=0.7)
@@ -429,6 +431,14 @@ class PDPlot():
         feature_names_string = ''
         for _, ft in self.feature_names.items():
             feature_names_string += '_' + ft
-        plt.savefig(self.plot_dir + self.output_basename + f'{feature_names_string}_{attack_type}_{self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")}.pdf', bbox_inches = 'tight', pad_inches = 0)
+
+        if save:
+            self.save(self.plot_dir + self.output_basename + f'{feature_names_string}_{attack_type}_{self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")}.pdf')
+    
+    def save(self, path):
+        plt.savefig(path, bbox_inches = 'tight', pad_inches = 0)
         plt.clf()
 
+    def compare(self, attack_type, pdp):
+        self.plot(attack_type, save=False)
+        self.plot(attack_type, pdp.results_by_attack_number, pdp.feature_values_by_attack_number)

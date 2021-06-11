@@ -160,15 +160,6 @@ class FlowsSubset(Subset):
         dist = {int(k): v for k, v in dist_string.items()}
         mult = {int(k): v for k, v in mult_string.items()}
 
-
-        #for k, v in dist_string.items():
-        #    dist[int(k)] = v
-
-        # Cast string to int for mult dictionary
-        #mult = {}
-        #for k, v in mult_string.items():
-        #    mult[int(k)] = v
-
         return dist, ditch, mult
 
     # parse config from file an stringify config
@@ -296,7 +287,7 @@ class FlowsSubset(Subset):
       
         if verbose:
             print('done')
-            print(f'Gathered for {key}: {self.subset_count}')
+            print(f'Subset gathered for {key}: {self.subset_count}')
 
     def __str__(self):
         return FlowsSubset.string(self._dist, self._ditch, self._mult)
