@@ -268,6 +268,9 @@ if args.self_supervised > 0:
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 
+# Set model into finetuning mode
+model.pretraining = False
+
 # Init trainer
 trainer = trainer.LSTM.Supervised(
     model = model, 

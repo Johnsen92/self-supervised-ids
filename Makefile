@@ -8,10 +8,12 @@ PYCACHE_DIR:=./classes/__pycache__
 LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PRETRAININGS:=MASK AUTO
-SUBSET_FILE=10_flows.json
+SUBSET_FILE:=./subsets/10_flows.json
+PDP_FILE:=./data/flows_features.json
 CYCLE_PRETRAINING_PARAMETERS:=-s 800 -E 10
-CYCLE_TRAINING_PARAMETERS:=-p 100 -e 200 -V 10 --random_seed 557 -b 256
-SUBSET_PARAMETERS:=-G ./subsets/${SUBSET_FILE}
+CYCLE_TRAINING_PARAMETERS:=-p 100 -e 300 -V 10 --random_seed 557 -b 128
+SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
+PDP_PARAMETERS:=-P ${PDP_FILE}
 DATASET:=./data/flows.pickle
 
 clean:
@@ -72,4 +74,7 @@ lstm_single_category:
 
 debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
+
+lstm_pdp:
+	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS}
 

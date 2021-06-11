@@ -224,14 +224,6 @@ class FlowsSubset(Subset):
         self.mapping = mapping
         self.indices = indices if len(indices) > 0 else range(len(flows_dataset))
 
-        # Gather number of flows of each category from dataset according to subset_num
-        if verbose:
-            print(f'Loading subset', end='')
-            if not config_file is None:
-                print(f' {key} with config {str(self)[1:]}{" indx " + str(self._config_index) if self._config_index >= 0 else ""}...', end='')
-            else:
-                print(f'...', end='')
-
         if not config_file is None:
             dist, ditch, mult = FlowsSubset.parse(config_file, key, config_index)
         
@@ -267,6 +259,14 @@ class FlowsSubset(Subset):
             # Init set and subset counters
             self.subset_count[val] = 0
             self.set_count[val] = 0
+
+        # Gather number of flows of each category from dataset according to subset_num
+        if verbose:
+            print(f'Loading subset', end='')
+            if not config_file is None:
+                print(f' {key} with config {str(self)[1:]}{" indx " + str(self._config_index) if self._config_index >= 0 else ""}...', end='')
+            else:
+                print(f'...', end='')
 
         # If mult is not empty, count items in set to determine if there are more or less flows of the categories to be used for multiplication
         if len(mult.items()) > 0:
