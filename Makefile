@@ -76,8 +76,9 @@ debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
 
 lstm_pdp:
-	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS}
+	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} -y PREDICT --no_cache
 
 lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
+
 

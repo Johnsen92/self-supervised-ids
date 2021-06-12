@@ -612,6 +612,8 @@ class LSTM():
                     while batch_size > max_batch_size:
                         batch_size = len(good_subset) // div
                         div += 1
+                    batch_size = batch_size // 2
+                    batch_size *= 2
 
                     # If too few samples, continue
                     if len(good_subset) < 128:

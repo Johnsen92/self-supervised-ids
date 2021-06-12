@@ -267,6 +267,8 @@ if args.self_supervised > 0:
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
+    pretrainer.train()
+
 
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
