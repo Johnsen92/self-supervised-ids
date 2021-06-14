@@ -76,9 +76,12 @@ debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
 
 lstm_pdp:
-	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${CYCLE_PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} -y PREDICT --no_cache
+	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS}
 
 lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${CYCLE_TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
+
+pdp:
+	python3 plot_pdp.py -f ./data/flows_pdp.json -D ./data/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows'
 
 

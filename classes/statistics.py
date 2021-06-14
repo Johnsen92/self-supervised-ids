@@ -390,9 +390,11 @@ class PDPlot():
         # print("all_features.shape", all_features.shape)
         all_legends = []
         all_labels = []
-        for feature_key, feature_name in self.feature_names.items():
+        #print(len(all_features_values))
+        for index, (feature_key, feature_name) in enumerate(self.feature_names.items()):
             feature_index = int(feature_key)
-            as_ints = list(all_features_values[feature_index].astype(np.int32))
+            print('feature index', feature_index)
+            as_ints = list(all_features_values[index].astype(np.int32))
 
             # print("all_features_values[feature_index]", all_features_values[feature_index])
             # ret1 = ax1.hist(all_features_values[feature_index], bins=range(int(round(all_features_values[feature_index].max())+1)), width=1, color=colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
@@ -402,14 +404,13 @@ class PDPlot():
             values = counted.values()
 
             # print("keys", keys, "values", values)
-            ret1 = ax1.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
+            #ret1 = ax1.bar(keys, values, width=1000, color=self.colors[index], alpha=0.2, label="{} occurrence".format(feature_name))
 
             #ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
-            print(feature_index)
-            ret2 = ax2.plot(all_features[feature_index,0,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
+            ret2 = ax2.plot(all_features[index,0,:], all_features[index,1,:], color=self.colors[index], label="{} confidence".format(feature_name))
             # all_legends.append(feature_name)
             # print("legend", legend)
-            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[feature_index]))
+            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[index]))
             all_labels.append(feature_name)
             # all_legends += ret2
 

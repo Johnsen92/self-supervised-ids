@@ -587,22 +587,29 @@ class LSTM():
 
             self.model.eval()
             attack_numbers = self.stats.class_stats.mapping.values()
-            results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
-            feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
             minmax = self.test_data.dataset.minmax
             stds = self.test_data.dataset.stds
             means = self.test_data.dataset.means
             basename = os.path.basename(self.test_data.dataset.data_pickle)[:-7]
-            pdp_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/' + id + '/'
+            pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+            pdp_dir = pdp_base_dir + id + '/'
             os.makedirs(pdp_dir, exist_ok=True)
 
             # PDP data generation parameters
             max_batch_size = 512
             max_samples = 1024
 
-            for features in config:
-                print(features)
-                for attack_number in range(max(attack_numbers)+1):
+            pdp_data = {}
+
+            for features in config['features']:
+                results_by_attack_number = [None for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+                feature_values_by_attack_number = [list() for _ in range(min(attack_numbers), max(attack_numbers)+1)]
+                # Comprise feature string
+                feature_names_string = ''
+                for _, ft in features.items():
+                    feature_names_string += '_' + ft
+
+                for attack_number in config['categories']:
                     # Get at most max_samples flows of attack_number
                     good_subset = FlowsSubset(self.test_data.dataset, self.stats.class_stats.mapping, dist={attack_number: max_samples}, ditch=[-1, attack_number])
 
@@ -620,13 +627,14 @@ class LSTM():
                         print(f'Did not find enough samples ({len(good_subset)}) for attack category {attack_number}. Continuing...')
                         continue
 
-
                     print(f'Generating PDP data for flow category {attack_number}...',end='')
                     results_for_attack_type = []
-                    for feat_ind_str, feat_name in enumerate(features.items()):
+                    for feat_ind_str, feat_name in features.items():
                         feat_ind = int(feat_ind_str)
                         feature_values_by_attack_number[attack_number].append(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
+                        print(np.array([item[0][0,feat_ind] for item in good_subset])*stds[feat_ind] + means[feat_ind])
                         feat_min, feat_max = minmax[feat_ind]
+                        print(feat_min*stds[feat_ind]+ means[feat_ind], feat_max*stds[feat_ind]+ means[feat_ind])
                         values = np.linspace(feat_min, feat_max, 100)
                         pdp = np.zeros([values.size])
                         for i in range(values.size):
@@ -653,15 +661,18 @@ class LSTM():
                         results_by_attack_number[attack_number] = np.stack(results_for_attack_type)
                     print(f'done')
 
-                # Comprise feature string
-                feature_names_string = ''
-                for _, ft in features.items():
-                    feature_names_string += '_' + ft
+                # Add new entry to pdp data 
+                pdp_data[feature_names_string] = {'results_by_attack_number': results_by_attack_number, 'feature_names': [feature_name for _, feature_name in features.items()], 'feature_values_by_attack_number': feature_values_by_attack_number}
 
                 # Save data
                 file_name = pdp_dir + basename + '_pdp' + feature_names_string + '.pickle'
                 with open(file_name, 'wb') as f:
                     pickle.dump({'results_by_attack_number': results_by_attack_number, 'feature_names': [feature_name for _, feature_name in features.items()], 'feature_values_by_attack_number': feature_values_by_attack_number}, f)
+
+            # Save PDP Data
+            file_name = pdp_base_dir + id + '.pickle'
+            with open(file_name, 'wb') as f:
+                pickle.dump(pdp_data, f)
 
     class PredictPacket(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):

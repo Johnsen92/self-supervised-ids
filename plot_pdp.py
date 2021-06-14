@@ -39,7 +39,7 @@ with open(dataroot_basename + "_categories_mapping.json", "r") as f:
 categories_mapping, mapping = categories_mapping_content["categories_mapping"], categories_mapping_content["mapping"]
 reverse_mapping = {v: k for k, v in mapping.items()}
 
-for features in config:
+for features in config['features']:
 	# Comprise feature string
 	feature_names_string = feature_string(features)
 
@@ -51,6 +51,8 @@ for features in config:
 	with open(file_name, "rb") as f:
 		loaded = pickle.load(f)
 	results_by_attack_number, feature_names, feature_values_by_attack_number = loaded["results_by_attack_number"], loaded["feature_names"], loaded["feature_values_by_attack_number"]
+	print(int([k for k, _ in features.items()][0]))
+	#print(feature_values_by_attack_number[int([k for k, _ in features.items()][0])])
 	
 	# Init PD plot
 	pdp = PDPlot(
@@ -77,5 +79,5 @@ for features in config:
 		)
 
 	# Plot each attack type
-	for attack_type in [v for k, v in mapping.items()]:
+	for attack_type in config['categories']:
 		pdp.plot(attack_type)
