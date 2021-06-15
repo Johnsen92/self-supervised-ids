@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
+import re
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -352,24 +353,30 @@ class Stats():
         else:
             return max([acc for _, acc in self.accuracies]) * 100.0
 
-class PDPlot():
-    def __init__(self, results_by_attack_number, feature_values_by_attack_number, mapping, feature_names, plot_dir='plots/pdp/', output_basename='pdp'):
-        self.results_by_attack_number = results_by_attack_number
-        self.feature_values_by_attack_number = feature_values_by_attack_number
-        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-        os.makedirs(plot_dir, exist_ok=True)
-        self.plot_dir = plot_dir
-        self.output_basename = output_basename
-        self.mapping = mapping
-        self.reverse_mapping = {v: k for k, v in mapping.items()}
-        self.feature_names = feature_names
 
-    def plot(self, attack_type, results_by_attack_number=None, feature_values_by_attack_number=None, save=True):
+    
+    def feature_string(self, featurs):
+        feature_names_string = ''
+        for _, ft in self.feature_names.items():
+            feature_names_string += '_' + ft
 
+    def save(self, path):
+        plt.savefig(path, bbox_inches = 'tight', pad_inches = 0)
+        plt.clf()
+
+    def compare(self, attack_type, feature_names_string, pdp_list, config):
         plt.rcParams["font.family"] = "serif"
-        #for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
-        all_features = results_by_attack_number if not results_by_attack_number is None else self.results_by_attack_number[attack_type]
-        all_features_values = feature_values_by_attack_number if not feature_values_by_attack_number is None else self.feature_values_by_attack_number[attack_type]
+        for features in config['features']:
+
+            for pdp in pdp_list:
+                #for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
+                all_features = pdp if not results_by_attack_number is None else self.results_by_attack_number[attack_type]
+                all_features_values = feature_values_by_attack_number if not feature_values_by_attack_number is None else self.feature_values_by_attack_number[attack_type]
+
+        
+        
+        
+        
 
         print("attack_type", attack_type)
         fig, ax1 = plt.subplots(figsize=(5,2.4))
@@ -435,11 +442,67 @@ class PDPlot():
 
         if save:
             self.save(self.plot_dir + self.output_basename + f'{feature_names_string}_{attack_type}_{self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")}.pdf')
+
+class PDData():
+    def __init__(self, id, config):
+        self.id = id
+        self.config = config
+        self.results = {}
+        self.features = {}
+
+    @property
+    def label(self):
+        return re.search(r'\_xy(\w+)\_', self.id).group(1)
+
+class PDPlotNew():
+    def __init__(self, config, mapping, pd_data, plot_dir='plots/pdp/'):
+        self.mapping = mapping
+        self.reverse_mapping = {v: k for k, v in mapping.items()}
+        self.pd_data = pd_data
+        self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
+        os.makedirs(self.plot_dir, exist_ok=True)
+        self.config = config
+        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
-    def save(self, path):
-        plt.savefig(path, bbox_inches = 'tight', pad_inches = 0)
+    @property
+    def label(self):
+        assert len(self.pd_data) > 0
+        id_string = ''
+        for pd in self.pd_data:
+            id_string += self.pd_id(pd) + '_'
+        return id_string[:-1]
+
+    def pd_id(self, pd_data):
+        return re.search(r'\_xy(\w+)\_', pd_data.id).group(1)
+
+    def plot(self, category, feature_index, feature_name):
+        fig, ax = plt.subplots(figsize=(5,2.4))
+        plt.rcParams["font.family"] = "serif"
+        ax.yaxis.tick_left()
+        ax.yaxis.set_label_position("left")
+        ax.set_ylabel('Prediction')
+        all_legends = []
+        all_labels = []
+        for index, pdp in enumerate(self.pd_data):
+            print('(category, feature)', category)
+            if not (category, feature_index) in pdp.results or pdp.results[(category, feature_index)] is None:
+                print(f'Invalid key pair ({category},{feature_index}) or values None. Continuing...')
+                return
+            print('feature index', feature_index)
+            ax.plot(pdp.results[(category, feature_index)][0,:], pdp.results[(category, feature_index)][1,:], color=self.colors[index], label=f'{feature_name} confidence')
+            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[index]))
+            all_labels.append(self.pd_id(pdp))
+
+        ax.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
+        ax.set_xlabel(feature_name)
+        ax.set_ylabel('Partial dependence')    
+        plt.tight_layout()
+        file_name = self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0)
         plt.clf()
 
-    def compare(self, attack_type, pdp):
-        self.plot(attack_type, save=False)
-        self.plot(attack_type, pdp.results_by_attack_number, pdp.feature_values_by_attack_number)
+    def plot_all(self):
+        for category in self.config['categories']:
+            for feature_key, feature_name in self.config['features'].items():
+                feature_ind = int(feature_key)
+                self.plot(category, feature_ind, feature_name)
