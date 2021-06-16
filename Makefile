@@ -76,7 +76,7 @@ debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
 
 lstm_pdp:
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${PRETRAINING_PARAMETERS} -y PREDICT
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${PRETRAINING_PARAMETERS} -y BIAUTO
 
 lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d

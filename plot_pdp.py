@@ -10,7 +10,7 @@ from collections import Counter
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 import argparse
-from classes.statistics import PDPlot, PDPlotNew
+from classes.statistics import PDPlot
 
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--config_file', help='Config file for PD Plot', required=True)
@@ -44,6 +44,6 @@ for id in args.ids:
 		pd_data = pickle.load(f)
 	pd_data_list.append(pd_data)
 
-pdp = PDPlotNew(config, mapping, pd_data_list)
+pdp = PDPlot(config, mapping, pd_data_list)
 pdp.plot_all()
 

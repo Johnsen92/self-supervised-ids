@@ -589,6 +589,7 @@ class LSTM():
             minmax = self.test_data.dataset.minmax
             stds = self.test_data.dataset.stds
             means = self.test_data.dataset.means
+            mapping = self.stats.class_stats.mapping
             pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
 
             # PDP data generation parameters
@@ -600,7 +601,7 @@ class LSTM():
                 feature_ind = int(feature_key)
                 for category in config['categories']:
                     # Get at most max_samples flows of attack_number
-                    good_subset = FlowsSubset(self.test_data.dataset, self.stats.class_stats.mapping, dist={category: max_samples}, ditch=[-1, category])
+                    good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
 
                     # Calculate optimal batch size but at most max_batch_size
                     batch_size = len(good_subset)
@@ -608,7 +609,7 @@ class LSTM():
                     while batch_size > max_batch_size:
                         batch_size = len(good_subset) // div
                         div += 1
-                    # Assert even batch size (because of dual GPU)
+                    # Assert even batch size (only needed if you have dual GPU)
                     batch_size = (batch_size // 2) * 2
 
                     # If too few samples, continue
@@ -616,7 +617,8 @@ class LSTM():
                         print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
                         continue
 
-                    print(f'Generating PDP data for flow category {category} and feature {feature_name}...',end='')
+                    #print(mapping)
+                    #print(f'Generating PDP data for flow category {mapping[category]} ({category}) and feature {feature_name} (feature_ind)...',end='')
                     feat_min, feat_max = minmax[feature_ind]
                     values = np.linspace(feat_min, feat_max, 100)
                     pdp = np.zeros([values.size])

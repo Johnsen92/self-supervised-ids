@@ -454,7 +454,7 @@ class PDData():
     def label(self):
         return re.search(r'\_xy(\w+)\_', self.id).group(1)
 
-class PDPlotNew():
+class PDPlot():
     def __init__(self, config, mapping, pd_data, plot_dir='plots/pdp/'):
         self.mapping = mapping
         self.reverse_mapping = {v: k for k, v in mapping.items()}
@@ -484,9 +484,9 @@ class PDPlotNew():
         all_legends = []
         all_labels = []
         for index, pdp in enumerate(self.pd_data):
-            print('(category, feature)', category)
+            print(f'(category, feature) ({category},{feature_index})')
             if not (category, feature_index) in pdp.results or pdp.results[(category, feature_index)] is None:
-                print(f'Invalid key pair ({category},{feature_index}) or values None. Continuing...')
+                print(f'Invalid key pair ({category},{feature_index}) in {pdp.label} or values None. Continuing...')
                 return
             print('feature index', feature_index)
             ax.plot(pdp.results[(category, feature_index)][0,:], pdp.results[(category, feature_index)][1,:], color=self.colors[index], label=f'{feature_name} confidence')
