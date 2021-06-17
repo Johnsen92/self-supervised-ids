@@ -5,13 +5,13 @@ JSON_DIR:=./json
 RUNS_DIR:=./runs
 PYCACHE_DIR:=./classes/__pycache__
 # Options: PREDICT AUTO BIAUTO OBSCURE MASK
-LSTM_PRETRAININGS:=PREDICT AUTO BIAUTO
+LSTM_PRETRAININGS:= PREDICT AUTO BIAUTO OBSCURE MASK
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PRETRAININGS:=MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
 PDP_FILE:=./data/flows_pdp.json
 PRETRAINING_PARAMETERS:=-s 800 -E 10
-TRAINING_PARAMETERS:=-p 100 -e 300 -V 10 --random_seed 557 -b 128
+TRAINING_PARAMETERS:=-p 100 -e 300 -V 10 --random_seed 558 -b 128
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 PDP_PARAMETERS:=-P ${PDP_FILE}
 DATASET:=./data/flows.pickle
@@ -40,9 +40,9 @@ test_cycle:
 
 lstm_cycle:
 	for pretraining in ${LSTM_PRETRAININGS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining ; \
 	done
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS}
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 
 transformer_cycle:
 	for pretraining in ${TRANSFORMER_PRETRAININGS} ; do \
@@ -82,6 +82,6 @@ lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
 
 pdp:
-	python3 plot_pdp.py -f ./data/flows_pdp.json -D ./data/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows'
+	python3 plot_pdp.py -f ./data/flows_pdp.json -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
 

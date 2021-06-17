@@ -70,7 +70,7 @@ with open(args.json_dir + '/args.json', 'w') as f:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
-run_id = f'lstm_{data_filename}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
+run_id = f'lstm_{data_filename}_rn{random_seed}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
 if not args.subset_config is None:
     run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
 if args.debug:

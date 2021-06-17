@@ -111,7 +111,7 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
-                        #self.scheduler.step(mean_loss_epoch)
+                        self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
@@ -147,7 +147,9 @@ class Trainer(object):
 
                     if self.cache.exists('stats'):
                         # Load statistics object
+                        stats_dir = self.stats.stats_dir
                         self.stats = self.cache.load('stats', msg='Loading statistics object')
+                        self.stats.set_stats_dir(stats_dir)
             return wrapper
 
         @classmethod       
@@ -224,7 +226,7 @@ class Trainer(object):
         self.json = json
         self.writer = writer
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=0.1, patience=10, verbose=True
+            optimizer, factor=0.1, patience=50, verbose=True
         )
 
     def evaluate(self):

@@ -203,6 +203,10 @@ class ClassStats():
             except OSError as exc: # Guard against race condition
                 if exc.errno != errno.EEXIST:
                     raise
+
+    def set_stats_dir(self, stats_dir):
+        self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
+        self.make_stats_dir()
             
 class Stats():
     index = 0
@@ -245,6 +249,12 @@ class Stats():
             except OSError as exc: # Guard against race condition
                 if exc.errno != errno.EEXIST:
                     raise
+
+    def set_stats_dir(self, stats_dir):
+        self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
+        self.make_stats_dir()
+        if not self.class_stats is None:
+            self.class_stats.set_stats_dir(stats_dir) 
 
     def plot_stats(self):
         pass
@@ -476,7 +486,8 @@ class PDPlot():
         return re.search(r'\_xy(\w+)\_', pd_data.id).group(1)
 
     def plot(self, category, feature_index, feature_name):
-        fig, ax = plt.subplots(figsize=(5,2.4))
+        #fig, ax = plt.subplots(figsize=(5,2.4))
+        fig, ax = plt.subplots(figsize=(15,7.2))
         plt.rcParams["font.family"] = "serif"
         ax.yaxis.tick_left()
         ax.yaxis.set_label_position("left")
@@ -484,21 +495,20 @@ class PDPlot():
         all_legends = []
         all_labels = []
         for index, pdp in enumerate(self.pd_data):
-            print(f'(category, feature) ({category},{feature_index})')
+            print(f'({category},{feature_index}) ({self.reverse_mapping[category]}, {feature_name})')
             if not (category, feature_index) in pdp.results or pdp.results[(category, feature_index)] is None:
                 print(f'Invalid key pair ({category},{feature_index}) in {pdp.label} or values None. Continuing...')
                 return
-            print('feature index', feature_index)
             ax.plot(pdp.results[(category, feature_index)][0,:], pdp.results[(category, feature_index)][1,:], color=self.colors[index], label=f'{feature_name} confidence')
             all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[index]))
             all_labels.append(self.pd_id(pdp))
 
-        ax.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
-        ax.set_xlabel(feature_name)
+        ax.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.00,1))
+        ax.set_xlabel(f'{feature_name} - {self.reverse_mapping[category]}')
         ax.set_ylabel('Partial dependence')    
         plt.tight_layout()
         file_name = self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
-        plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0)
+        plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
 
     def plot_all(self):
