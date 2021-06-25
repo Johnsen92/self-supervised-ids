@@ -52,9 +52,9 @@ transformer_cycle:
 
 lstm_test_cycle:
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
+    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining -d --no_cache ; \
 	done
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} -d
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -d
 
 transformer_test_cycle:
 	for pretraining in ${TRANSFORMER_PROXY_TASKS} ; do \

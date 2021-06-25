@@ -33,6 +33,7 @@ parser.add_argument('-b', '--batch_size', default=512, type=int, help='Batch siz
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='Number of epochs for pretraining. If 0 n_epochs is used')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
+parser.add_argument('--min_sequence_length', default=2, type=int, help='Shorter sequences will no be included')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
 parser.add_argument('-y', '--proxy_task', default=trainer.Transformer.ProxyTask.NONE, type=lambda proxy_task: trainer.Transformer.ProxyTask[proxy_task], choices=list(trainer.Transformer.ProxyTask))

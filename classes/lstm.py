@@ -147,10 +147,9 @@ class CompositeLSTM(nn.Module):
             # Select indices
             seqs_past_masked = torch.index_select(seqs_past_reversed[i, :seq_len_past, :], 0, past_idx)
             seqs_future_masked = torch.index_select(seqs_future[i, :seq_len_future, :], 0, future_idx)
-            
-            seqs_out[i, :seq_len, :] = torch.cat((seqs_past_masked, seqs_future_masked), 1)
+            seqs_out[i, :seq_len, :] = torch.cat((seqs_past_masked, seqs_future_masked), 0)
         
-        return seqs_out, seq_lens_out
+        return seqs_out.to(current_device), seq_lens_out
 
 
     def forward(self, src_packed):

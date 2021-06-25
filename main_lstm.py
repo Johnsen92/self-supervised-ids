@@ -32,6 +32,7 @@ parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of ep
 parser.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='Number of epochs for pretraining. If 0, n_epochs is used')
 parser.add_argument('-b', '--batch_size', default=128, type=int, help='Batch size')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
+parser.add_argument('--min_sequence_length', default=2, type=int, help='Shorter sequences will no be included')
 parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
 # ---------------------- Training config -----------------------
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
@@ -91,7 +92,8 @@ extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stat
 # Load dataset and normalize data, or load from cache
 cache_filename = f'dataset_normalized_{data_filename}' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
 if not cache.exists(cache_filename, no_prefix=True):
-    dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
+    dataset_all = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
+    dataset = FlowsSubset(dataset_all, dataset_all.mapping, min_flow_length=args.min_sequence_length)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')

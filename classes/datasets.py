@@ -98,7 +98,11 @@ class Flows(Dataset):
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.mapping = mapping
-        self.n_samples = len(self.x)
+        
+
+    @property
+    def n_samples(self):
+        return len(self.x)
 
     @property
     def minmax(self):
@@ -195,6 +199,10 @@ class FlowsSubset(Subset):
         return subset_string
 
     @property
+    def categories_mapping(self):
+        return self.dataset.categories_mapping
+
+    @property
     def minmax(self):
         return self.dataset.minmax
 
@@ -210,7 +218,29 @@ class FlowsSubset(Subset):
     def data_pickle(self):
         return self.dataset.data_pickle
 
-    def __init__(self, flows_dataset, mapping, indices=[], dist={}, ditch=[], mult={}, config_file=None, key="TRAIN", config_index=-1, verbose=True):
+    @property
+    def n_samples(self):
+        return len(self)
+
+    @property
+    def categories(self):
+        return [c for (_,_,c) in self]
+
+    def split(self, split_sizes, stratify=False):
+        X_idx_rest = np.arange(self.n_samples)
+        y_rest = np.squeeze(np.array([c[0] for c in self.categories], dtype=np.intc))
+        splits = []
+        for i, size in enumerate(split_sizes):
+            X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
+            splits.append(FlowsSubset(self, self.mapping, X_idx_split, verbose=False))
+            # If the whole dataset is used, we have to stop splitting one iteration early, otherwise one split would produce an empty-set which upsets sklearn
+            if i == len(split_sizes)-2 and sum(split_sizes) == self.n_samples:
+                splits.append(FlowsSubset(self, self.mapping, X_idx_rest, verbose=False))
+                break
+        assert sum([len(s) for s in splits]) == sum(split_sizes) 
+        return tuple(splits)
+
+    def __init__(self, flows_dataset, mapping, indices=[], dist={}, ditch=[], mult={}, config_file=None, key='TRAIN', config_index=-1, verbose=True, min_flow_length=0):
         self.mapping = mapping
         self.indices = indices if len(indices) > 0 else range(len(flows_dataset))
 
@@ -277,9 +307,10 @@ class FlowsSubset(Subset):
 
         assert sum([v for _, v in self.subset_num.items()]) > 0
 
-        for idx, (_, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
+        # Gather samples
+        for idx, (seq, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
             c = cat[0].item()
-            if self.subset_count[c] < self.subset_num[c]:
+            if self.subset_count[c] < self.subset_num[c] and seq.shape[0] >= min_flow_length:
                 self.subset_count[c] += 1
                 self.subset_samples.append(idx)
         super().__init__(flows_dataset, self.subset_samples)
