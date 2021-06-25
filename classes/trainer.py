@@ -20,6 +20,7 @@ from torch.utils.data import Dataset, Subset
 import numpy as np
 import pickle
 import json
+from collections import Counter
 
 def memory_dump():
     # Add to leaky code within python_script_being_profiled.py
@@ -50,12 +51,13 @@ class Trainer(object):
                 mon = Monitor(self.epochs * self.n_batches, 1000, agr=Monitor.Aggregate.AVG, title=self.title, json_dir=self.json)
 
                 # Train the model
-                chache_file_name = self.cache.cache_dir + self.cache.key_prefix + '_' + self.cache_filename + str(self.training_data.dataset) + '.sdc'
-                if self.cache.disabled or not os.path.isfile(chache_file_name):
+                chache_file_name = self.cache_filename + str(self.training_data.dataset)
+                if self.cache.disabled or not self.cache.exists(chache_file_name):
                     print('Training model...')
                     observed_acc = []
                     for epoch in range(self.epochs):
                         losses_epoch = []
+
                         for batch_data in self.training_data:
                             if self._scaler is None:
                                 # --------- Decorated function -----------
@@ -110,7 +112,7 @@ class Trainer(object):
                         gc.collect()
 
                         # Update scheduler
-                        mean_loss_epoch = sum(losses_epoch) / len(losses_epoch)
+                        mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
                         self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
@@ -119,6 +121,7 @@ class Trainer(object):
                             accuracy, loss = self.validate()
                             self.model.train()
                             observed_acc.append((epoch, accuracy))
+                            self.cache.save_model(f'ep_{epoch}_' + chache_file_name, self.model, tmp=True)
                             self.writer.add_scalar('Validation accuracy', accuracy, global_step=epoch)
                             self.writer.add_scalar('Validation mean loss', loss, global_step=epoch)
 
@@ -126,24 +129,25 @@ class Trainer(object):
                     if self.validation:
                         assert len(observed_acc) > 0
                         self.stats.accuracies = observed_acc
-                        print(f'Highest accuracy observed with validation period {self.val_epochs}: {self.stats.highest_observed_accuracy:.3f}%')
+                        best_epoch = self.stats.best_epoch
+                        self.cache.load_model(f'ep_{best_epoch[0]}_' + chache_file_name, self.model, tmp=True)
+                        accuracy, _ = self.validate()
+                        #print(round(accuracy * 100.0, 3), round(best_epoch[1], 3))
+                        #assert round(accuracy * 100.0, 3) == round(best_epoch[1], 3)
+                        print(f'Highest accuracy observed with validation period {self.val_epochs}: {best_epoch[1]:.3f}%')
 
                     # Set stats
                     self.stats.add_monitor(mon)
                     self.stats.losses = mon.measurements   
 
                     # Store trained model
-                    print(f'Storing model to cache {chache_file_name}...',end='')
-                    torch.save(self.model.state_dict(), chache_file_name)
-                    print('done')
+                    self.cache.save_model(chache_file_name, self.model)
 
                     # Store statistics object
                     self.cache.save('stats', self.stats, msg='Storing statistics to cache')
                 else:
                     # Load cached model
-                    print(f'(Cache) Loading trained model {chache_file_name}...',end='')
-                    self.model.load_state_dict(torch.load(chache_file_name))
-                    print('done')
+                    self.cache.load_model(chache_file_name, self.model)
 
                     if self.cache.exists('stats'):
                         # Load statistics object
@@ -285,6 +289,98 @@ class Trainer(object):
         # returns nothing
         pass
 
+    @torch.no_grad()
+    def pdp(self, id, config_file):
+
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+
+        self.model.eval()
+        minmax = self.test_data.dataset.minmax
+        stds = self.test_data.dataset.stds
+        means = self.test_data.dataset.means
+        mapping = self.stats.class_stats.mapping
+        reverse_mapping = {v:k for k,v in mapping.items()}
+        pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+
+        # PDP data generation parameters
+        max_batch_size = 512
+        max_samples = 1024
+
+        pd_data = PDData(id, config)
+        for feature_key, feature_name in config['features'].items():
+            feature_ind = int(feature_key)
+            for category in config['categories']:
+                # Get at most max_samples flows of attack_number
+                good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
+
+                # Calculate optimal batch size but at most max_batch_size
+                batch_size = len(good_subset)
+                div = 2
+                while batch_size > max_batch_size:
+                    batch_size = len(good_subset) // div
+                    div += 1
+                # Assert even batch size (only needed if you have dual GPU)
+                batch_size = (batch_size // 2) * 2
+
+                # If too few samples, continue
+                if len(good_subset) < 128:
+                    print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
+                    continue
+
+                print(f'Generating PDP data for flow category {reverse_mapping[category]} ({category}) and feature {feature_name} ({feature_ind})...',end='')
+                feat_min, feat_max = minmax[feature_ind]
+                values = np.linspace(feat_min, feat_max, 100)
+                pdp = np.zeros([values.size])
+
+                print(stds)
+                print(means)
+
+                src = Counter([(x[0][0,0]*stds[0] + means[0]).item() for x in good_subset])
+                dst = Counter([(x[0][0,1]*stds[1] + means[1]).item() for x in good_subset])
+                with open('./src.txt', 'w') as f:
+                    f.write(str(src))
+                with open('./dst.txt', 'w') as f:
+                    f.write(str(dst))
+                print('src', src)
+                print('dst', dst)
+
+                #for index, sample in enumerate(good_subset):
+                    #print('Source Port')
+                    #print(sample[0][0,0]*stds[0] + means[0])
+                    # print('Destination Port')
+                    #print(sample[0][0,1]*stds[1] + means[1])
+                    # print('Protocol')
+                    # print(sample[0][0,2]*stds[2] + means[2])
+                    # print('Packet Length')
+                    # print(sample[0][0,3]*stds[3] + means[3])
+                for i in range(values.size):
+                    for index, sample in enumerate(good_subset):
+                        for j in range(sample[0].shape[0]):
+                            sample[0][j,feature_ind] = values[i]
+
+                    loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                    outputs = []
+                    for (input_data, seq_lens), _, _ in loader:
+                        output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                        # Data is (Sequence Index, Batch Index, Feature Index)
+                        for batch_index in range(output.shape[0]):
+                            flow_length = seq_lens[batch_index]
+                            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                            outputs.append(flow_output)
+
+                    pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
+
+                rescaled = values * stds[feature_ind] + means[feature_ind]
+                pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
+                pd_data.features[(category, feature_ind)] = np.array([item[0][0,feature_ind] for item in good_subset])*stds[feature_ind] + means[feature_ind]
+                print(f'done')
+
+        # Save PDP Data
+        file_name = pdp_base_dir + id + '.pickle'
+        with open(file_name, 'wb') as f:
+            pickle.dump(pd_data, f)
+
 class Transformer():
     class ProxyTask(Enum):
         NONE = 0,
@@ -317,7 +413,7 @@ class Transformer():
             
             # Forward prop
             out = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
-
+            
             # Calculate loss
             loss = self.criterion(out, labels)
 
@@ -510,14 +606,15 @@ class LSTM():
         OBSCURE = 3,
         MASK = 4,
         AUTO = 5,
-        BIAUTO = 6
+        BIAUTO = 6,
+        COMPOSITE = 7
 
         def __str__(self):
             return self.name
 
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.title = 'Supervised'
             self.cache_filename = 'supervised_trained_model'
@@ -549,6 +646,7 @@ class LSTM():
             mask = self.mask(outputs.size(), seq_lens)
             op_view = outputs[mask].view(-1)
             lab_view = labels[mask].view(-1)
+
             loss = self.criterion(op_view, lab_view)
 
             return loss
@@ -580,76 +678,6 @@ class LSTM():
             loss = self.criterion(op_view, lab_view)
 
             return loss, sigmoided_output, predicted, targets, categories
-
-        @torch.no_grad()
-        def pdp(self, id, config_file):
-
-            with open(config_file, 'r') as f:
-                config = json.load(f)
-
-            self.model.eval()
-            minmax = self.test_data.dataset.minmax
-            stds = self.test_data.dataset.stds
-            means = self.test_data.dataset.means
-            mapping = self.stats.class_stats.mapping
-            pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
-
-            # PDP data generation parameters
-            max_batch_size = 512
-            max_samples = 1024
-
-            pd_data = PDData(id, config)
-            for feature_key, feature_name in config['features'].items():
-                feature_ind = int(feature_key)
-                for category in config['categories']:
-                    # Get at most max_samples flows of attack_number
-                    good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
-
-                    # Calculate optimal batch size but at most max_batch_size
-                    batch_size = len(good_subset)
-                    div = 2
-                    while batch_size > max_batch_size:
-                        batch_size = len(good_subset) // div
-                        div += 1
-                    # Assert even batch size (only needed if you have dual GPU)
-                    batch_size = (batch_size // 2) * 2
-
-                    # If too few samples, continue
-                    if len(good_subset) < 128:
-                        print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
-                        continue
-
-                    #print(mapping)
-                    #print(f'Generating PDP data for flow category {mapping[category]} ({category}) and feature {feature_name} (feature_ind)...',end='')
-                    feat_min, feat_max = minmax[feature_ind]
-                    values = np.linspace(feat_min, feat_max, 100)
-                    pdp = np.zeros([values.size])
-                    for i in range(values.size):
-                        for index, sample in enumerate(good_subset):
-                            for j in range(sample[0].shape[0]):
-                                sample[0][j,feature_ind] = values[i]
-
-                        loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-                        outputs = []
-                        for (input_data, seq_lens), _, _ in loader:
-                            output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
-                            # Data is (Sequence Index, Batch Index, Feature Index)
-                            for batch_index in range(output.shape[0]):
-                                flow_length = seq_lens[batch_index]
-                                flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
-                                outputs.append(flow_output)
-
-                        pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
-
-                    rescaled = values * stds[feature_ind] + means[feature_ind]
-                    pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
-                    pd_data.features[(category, feature_ind)] = np.array([item[0][0,feature_ind] for item in good_subset])*stds[feature_ind] + means[feature_ind]
-                    print(f'done')
-
-            # Save PDP Data
-            file_name = pdp_base_dir + id + '.pickle'
-            with open(file_name, 'wb') as f:
-                pickle.dump(pd_data, f)
 
     class PredictPacket(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
@@ -717,6 +745,34 @@ class LSTM():
             outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data_reversed[mask])
+
+            return loss
+
+    class Composite(Trainer):
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+            # Strings to be used for file and console outputs
+            self.title = 'Composite'
+            self.cache_filename = 'pretrained_model'
+
+        def masks(self, op_size, seq_lens):
+            mask = torch.zeros(op_size, dtype=torch.bool)
+            for index, length in enumerate(seq_lens):
+                mask[index, :length,:] = True
+            return mask
+
+        @Trainer.TrainerDecorators.training_wrapper
+        def train(self, batch_data):
+            # Unpack batch data
+            (data, seq_lens), _, _ = batch_data
+
+            # Move data to selected device 
+            data = data.to(self.device)
+
+            # Forwards pass
+            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            mask = self.masks(outputs.size(), seq_lens)
+            loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 

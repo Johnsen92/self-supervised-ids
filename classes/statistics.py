@@ -14,6 +14,7 @@ from collections import Counter
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 import re
+from operator import itemgetter
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -294,7 +295,7 @@ class Stats():
                     f.write(f'{key}, {val}\n')
             f.write(f'\nResults,\n')
             f.write(f'Final accuracy, {p_acc:.3f} %\n')
-            f.write(f'Highest observed acc., {self.highest_observed_accuracy:.3f} %\n')
+            f.write(f'Highest observed acc., {self.best_epoch[1]:.3f} %\n')
             f.write(f'# false positves, {self.n_false_positive}\n')
             f.write(f'# false negatives, {self.n_false_negative}\n')
             f.write(f'% false positves, {(self.false_positive * 100):.3f} %\n')
@@ -357,11 +358,12 @@ class Stats():
         return time_s
 
     @property
-    def highest_observed_accuracy(self):
+    def best_epoch(self):
         if len(self.accuracies) == 0:
-            return 0.0
+            return (0,0.0)
         else:
-            return max([acc for _, acc in self.accuracies]) * 100.0
+            max_epoch = max(self.accuracies, key=lambda item:item[1])
+            return (max_epoch[0], max_epoch[1] * 100.0)
 
 
     
@@ -507,7 +509,7 @@ class PDPlot():
         ax.set_xlabel(f'{feature_name} - {self.reverse_mapping[category]}')
         ax.set_ylabel('Partial dependence')    
         plt.tight_layout()
-        file_name = self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        file_name = self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}_{feature_index}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
 

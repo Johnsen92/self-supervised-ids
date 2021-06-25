@@ -125,10 +125,10 @@ else:
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
 if not args.subset_config is None:
-    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN", config_index=args.subset_config_index)
-    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE", config_index=args.subset_config_index)
+    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key='TRAIN', config_index=args.subset_config_index)
+    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key='VALIDATE', config_index=args.subset_config_index)
     if args.self_supervised > 0:
-        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN", config_index=args.subset_config_index)
+        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key='PRETRAIN', config_index=args.subset_config_index)
 
 # Init data loaders
 if args.self_supervised > 0:
@@ -265,6 +265,22 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.COMPOSITE):
+        model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        pretrainer = trainer.LSTM.Composite(
+            model = model, 
+            training_data = pretrain_loader, 
+            device = device,
+            criterion = pretraining_criterion, 
+            optimizer = optimizer, 
+            epochs = epochs_pretraining, 
+            val_epochs = args.val_epochs,
+            stats = stats, 
+            cache = cache,
+            json = args.json_dir,
+            writer = writer
+        )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
     pretrainer.train()
@@ -303,6 +319,9 @@ if not args.pdp_config is None:
 # Evaluate model
 if not args.debug:
     trainer.evaluate()
+
+# Remove temp directory
+cache.clean()
 
 print(f'Run with ID \"{run_id}\" has ended successfully')
 

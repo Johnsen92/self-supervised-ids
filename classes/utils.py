@@ -7,6 +7,7 @@ import errno
 import torch
 from enum import Enum
 import numpy as np
+import shutil
 
 def make_dir(path):
     if not os.path.exists(os.path.dirname(path)):
@@ -22,7 +23,9 @@ def numpy_sigmoid(x):
 class Cache():
     def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):
         self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir + '/'
+        self.cache_tmp_dir = self.cache_dir + f'tmp_{key_prefix}/'
         self.make_cache_dir()
+        self.make_tmp_dir()
         self.md5 = md5
         self.key_prefix = key_prefix
         self.disabled = disabled
@@ -35,47 +38,61 @@ class Cache():
                 if exc.errno != errno.EEXIST:
                     raise
 
-    def exists(self, key, no_prefix=False):
-        key = self.get_real_key(key, no_prefix)
-        cache_file = self.cache_dir + key + '.pickle'
-        return os.path.isfile(cache_file) if not self.disabled else False
+    def make_tmp_dir(self):
+        if not os.path.exists(os.path.dirname(self.cache_tmp_dir)):
+            try:
+                os.makedirs(os.path.dirname(self.cache_tmp_dir))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
 
-    def load(self, key, no_prefix=False, msg=None):
+    def exists(self, key, no_prefix=False, tmp=False):
         key = self.get_real_key(key, no_prefix)
-        cache_file = self.cache_dir + key + '.pickle'
-        assert os.path.isfile(cache_file)
-        print(f'(Cache) Loading {key} from cache' if msg == None else f'(Cache) {msg}', end='')
+        cache_file = (self.cache_tmp_dir if tmp else self.cache_dir) + key
+        return os.path.isfile(cache_file + '.pickle') or os.path.isfile(cache_file + '.sdc') if not self.disabled else False
+
+    def load(self, key, no_prefix=False, msg=None, tmp=False):
+        key = self.get_real_key(key, no_prefix)
+        cache_file = (self.cache_tmp_dir if tmp else self.cache_dir) + key + '.pickle'
+        assert os.path.isfile(cache_file), f'File not found: {cache_file}'
+        print(f'(Cache) Loading {key} from{" temp" if tmp else ""} cache' if msg == None else f'(Cache) {msg}', end='')
         with open (cache_file, 'rb') as f:
             pkl = pickle.load(f)
             print('...done')
         return pkl
 
-    def save(self, key, obj, no_prefix=False, msg=None):
+    def save(self, key, obj, no_prefix=False, msg=None, tmp=False):
         key = self.get_real_key(key, no_prefix)
-        cache_file = self.cache_dir + key + '.pickle'
-        print(f'(Cache) Storing {key} to cache' if msg == None else f'(Cache) {msg}', end='')
+        cache_file = (self.cache_tmp_dir if tmp else self.cache_dir) + key + '.pickle'
+        print(f'(Cache) Storing {key} to{" temp" if tmp else ""} cache' if msg == None else f'(Cache) {msg}', end='')
         with open (cache_file, 'wb') as f:
             f.write(pickle.dumps(obj))
             print('...done')
 
-    def save_model(self, key, model, no_prefix=False, msg=None):
+    def save_model(self, key, model, no_prefix=False, msg=None, tmp=False):
         key = self.get_real_key(key, no_prefix)
-        cache_file = self.cache_dir + key + '.sdc'
-        print(f'(Cache) Storing model {key} to cache' if msg == None else f'(Cache) {msg}', end='')
+        cache_file = (self.cache_tmp_dir if tmp else self.cache_dir) + key + '.sdc'
+        print(f'(Cache) Storing model {key} to{" temp" if tmp else ""} cache' if msg == None else f'(Cache) {msg}', end='')
         torch.save(model.state_dict(), cache_file)
         print('...done')
 
-    def load_model(self, key, model, no_prefix=False, msg=None):
+    def load_model(self, key, model, no_prefix=False, msg=None, tmp=False):
         key = self.get_real_key(key, no_prefix)
-        cache_file = self.cache_dir + key + '.sdc'
-        assert os.path.isfile(cache_file)
-        print(f'(Cache) Loading model {key} from cache' if msg == None else f'(Cache) {msg}', end='')
+        cache_file = (self.cache_tmp_dir if tmp else self.cache_dir) + key + '.sdc'
+        assert os.path.isfile(cache_file), f'File not found: {cache_file}'
+        print(f'(Cache) Loading model {key} from{" temp" if tmp else ""} cache' if msg == None else f'(Cache) {msg}', end='')
         model.load_state_dict(torch.load(cache_file))
         print('...done')
 
     def get_real_key(self, key, no_prefix):
         prefix = hashlib.md5(self.key_prefix.encode('utf-8')).hexdigest() if self.md5 else self.key_prefix
         return key if no_prefix else prefix + '_' + key
+
+    def clean(self):
+        try:
+            shutil.rmtree(self.cache_tmp_dir)
+        except OSError as e:
+            print(f'Error: {e.filename} - {e.strerror}.')
 
 class RunControl():
     class Controls(Enum):

@@ -69,9 +69,7 @@ class Flows(Dataset):
         # If feature expansion is enabled, expand feature size by expansion_factor with random data
         if expansion_factor > 1:
             X = [np.concatenate((item, np.random.rand(item.shape[0], item.shape[1] * (expansion_factor - 1))), axis=1) for item in X]
-
         print('done')
-
         # Normalize data between -1 and 1
         cache_filename = 'normalization_data'
         if not self.cache == None and not self.cache.exists(cache_filename):
@@ -87,14 +85,15 @@ class Flows(Dataset):
         else:
             (means, stds) = cache.load(cache_filename, msg='Loading normalization data')
 
-        assert means.shape[0] == X[0].shape[-1], 'means.shape: {}, x.shape: {}'.format(means.shape, X[0].shape)
-        assert stds.shape[0] == X[0].shape[-1], 'stds.shape: {}, x.shape: {}'.format(stds.shape, X[0].shape)
-        assert not (stds==0).any(), 'stds: {}'.format(stds)
+        assert means.shape[0] == X[0].shape[-1], f'means.shape: {means.shape}, x.shape: {X[0].shape}'
+        assert stds.shape[0] == X[0].shape[-1], f'stds.shape: {stds.shape}, x.shape: {X[0].shape}'
+        assert not (stds==0).any(), 'stds: {stds}'
 
         # Store in class members
         self.means = means
         self.stds = stds
-        self.x = [(item-means)/stds for item in X]
+        self.x = [(item - means)/stds for item in X]
+    
         self.y = Y
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
