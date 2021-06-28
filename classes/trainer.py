@@ -314,6 +314,8 @@ class Trainer(object):
                 # Get at most max_samples flows of attack_number
                 good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
 
+                pd_data.features[(category, feature_ind)] = np.array([(item[0][0,feature_ind]*stds[feature_ind] + means[feature_ind]).item() for item in good_subset])
+
                 # Calculate optimal batch size but at most max_batch_size
                 batch_size = len(good_subset)
                 div = 2
@@ -331,29 +333,8 @@ class Trainer(object):
                 print(f'Generating PDP data for flow category {reverse_mapping[category]} ({category}) and feature {feature_name} ({feature_ind})...',end='')
                 feat_min, feat_max = minmax[feature_ind]
                 values = np.linspace(feat_min, feat_max, 100)
-                pdp = np.zeros([values.size])
+                pdp = np.zeros([values.size])   
 
-                print(stds)
-                print(means)
-
-                src = Counter([(x[0][0,0]*stds[0] + means[0]).item() for x in good_subset])
-                dst = Counter([(x[0][0,1]*stds[1] + means[1]).item() for x in good_subset])
-                with open('./src.txt', 'w') as f:
-                    f.write(str(src))
-                with open('./dst.txt', 'w') as f:
-                    f.write(str(dst))
-                print('src', src)
-                print('dst', dst)
-
-                #for index, sample in enumerate(good_subset):
-                    #print('Source Port')
-                    #print(sample[0][0,0]*stds[0] + means[0])
-                    # print('Destination Port')
-                    #print(sample[0][0,1]*stds[1] + means[1])
-                    # print('Protocol')
-                    # print(sample[0][0,2]*stds[2] + means[2])
-                    # print('Packet Length')
-                    # print(sample[0][0,3]*stds[3] + means[3])
                 for i in range(values.size):
                     for index, sample in enumerate(good_subset):
                         for j in range(sample[0].shape[0]):
@@ -373,7 +354,6 @@ class Trainer(object):
 
                 rescaled = values * stds[feature_ind] + means[feature_ind]
                 pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
-                pd_data.features[(category, feature_ind)] = np.array([item[0][0,feature_ind] for item in good_subset])*stds[feature_ind] + means[feature_ind]
                 print(f'done')
 
         # Save PDP Data

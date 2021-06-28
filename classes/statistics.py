@@ -491,11 +491,23 @@ class PDPlot():
         #fig, ax = plt.subplots(figsize=(5,2.4))
         fig, ax = plt.subplots(figsize=(15,7.2))
         plt.rcParams["font.family"] = "serif"
+        ax_bar = ax.twinx()
         ax.yaxis.tick_left()
         ax.yaxis.set_label_position("left")
+        ax_bar.set_ylabel("Flow number")
+        ax_bar.yaxis.tick_right()
+        ax_bar.yaxis.set_label_position("right")
         ax.set_ylabel('Prediction')
         all_legends = []
         all_labels = []
+
+        # Barplot for occurances
+        as_ints = list(self.pd_data[0].features[(category, feature_index)].astype(np.int32))
+        counted = Counter(as_ints)
+        keys = counted.keys()
+        values = counted.values()
+        ax_bar.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label=f'{feature_name} occurrence')
+
         for index, pdp in enumerate(self.pd_data):
             print(f'({category},{feature_index}) ({self.reverse_mapping[category]}, {feature_name})')
             if not (category, feature_index) in pdp.results or pdp.results[(category, feature_index)] is None:

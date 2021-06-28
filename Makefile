@@ -5,7 +5,7 @@ JSON_DIR:=./json/
 RUNS_DIR:=./runs/
 PYCACHE_DIR:=./classes/__pycache__
 # Options: PREDICT AUTO BIAUTO OBSCURE MASK
-LSTM_PROXY_TASKS:= COMPOSITE AUTO PREDICT BIAUTO OBSCURE MASK
+LSTM_PROXY_TASKS:= AUTO PREDICT BIAUTO OBSCURE MASK
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:=MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
@@ -82,7 +82,8 @@ lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
 
 pdp:
-	python3 plot_pdp.py -f ./data/flows_pdp.json -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
+#	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
+	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_rn559_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyBIAUTO_subset|10_flows'
 
 tmp:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y MASK
