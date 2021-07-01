@@ -364,96 +364,7 @@ class Stats():
         else:
             max_epoch = max(self.accuracies, key=lambda item:item[1])
             return (max_epoch[0], max_epoch[1] * 100.0)
-
-
     
-    def feature_string(self, featurs):
-        feature_names_string = ''
-        for _, ft in self.feature_names.items():
-            feature_names_string += '_' + ft
-
-    def save(self, path):
-        plt.savefig(path, bbox_inches = 'tight', pad_inches = 0)
-        plt.clf()
-
-    def compare(self, attack_type, feature_names_string, pdp_list, config):
-        plt.rcParams["font.family"] = "serif"
-        for features in config['features']:
-
-            for pdp in pdp_list:
-                #for attack_type, (all_features, all_features_values) in enumerate(zip(results_by_attack_number, feature_values_by_attack_number)):
-                all_features = pdp if not results_by_attack_number is None else self.results_by_attack_number[attack_type]
-                all_features_values = feature_values_by_attack_number if not feature_values_by_attack_number is None else self.feature_values_by_attack_number[attack_type]
-
-        
-        
-        
-        
-
-        print("attack_type", attack_type)
-        fig, ax1 = plt.subplots(figsize=(5,2.4))
-
-        ax2 = ax1.twinx()
-
-        ax2.set_ylabel('Prediction')
-        ax1.set_ylabel("Flow number")
-
-        ax1.yaxis.tick_right()
-        ax1.yaxis.set_label_position("right")
-        ax2.yaxis.tick_left()
-        ax2.yaxis.set_label_position("left")
-
-        if all_features is None:
-            print('All features are None. Returning with nothing done...')
-            return
-        # print("all_features.shape", all_features.shape)
-        all_legends = []
-        all_labels = []
-        #print(len(all_features_values))
-        for index, (feature_key, feature_name) in enumerate(self.feature_names.items()):
-            feature_index = int(feature_key)
-            print('feature index', feature_index)
-            as_ints = list(all_features_values[index].astype(np.int32))
-
-            # print("all_features_values[feature_index]", all_features_values[feature_index])
-            # ret1 = ax1.hist(all_features_values[feature_index], bins=range(int(round(all_features_values[feature_index].max())+1)), width=1, color=colors[feature_index], alpha=0.2, label="{} occurrence".format(feature_name))
-
-            counted = Counter(as_ints)
-            keys = counted.keys()
-            values = counted.values()
-
-            # print("keys", keys, "values", values)
-            #ret1 = ax1.bar(keys, values, width=1000, color=self.colors[index], alpha=0.2, label="{} occurrence".format(feature_name))
-
-            #ret2 = ax2.plot(all_features[feature_index,0,:], all_features[feature_index,1,:], color=self.colors[feature_index], label="{} confidence".format(feature_name))
-            ret2 = ax2.plot(all_features[index,0,:], all_features[index,1,:], color=self.colors[index], label="{} confidence".format(feature_name))
-            # all_legends.append(feature_name)
-            # print("legend", legend)
-            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[index]))
-            all_labels.append(feature_name)
-            # all_legends += ret2
-
-        # plt.title(reverse_mapping[attack_type])
-        # print("all_legends", all_legends)
-        ax1.set_yscale('log')
-        ax1.set_ylim((ax1.get_ylim()[0], 1000))
-        ax2.set_ylim((ax2.get_ylim()[0], 1.0))
-        # all_labels = [item.get_label() for item in all_legends]
-        ax2.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.06,1))
-        ax1.set_xlabel([v for _, v in self.feature_names.items()][0])
-        ax2.set_ylabel('Partial dependence')
-        #ax2.set_ylabel_legend(Line2D([0],[0], color='gray'))
-        #ax1.set_ylabel_legend(Rectangle((0,0), 1,1, fc='gray', alpha=0.2), handlelength=0.7)
-        plt.tight_layout()
-        #plt.savefig('%s.pdf' % os.path.splitext(fn)[0])
-        # plt.show()
-
-        feature_names_string = ''
-        for _, ft in self.feature_names.items():
-            feature_names_string += '_' + ft
-
-        if save:
-            self.save(self.plot_dir + self.output_basename + f'{feature_names_string}_{attack_type}_{self.reverse_mapping[attack_type].replace("/", "-").replace(":", "-")}.pdf')
 
 class PDData():
     def __init__(self, id, config):
@@ -474,7 +385,8 @@ class PDPlot():
         self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
         os.makedirs(self.plot_dir, exist_ok=True)
         self.config = config
-        self.colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        self._colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        self._bar_color = '#000000'
     
     @property
     def label(self):
@@ -506,15 +418,18 @@ class PDPlot():
         counted = Counter(as_ints)
         keys = counted.keys()
         values = counted.values()
-        ax_bar.bar(keys, values, width=1000, color=self.colors[feature_index], alpha=0.2, label=f'{feature_name} occurrence')
+
+        range = max(self.pd_data[0].results[(category, feature_index)][0,:]) - min(self.pd_data[0].results[(category, feature_index)][0,:])
+        width = range / 100
+        ax_bar.bar(keys, values, width=width, color=self._bar_color, alpha=0.2, label=f'{feature_name} occurrence')
 
         for index, pdp in enumerate(self.pd_data):
             print(f'({category},{feature_index}) ({self.reverse_mapping[category]}, {feature_name})')
             if not (category, feature_index) in pdp.results or pdp.results[(category, feature_index)] is None:
                 print(f'Invalid key pair ({category},{feature_index}) in {pdp.label} or values None. Continuing...')
                 return
-            ax.plot(pdp.results[(category, feature_index)][0,:], pdp.results[(category, feature_index)][1,:], color=self.colors[index], label=f'{feature_name} confidence')
-            all_legends.append(Rectangle((0,0), 1, 1, color=self.colors[index]))
+            ax.plot(pdp.results[(category, feature_index)][0,:], pdp.results[(category, feature_index)][1,:], color=self._colors[index], label=f'{feature_name} confidence')
+            all_legends.append(Rectangle((0,0), 1, 1, color=self._colors[index]))
             all_labels.append(self.pd_id(pdp))
 
         ax.legend(all_legends[::-1], all_labels[::-1], loc='upper left', bbox_to_anchor=(0.00,1))
