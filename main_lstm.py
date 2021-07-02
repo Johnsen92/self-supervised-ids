@@ -237,8 +237,8 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
-        pretrainer = trainer.LSTM.AutoEncoder(
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.ID):
+        pretrainer = trainer.LSTM.Identity(
             model = model, 
             training_data = pretrain_loader, 
             device = device,
@@ -251,10 +251,10 @@ if args.self_supervised > 0:
             json = args.json_dir,
             writer = writer
         )
-    elif(args.proxy_task == trainer.LSTM.ProxyTask.BIAUTO):
+    elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
         model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-        pretrainer = trainer.LSTM.BidirectionalAutoEncoder(
+        pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
             training_data = pretrain_loader, 
             device = device,

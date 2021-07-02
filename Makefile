@@ -4,14 +4,14 @@ CACHE_DIR:=./cache/
 JSON_DIR:=./json/
 RUNS_DIR:=./runs/
 PYCACHE_DIR:=./classes/__pycache__
-# Options: PREDICT AUTO BIAUTO OBSCURE MASK
-LSTM_PROXY_TASKS:= PREDICT AUTO
+# Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
+LSTM_PROXY_TASKS:= COMPOSITE
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:= MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
 PDP_FILE:=./data/flows_pdp.json
 PRETRAINING_PARAMETERS:=-s 800 -E 10
-TRAINING_PARAMETERS:=-p 100 -e 600 -V 10 --random_seed 557 -b 128
+TRAINING_PARAMETERS:=-p 100 -e 601 -V 10 --random_seed 557 -b 512
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 PDP_PARAMETERS:=-P ${PDP_FILE}
 DATASET:=./data/flows.pickle
@@ -52,7 +52,7 @@ transformer_cycle:
 
 lstm_test_cycle:
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining -d --no_cache ; \
+    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining -d; \
 	done
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -d
 

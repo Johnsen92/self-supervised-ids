@@ -1,5 +1,6 @@
 import torch as torch
 from torch import nn
+import math
 
 # Fill padded section of output with last unpadded LSTM output in sequence
 def pad_packed_output_sequence(packed_output):
@@ -97,16 +98,17 @@ class CompositeLSTM(nn.Module):
 
     def split_input(self, seqs, seq_lens):
         current_device = seqs.get_device()
-        seqs_past = torch.zeros(seqs.size()[0], seqs.size()[1] // 2, seqs.size()[2], dtype=torch.float32)
-        seqs_past_reversed = torch.zeros(seqs.size()[0], seqs.size()[1] // 2, seqs.size()[2], dtype=torch.float32)
-        seqs_future = torch.zeros(seqs.size()[0], seqs.size()[1] - (seqs.size()[1] // 2), seqs.size()[2], dtype=torch.float32)
+        max_half_seq_len = math.ceil(seqs.size()[1] / 2.)
+        seqs_past = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32)
+        seqs_past_reversed = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32)
+        seqs_future = torch.zeros(seqs.size()[0], seqs.size()[1] - max_half_seq_len, seqs.size()[2], dtype=torch.float32)
         seq_lens_past = []
         seq_lens_future = []
         for i, seq_len in enumerate(seq_lens):
             # Calculate new sequence lengths
-            half_seq_len = seq_len // 2
+            half_seq_len = math.ceil(seq_len / 2.)
             seq_lens_past.append(half_seq_len)
-            seq_lens_future.append(seq_len - half_seq_len)
+            seq_lens_future.append(seq_len.item() - half_seq_len)
 
             # Get indices for past, reverse past and future
             past_idx = [j for j in range(seq_lens_past[i])]
@@ -123,15 +125,15 @@ class CompositeLSTM(nn.Module):
         
         # Pack sequences
         seqs_past_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_past, seq_lens_past, batch_first=True, enforce_sorted=False).to(current_device)
-        seqs_past_reversed_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_past_reversed, seq_lens_past, batch_first=True, enforce_sorted=False).to(current_device)
-        seqs_future_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_future, seq_lens_future, batch_first=True, enforce_sorted=False).to(current_device)
-        return seqs_past_packed, seqs_past_reversed_packed, seqs_future_packed
+        #seqs_past_reversed_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_past_reversed, seq_lens_past, batch_first=True, enforce_sorted=False).to(current_device)
+        #seqs_future_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_future, seq_lens_future, batch_first=True, enforce_sorted=False).to(current_device)
+        return seqs_past_packed, (seqs_past_reversed, seq_lens_past), (seqs_future, seq_lens_future)
 
-    def merge_outputs(self, past_reversed_packed, future_packed):
-        seqs_past_reversed, seq_lens_past = torch.nn.utils.rnn.pad_packed_sequence(past_reversed_packed, batch_first=True)
-        seqs_future, seq_lens_future = torch.nn.utils.rnn.pad_packed_sequence(future_packed, batch_first=True)
-        current_device = seqs_past_reversed.get_device()
-        seqs_out = torch.zeros(seqs_past_reversed.size()[0], seqs_past_reversed.size()[1] + seqs_future.size()[1], seqs_past_reversed.size()[2], dtype=torch.float32)
+    def merge_outputs(self, out_past, seq_lens_past, out_future, seq_lens_future):
+        #seqs_past_reversed, seq_lens_past = torch.nn.utils.rnn.pad_packed_sequence(past_reversed_packed, batch_first=True)
+        #seqs_future, seq_lens_future = torch.nn.utils.rnn.pad_packed_sequence(future_packed, batch_first=True)
+        current_device = out_past.get_device()
+        seqs_out = torch.zeros(out_past.size()[0], out_past.size()[1] + out_future.size()[1], out_past.size()[2], dtype=torch.float32)
         seq_lens_out = []
         for i, (seq_len_past, seq_len_future) in enumerate(zip(seq_lens_past, seq_lens_future)):
             # Calculate new sequence lengths
@@ -145,8 +147,8 @@ class CompositeLSTM(nn.Module):
             future_idx = torch.LongTensor(future_idx).to(current_device)
 
             # Select indices
-            seqs_past_masked = torch.index_select(seqs_past_reversed[i, :seq_len_past, :], 0, past_idx)
-            seqs_future_masked = torch.index_select(seqs_future[i, :seq_len_future, :], 0, future_idx)
+            seqs_past_masked = torch.index_select(out_past[i, :seq_len_past, :], 0, past_idx)
+            seqs_future_masked = torch.index_select(out_future[i, :seq_len_future, :], 0, future_idx)
             seqs_out[i, :seq_len, :] = torch.cat((seqs_past_masked, seqs_future_masked), 0)
         
         return seqs_out.to(current_device), seq_lens_out
@@ -158,7 +160,8 @@ class CompositeLSTM(nn.Module):
         src, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
         batch_size = len(seq_lens)
 
-        src_past_packed, src_past_reversed_packed, src_future_packed = self.split_input(src, seq_lens)
+        #src_past_packed, src_past_reversed_packed, src_future_packed = self.split_input(src, seq_lens)
+        seqs_past_packed, (seqs_past_reversed, seq_lens_past), (seqs_future, seq_lens_future) = self.split_input(src, seq_lens)
 
         # Get current device
         current_device = src.get_device()
@@ -169,7 +172,7 @@ class CompositeLSTM(nn.Module):
 
         # Forward pass for encoder LSTM
         if self.pretraining:
-            encoder_out, (h_state, c_state) = self._encoder_lstm(src_past_packed, (encoder_hidden_init, encoder_cell_init))
+            encoder_out, (h_state, c_state) = self._encoder_lstm(seqs_past_packed, (encoder_hidden_init, encoder_cell_init))
         else:
             encoder_out, (h_state, c_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
 
@@ -184,11 +187,34 @@ class CompositeLSTM(nn.Module):
 
             self._past_lstm.flatten_parameters()
             self._future_lstm.flatten_parameters()
-            past_out, _ = self._past_lstm(src_past_reversed_packed, (past_hidden_init, past_cell_init))
-            future_out, _ = self._future_lstm(src_future_packed, (future_hidden_init, future_cell_init))
 
-            pretraining_out_unpacked, _ = self.merge_outputs(past_out, future_out)
-            out = self._decoder_fc(pretraining_out_unpacked)
+            # Reversed past decoder
+            past_in = past_out = torch.zeros((seqs_past_reversed.size()[0],1,seqs_past_reversed.size()[2])).to(current_device)
+            (past_hidden, past_cell) = (past_hidden_init, past_cell_init)
+            for i in range(max(seq_lens_past)):
+                out, (past_hidden, past_cell) = self._past_lstm(past_in, (past_hidden, past_cell))
+                fc_out = self._decoder_fc(out)
+                if i == 0:
+                    past_out = fc_out
+                else:
+                    past_out = torch.cat((past_out, fc_out), 1)
+                past_in = fc_out.detach()
+
+            # Future decoder
+            future_in = future_out = torch.zeros((seqs_future.size()[0],1,seqs_future.size()[2])).to(current_device)
+            (future_hidden, future_cell) = (future_hidden_init, future_cell_init)
+            for i in range(max(seq_lens_future)):
+                out, (future_hidden, future_cell) = self._future_lstm(future_in, (future_hidden, future_cell))
+                fc_out = self._decoder_fc(out)
+                if i == 0:
+                    future_out = fc_out
+                else:
+                    future_out = torch.cat((future_out, fc_out), 1)
+                future_in = fc_out.detach()
+
+            #past_out, _ = self._past_lstm(src_past_reversed_packed, (past_hidden_init, past_cell_init))
+            #future_out, _ = self._future_lstm(src_future_packed, (future_hidden_init, future_cell_init))
+            out, _ = self.merge_outputs(past_out, seq_lens_past, future_out, seq_lens_future)
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)
@@ -249,12 +275,22 @@ class AutoEncoderLSTM(nn.Module):
             #decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
             #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
 
-            src_packed_reverse = self.reverse_seq_order(src_packed)
+            #src_packed_reverse = self.reverse_seq_order(src_packed)
             self._decoder_lstm.flatten_parameters()
-            decoder_out, _ = self._decoder_lstm(src_packed_reverse, (decoder_hidden_init, decoder_cell_init))
 
-            decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
-            out = self._decoder_fc(decoder_out_unpacked)
+            decoder_in = decoder_out = torch.zeros((src.size()[0],1,src.size()[2])).to(current_device)
+            (decoder_hidden, decoder_cell) = (decoder_hidden_init, decoder_cell_init)
+            for i in range(src.size()[1]):
+                out, (decoder_hidden, decoder_cell) = self._decoder_lstm(decoder_in, (decoder_hidden, decoder_cell))
+                fc_out = self._decoder_fc(out)
+                if i == 0:
+                    decoder_out = fc_out
+                else:
+                    decoder_out = torch.cat((decoder_out, fc_out), 1)
+                decoder_in = fc_out.detach()
+
+            #decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
+            out = decoder_out
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)

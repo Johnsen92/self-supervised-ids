@@ -585,8 +585,8 @@ class LSTM():
         PREDICT = 2,
         OBSCURE = 3,
         MASK = 4,
-        AUTO = 5,
-        BIAUTO = 6,
+        ID = 5,
+        AUTO = 6,
         COMPOSITE = 7
 
         def __str__(self):
@@ -691,11 +691,11 @@ class LSTM():
 
             return loss
 
-    class BidirectionalAutoEncoder(Trainer):
+    class AutoEncoder(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'BidirectionalAutoEncoder'
+            self.title = 'AutoEncoder'
             self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
@@ -750,17 +750,21 @@ class LSTM():
             data = data.to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
-            mask = self.masks(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[mask], data[mask])
+            if max(seq_lens) <= 1:
+                mask = self.masks(data.size(), seq_lens)
+                loss = self.criterion(data[mask], data[mask])
+            else:
+                outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+                mask = self.masks(outputs.size(), seq_lens)
+                loss = self.criterion(outputs[mask], data[mask])
 
             return loss
 
-    class AutoEncoder(Trainer):
+    class Identity(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
             super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'AutoEncoder'
+            self.title = 'Identity'
             self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
