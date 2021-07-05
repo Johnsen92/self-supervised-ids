@@ -113,7 +113,7 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
-                        self.scheduler.step(mean_loss_epoch)
+                        #self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
@@ -291,6 +291,78 @@ class Trainer(object):
 
     @torch.no_grad()
     def pdp(self, id, config_file):
+
+        with open(config_file, 'r') as f:
+            config = json.load(f)
+
+        self.model.eval()
+        minmax = self.test_data.dataset.minmax
+        stds = self.test_data.dataset.stds
+        means = self.test_data.dataset.means
+        mapping = self.stats.class_stats.mapping
+        reverse_mapping = {v:k for k,v in mapping.items()}
+        pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+
+        # PDP data generation parameters
+        max_batch_size = 512
+        max_samples = 1024
+
+        pd_data = PDData(id, config)
+        for feature_key, feature_name in config['features'].items():
+            feature_ind = int(feature_key)
+            for category in config['categories']:
+                # Get at most max_samples flows of attack_number
+                good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
+
+                pd_data.features[(category, feature_ind)] = np.array([(item[0][0,feature_ind]*stds[feature_ind] + means[feature_ind]).item() for item in good_subset])
+
+                # Calculate optimal batch size but at most max_batch_size
+                batch_size = len(good_subset)
+                div = 2
+                while batch_size > max_batch_size:
+                    batch_size = len(good_subset) // div
+                    div += 1
+                # Assert even batch size (only needed if you have dual GPU)
+                batch_size = (batch_size // 2) * 2
+
+                # If too few samples, continue
+                if len(good_subset) < 128:
+                    print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
+                    continue
+
+                print(f'Generating PDP data for flow category {reverse_mapping[category]} ({category}) and feature {feature_name} ({feature_ind})...',end='')
+                feat_min, feat_max = minmax[feature_ind]
+                values = np.linspace(feat_min, feat_max, 100)
+                pdp = np.zeros([values.size])   
+
+                for i in range(values.size):
+                    for index, sample in enumerate(good_subset):
+                        for j in range(sample[0].shape[0]):
+                            sample[0][j,feature_ind] = values[i]
+
+                    loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                    outputs = []
+                    for (input_data, seq_lens), _, _ in loader:
+                        output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                        # Data is (Sequence Index, Batch Index, Feature Index)
+                        for batch_index in range(output.shape[0]):
+                            flow_length = seq_lens[batch_index]
+                            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                            outputs.append(flow_output)
+
+                    pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
+
+                rescaled = values * stds[feature_ind] + means[feature_ind]
+                pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
+                print(f'done')
+
+        # Save PDP Data
+        file_name = pdp_base_dir + id + '.pickle'
+        with open(file_name, 'wb') as f:
+            pickle.dump(pd_data, f)
+
+    @torch.no_grad()
+    def neuron_activation(self, id, config_file):
 
         with open(config_file, 'r') as f:
             config = json.load(f)
@@ -594,7 +666,7 @@ class LSTM():
 
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = 'Supervised'
             self.cache_filename = 'supervised_trained_model'
@@ -730,7 +802,7 @@ class LSTM():
 
     class Composite(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.title = 'Composite'
             self.cache_filename = 'pretrained_model'
@@ -738,7 +810,7 @@ class LSTM():
         def masks(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
             for index, length in enumerate(seq_lens):
-                mask[index, :length,:] = True
+                mask[index, :length, :] = True
             return mask
 
         @Trainer.TrainerDecorators.training_wrapper
