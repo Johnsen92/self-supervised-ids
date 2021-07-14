@@ -229,7 +229,8 @@ class AutoEncoderLSTM(nn.Module):
         hidden_size, 
         output_size, 
         num_layers,
-        teacher_forcing=False
+        teacher_forcing=False,
+        identity=True
     ):
         super().__init__()
         self._encoder_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
@@ -241,6 +242,7 @@ class AutoEncoderLSTM(nn.Module):
         self.output_size = output_size
         self.pretraining = True
         self.teacher_forcing = teacher_forcing
+        self.identity = identity
 
     def reverse_seq_order(self, seqs_packed):
         seqs, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(seqs_packed, batch_first=True)
@@ -285,17 +287,18 @@ class AutoEncoderLSTM(nn.Module):
             decoder_in = src_reverse[:,0,:].unsqueeze(1)
             (decoder_hidden, decoder_cell) = (decoder_hidden_init, decoder_cell_init)
             for i in range(src.size()[1]):
-                decoder_in = src_reverse[:,i,:].unsqueeze(1)
+                if self.identity:
+                    decoder_in = src_reverse[:,i,:].unsqueeze(1)
                 out, (decoder_hidden, decoder_cell) = self._decoder_lstm(decoder_in, (decoder_hidden, decoder_cell))
                 fc_out = self._decoder_fc(out)
                 if i == 0:
                     decoder_out = fc_out
                 else:
                     decoder_out = torch.cat((decoder_out, fc_out), 1)
-                #if self.teacher_forcing:
-                    #decoder_in = src_reverse[:,i,:].unsqueeze(1)
-                #else:
-                    #decoder_in = fc_out.detach()
+                if self.teacher_forcing and not self.identity:
+                    decoder_in = src_reverse[:,i,:].unsqueeze(1)
+                elif not self.identity:
+                    decoder_in = fc_out.detach()
 
             (hidden_state, cell_state) = (decoder_hidden, decoder_cell)
 
