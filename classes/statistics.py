@@ -420,7 +420,7 @@ class PDPlot():
         values = counted.values()
 
         range = max(self.pd_data[0].results[(category, feature_index)][0,:]) - min(self.pd_data[0].results[(category, feature_index)][0,:])
-        width = range / 100
+        width = range / 500
         ax_bar.bar(keys, values, width=width, color=self._bar_color, alpha=0.2, label=f'{feature_name} occurrence')
 
         for index, pdp in enumerate(self.pd_data):

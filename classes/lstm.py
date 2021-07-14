@@ -69,13 +69,13 @@ class PretrainableLSTM(LSTM):
         hidden_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
         cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
 
-        out, _ = self._lstm(src_packed, (hidden_init, cell_init))
+        out, (hidden_state, cell_state) = self._lstm(src_packed, (hidden_init, cell_init))
         out, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
         if self.pretraining:
             out = self._fc_pretraining(out)
         else:
             out = self._fc(out)
-        return out
+        return out, (hidden_state, cell_state)
 
 class CompositeLSTM(nn.Module):
     def __init__(
@@ -153,14 +153,13 @@ class CompositeLSTM(nn.Module):
         
         return seqs_out.to(current_device), seq_lens_out
 
-
     def forward(self, src_packed):
 
         # Get batch_size
         src, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(src_packed, batch_first=True)
         batch_size = len(seq_lens)
 
-        #src_past_packed, src_past_reversed_packed, src_future_packed = self.split_input(src, seq_lens)
+        # Split input into past, future and reversed past
         seqs_past_packed, (seqs_past_reversed, seq_lens_past), (seqs_future, seq_lens_future) = self.split_input(src, seq_lens)
 
         # Get current device
@@ -172,15 +171,15 @@ class CompositeLSTM(nn.Module):
 
         # Forward pass for encoder LSTM
         if self.pretraining:
-            encoder_out, (h_state, c_state) = self._encoder_lstm(seqs_past_packed, (encoder_hidden_init, encoder_cell_init))
+            encoder_out, (hidden_state, cell_state) = self._encoder_lstm(seqs_past_packed, (encoder_hidden_init, encoder_cell_init))
         else:
-            encoder_out, (h_state, c_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
+            encoder_out, (hidden_state, cell_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
 
         if self.pretraining:
-            past_hidden_init = future_hidden_init = torch.zeros(h_state.size()).to(current_device)
-            past_cell_init = future_cell_init =  torch.zeros(c_state.size()).to(current_device)
-            past_hidden_init[0, :, :] = future_hidden_init[0, :, :] = h_state[-1, :, :]
-            past_cell_init[0, :, :] = future_cell_init[0, :, :] = c_state[-1, :, :]
+            past_hidden_init = future_hidden_init = torch.zeros(hidden_state.size()).to(current_device)
+            past_cell_init = future_cell_init =  torch.zeros(cell_state.size()).to(current_device)
+            past_hidden_init[0, :, :] = future_hidden_init[0, :, :] = hidden_state[-1, :, :]
+            past_cell_init[0, :, :] = future_cell_init[0, :, :] = cell_state[-1, :, :]
 
             #decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
             #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
@@ -212,13 +211,16 @@ class CompositeLSTM(nn.Module):
                     future_out = torch.cat((future_out, fc_out), 1)
                 future_in = fc_out.detach()
 
+            # Get final hidden state of future LSTM
+            (hidden_state, cell_state) = (future_hidden, future_cell)
+
             #past_out, _ = self._past_lstm(src_past_reversed_packed, (past_hidden_init, past_cell_init))
             #future_out, _ = self._future_lstm(src_future_packed, (future_hidden_init, future_cell_init))
             out, _ = self.merge_outputs(past_out, seq_lens_past, future_out, seq_lens_future)
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)
-        return out
+        return out, (hidden_state, cell_state)
 
 class AutoEncoderLSTM(nn.Module):
     def __init__(
@@ -226,7 +228,8 @@ class AutoEncoderLSTM(nn.Module):
         input_size, 
         hidden_size, 
         output_size, 
-        num_layers
+        num_layers,
+        teacher_forcing=False
     ):
         super().__init__()
         self._encoder_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
@@ -237,6 +240,7 @@ class AutoEncoderLSTM(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.pretraining = True
+        self.teacher_forcing = teacher_forcing
 
     def reverse_seq_order(self, seqs_packed):
         seqs, seq_lens = torch.nn.utils.rnn.pad_packed_sequence(seqs_packed, batch_first=True)
@@ -246,8 +250,8 @@ class AutoEncoderLSTM(nn.Module):
             rev_idx = [i for i in range(seq_len-1, -1, -1)]
             rev_idx = torch.LongTensor(rev_idx).to(current_device)
             seqs_reversed[i, :seq_len, :] = torch.index_select(seqs[i, :seq_len, :],0,rev_idx)
-        seqs_reversed_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_reversed, seq_lens, batch_first=True, enforce_sorted=False).to(current_device)
-        return seqs_reversed_packed
+        #seqs_reversed_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_reversed, seq_lens, batch_first=True, enforce_sorted=False).to(current_device)
+        return seqs_reversed.to(current_device)
 
     def forward(self, src_packed):
 
@@ -263,35 +267,41 @@ class AutoEncoderLSTM(nn.Module):
         encoder_cell_init = torch.zeros(self.num_layers, batch_size, self.hidden_size).to(current_device)
 
         # Forward pass for encoder LSTM
-        #self._encoder_lstm.flatten_parameters()
-        encoder_out, (h_state, c_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
+        encoder_out, (hidden_state, cell_state) = self._encoder_lstm(src_packed, (encoder_hidden_init, encoder_cell_init))
 
         if self.pretraining:
-            decoder_hidden_init = torch.zeros(h_state.size()).to(current_device)
-            decoder_cell_init = torch.zeros(c_state.size()).to(current_device)
-            decoder_hidden_init[0, :, :] = h_state[-1, :, :]
-            decoder_cell_init[0, :, :] = c_state[-1, :, :]
+            decoder_hidden_init = torch.zeros(hidden_state.size()).to(current_device)
+            decoder_cell_init = torch.zeros(cell_state.size()).to(current_device)
+            decoder_hidden_init[0, :, :] = hidden_state[-1, :, :]
+            decoder_cell_init[0, :, :] = cell_state[-1, :, :]
 
             #decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
             #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
 
-            #src_packed_reverse = self.reverse_seq_order(src_packed)
+            src_reverse = self.reverse_seq_order(src_packed)
             self._decoder_lstm.flatten_parameters()
 
             decoder_in = decoder_out = torch.zeros((src.size()[0],1,src.size()[2])).to(current_device)
+            decoder_in = src_reverse[:,0,:].unsqueeze(1)
             (decoder_hidden, decoder_cell) = (decoder_hidden_init, decoder_cell_init)
             for i in range(src.size()[1]):
+                decoder_in = src_reverse[:,i,:].unsqueeze(1)
                 out, (decoder_hidden, decoder_cell) = self._decoder_lstm(decoder_in, (decoder_hidden, decoder_cell))
                 fc_out = self._decoder_fc(out)
                 if i == 0:
                     decoder_out = fc_out
                 else:
                     decoder_out = torch.cat((decoder_out, fc_out), 1)
-                decoder_in = fc_out.detach()
+                #if self.teacher_forcing:
+                    #decoder_in = src_reverse[:,i,:].unsqueeze(1)
+                #else:
+                    #decoder_in = fc_out.detach()
+
+            (hidden_state, cell_state) = (decoder_hidden, decoder_cell)
 
             #decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
             out = decoder_out
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)
-        return out
+        return out, (hidden_state, cell_state)

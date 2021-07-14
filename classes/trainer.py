@@ -259,7 +259,9 @@ class Trainer(object):
                 
         # Apply chunks to model replicas and gather outputs on GPU with ID 0
         replicas = replicas[:len(inputs)]
-        outputs = nn.parallel.parallel_apply(replicas, inputs)
+        outputs, states = zip(*nn.parallel.parallel_apply(replicas, inputs))
+        hidden_states, cell_states = zip(*states)
+        outputs = list(outputs)
 
         # If the chunks have different maximum sequence lengths, pad the shorter ones so all are the same length
         if len(outputs[0].size()) > 1:
@@ -277,7 +279,10 @@ class Trainer(object):
                         padding = padding.to(output_device)
                         outputs[i] = torch.cat((out, padding), seq_dim)
 
-        return nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
+        merged_output = nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
+        merged_hidden_state = nn.parallel.gather(hidden_states, output_device, dim=1)
+        merged_cell_state = nn.parallel.gather(cell_states, output_device, dim=1)
+        return merged_output, (merged_hidden_state, merged_cell_state)
 
     @TrainerDecorators.validation_wrapper
     def validate(self, batch_data):
@@ -343,7 +348,7 @@ class Trainer(object):
                     loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
                     outputs = []
                     for (input_data, seq_lens), _, _ in loader:
-                        output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                        output, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
                         # Data is (Sequence Index, Batch Index, Feature Index)
                         for batch_index in range(output.shape[0]):
                             flow_length = seq_lens[batch_index]
@@ -363,7 +368,6 @@ class Trainer(object):
 
     @torch.no_grad()
     def neuron_activation(self, id, config_file):
-
         with open(config_file, 'r') as f:
             config = json.load(f)
 
@@ -373,20 +377,17 @@ class Trainer(object):
         means = self.test_data.dataset.means
         mapping = self.stats.class_stats.mapping
         reverse_mapping = {v:k for k,v in mapping.items()}
-        pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+        na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neuron_activation/'
 
         # PDP data generation parameters
         max_batch_size = 512
         max_samples = 1024
 
-        pd_data = PDData(id, config)
         for feature_key, feature_name in config['features'].items():
             feature_ind = int(feature_key)
             for category in config['categories']:
                 # Get at most max_samples flows of attack_number
                 good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
-
-                pd_data.features[(category, feature_ind)] = np.array([(item[0][0,feature_ind]*stds[feature_ind] + means[feature_ind]).item() for item in good_subset])
 
                 # Calculate optimal batch size but at most max_batch_size
                 batch_size = len(good_subset)
@@ -402,34 +403,19 @@ class Trainer(object):
                     print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
                     continue
 
-                print(f'Generating PDP data for flow category {reverse_mapping[category]} ({category}) and feature {feature_name} ({feature_ind})...',end='')
-                feat_min, feat_max = minmax[feature_ind]
-                values = np.linspace(feat_min, feat_max, 100)
-                pdp = np.zeros([values.size])   
+                loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                outputs = []
+                for (input_data, seq_lens), _, _ in loader:
+                    output, (hidden_state, cell_state) = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                    # Data is (Sequence Index, Batch Index, Feature Index)
+                    for batch_index in range(output.shape[0]):
+                        outputs.append(hidden_state[-1,batch_index,:].detach().cpu().numpy())
 
-                for i in range(values.size):
-                    for index, sample in enumerate(good_subset):
-                        for j in range(sample[0].shape[0]):
-                            sample[0][j,feature_ind] = values[i]
-
-                    loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-                    outputs = []
-                    for (input_data, seq_lens), _, _ in loader:
-                        output = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
-                        # Data is (Sequence Index, Batch Index, Feature Index)
-                        for batch_index in range(output.shape[0]):
-                            flow_length = seq_lens[batch_index]
-                            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
-                            outputs.append(flow_output)
-
-                    pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
-
-                rescaled = values * stds[feature_ind] + means[feature_ind]
                 pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
                 print(f'done')
 
         # Save PDP Data
-        file_name = pdp_base_dir + id + '.pickle'
+        file_name = na_base_dir + id + '.pickle'
         with open(file_name, 'wb') as f:
             pickle.dump(pd_data, f)
 
@@ -694,7 +680,7 @@ class LSTM():
             labels = labels.to(self.device)
                 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.mask(outputs.size(), seq_lens)
             op_view = outputs[mask].view(-1)
             lab_view = labels[mask].view(-1)
@@ -714,7 +700,7 @@ class LSTM():
             categories = categories.to(self.device)
 
             # Forward pass
-            outputs = self.parallel_forward(data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
             logit_mask = self.logit_mask(outputs.size(), seq_lens)
 
             # Max returns (value ,index)
@@ -755,7 +741,7 @@ class LSTM():
             data = data.to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
 
             # Calculate loss
@@ -794,7 +780,7 @@ class LSTM():
             data_reversed = self.reverse_sequences(data, seq_lens).to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data_reversed[mask])
 
@@ -826,7 +812,7 @@ class LSTM():
                 mask = self.masks(data.size(), seq_lens)
                 loss = self.criterion(data[mask], data[mask])
             else:
-                outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+                outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
                 mask = self.masks(outputs.size(), seq_lens)
                 loss = self.criterion(outputs[mask], data[mask])
 
@@ -854,7 +840,7 @@ class LSTM():
             data = data.to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data[mask])
 
@@ -904,7 +890,7 @@ class LSTM():
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
             loss = self.criterion(outputs[mask], data[mask])
 
             return loss
@@ -941,7 +927,7 @@ class LSTM():
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
             loss = self.criterion(outputs[mask], data[mask])
 
             return loss

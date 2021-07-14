@@ -1,0 +1,17 @@
+{
+	"TRAIN":{
+		"dist":{"-1":1,"10":39},
+		"ditch":[],
+		"mult":{}
+	},
+	"PRETRAIN":{
+		"dist":{},
+		"ditch":[],
+		"mult":{}
+	},
+	"VALIDATE":{
+		"dist":{},
+		"ditch":[],
+		"mult":{}
+	}
+}
