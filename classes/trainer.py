@@ -3,7 +3,7 @@ import torch
 from timeit import default_timer as timer
 from datetime import timedelta
 from classes import utils, datasets
-from .statistics import Stats, Monitor, PDData
+from .statistics import Stats, Monitor, PDData, NeuronData
 from .datasets import Flows, FlowsSubset
 from .utils import Cache
 import math
@@ -376,13 +376,11 @@ class Trainer(object):
 
     @torch.no_grad()
     def neuron_activation(self, id, config_file):
+
         with open(config_file, 'r') as f:
             config = json.load(f)
 
         self.model.eval()
-        minmax = self.test_data.dataset.minmax
-        stds = self.test_data.dataset.stds
-        means = self.test_data.dataset.means
         mapping = self.stats.class_stats.mapping
         reverse_mapping = {v:k for k,v in mapping.items()}
         na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neuron_activation/'
@@ -391,41 +389,48 @@ class Trainer(object):
         max_batch_size = 512
         max_samples = 1024
 
-        for feature_key, feature_name in config['features'].items():
-            feature_ind = int(feature_key)
-            for category in config['categories']:
-                # Get at most max_samples flows of attack_number
-                good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
+        if len(config['categories']) == 0:
+            categories = [v for _, v in mapping.items()]
+        else:
+            categories = config['categories']
 
-                # Calculate optimal batch size but at most max_batch_size
-                batch_size = len(good_subset)
-                div = 2
-                while batch_size > max_batch_size:
-                    batch_size = len(good_subset) // div
-                    div += 1
-                # Assert even batch size (only needed if you have dual GPU)
-                batch_size = (batch_size // 2) * 2
+        neuron_data = NeuronData(id, config)
 
-                # If too few samples, continue
-                if len(good_subset) < 128:
-                    print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
-                    continue
+        for category in categories:
+            # Get at most max_samples flows of attack_number
+            good_subset = FlowsSubset(self.test_data.dataset, mapping, dist={category: max_samples}, ditch=[-1, category])
 
-                loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-                outputs = []
-                for (input_data, seq_lens), _, _ in loader:
-                    output, (hidden_state, cell_state), neurons = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
-                    # Data is (Sequence Index, Batch Index, Feature Index)
-                    for batch_index in range(output.shape[0]):
-                        outputs.append(hidden_state[-1,batch_index,:].detach().cpu().numpy())
+            # Calculate optimal batch size but at most max_batch_size
+            batch_size = len(good_subset)
+            div = 2
+            while batch_size > max_batch_size:
+                batch_size = len(good_subset) // div
+                div += 1
+            # Assert even batch size (only needed if you have dual GPU)
+            batch_size = (batch_size // 2) * 2
 
-                pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
-                print(f'done')
+            # If too few samples, continue
+            if len(good_subset) < 128:
+                print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
+                continue
+
+            loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+            neurons_unpadded = []
+            for (input_data, seq_lens), _, _ in loader:
+                _, _, neurons = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                # Data is (Sequence Index, Batch Index, Feature Index)
+                for batch_index, seq_len in enumerate(seq_lens):
+                    print(seq_len)
+                    print(batch_index)
+                    neurons_unpadded.append(neurons[seq_len, batch_index, :].detach().cpu().numpy())
+
+            neuron_data.results[category] = np.vstack(neurons_unpadded)
+            print(f'done')
 
         # Save PDP Data
         file_name = na_base_dir + id + '.pickle'
         with open(file_name, 'wb') as f:
-            pickle.dump(pd_data, f)
+            pickle.dump(neuron_data, f)
 
 class Transformer():
     class ProxyTask(Enum):

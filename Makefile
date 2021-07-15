@@ -5,15 +5,17 @@ JSON_DIR:=./json/
 RUNS_DIR:=./runs/
 PYCACHE_DIR:=./classes/__pycache__
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
-LSTM_PROXY_TASKS:= COMPOSITE AUTO
+LSTM_PROXY_TASKS:= ID
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:= MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
 PDP_FILE:=./data/flows_pdp.json
+NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s 800 -E 10
-TRAINING_PARAMETERS:=-p 100 -e 601 -V 10 --random_seed 602 -b 128
+TRAINING_PARAMETERS:=-p 100 -e 601 -V 10 --random_seed 601 -b 128
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 PDP_PARAMETERS:=-P ${PDP_FILE}
+NEURON_PARAMETERS:=-N ${NEURON_FILE}
 DATASET:=./data/flows.pickle
 
 clean:
@@ -80,6 +82,12 @@ lstm_pdp:
     	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} -y $$pretraining ; \
 	done
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS}
+
+lstm_neurons:
+	for pretraining in ${LSTM_PROXY_TASKS} ; do \
+    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining ; \
+	done
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${NEURON_PARAMETERS}
 
 lstm_pdp_debug:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d

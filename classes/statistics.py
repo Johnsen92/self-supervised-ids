@@ -364,7 +364,20 @@ class Stats():
         else:
             max_epoch = max(self.accuracies, key=lambda item:item[1])
             return (max_epoch[0], max_epoch[1] * 100.0)
-    
+
+class NeuronData():
+    def __init__(self, id, config):
+        self.id = id
+        self.config = config
+        self.results = {}
+
+    @property
+    def mean(self):
+        pass
+
+    @property
+    def last(self):
+        pass
 
 class PDData():
     def __init__(self, id, config):

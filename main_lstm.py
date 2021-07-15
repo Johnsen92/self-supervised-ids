@@ -47,6 +47,7 @@ parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Fact
 # ---------------------- Stats & cache -------------------------
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
+parser.add_argument('-N', '--neuron_config', default=None, help='Path to neuron activation plot config file')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 args = parser.parse_args(sys.argv[1:])
@@ -316,6 +317,9 @@ trainer.train()
 # Partial Dependency Plot
 if not args.pdp_config is None:
     trainer.pdp(run_id, args.pdp_config)
+
+if not args.neuron_config is None:
+    trainer.neuron_activation(run_id, args.neuron_config)
 
 # Evaluate model
 if not args.debug:
