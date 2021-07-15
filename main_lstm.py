@@ -252,7 +252,7 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
-        model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, teacher_forcing=True).to(device)
+        model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, identity=True).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
@@ -268,7 +268,7 @@ if args.self_supervised > 0:
             writer = writer
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.COMPOSITE):
-        model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers).to(device)
+        model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, teacher_forcing=True).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         pretrainer = trainer.LSTM.Composite(
             model = model, 

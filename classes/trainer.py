@@ -259,9 +259,12 @@ class Trainer(object):
                 
         # Apply chunks to model replicas and gather outputs on GPU with ID 0
         replicas = replicas[:len(inputs)]
-        outputs, states = zip(*nn.parallel.parallel_apply(replicas, inputs))
-        hidden_states, cell_states = zip(*states)
+        outputs, neurons, states = zip(*nn.parallel.parallel_apply(replicas, inputs))
         outputs = list(outputs)
+        neurons = list(neurons)
+        hidden_states, cell_states = zip(*states)
+
+        assert len(outputs) == len(neurons), 'Length of outputs and neurons do not match'
 
         # If the chunks have different maximum sequence lengths, pad the shorter ones so all are the same length
         if len(outputs[0].size()) > 1:
@@ -271,18 +274,23 @@ class Trainer(object):
             # If the max sequence lengths of all the chunks are the same, we can skip this
             if not max_seq_lens.count(max_seq_lens[0]) == len(max_seq_lens):
                 max_seq_len = max(max_seq_lens)
-                for i, out in enumerate(outputs):
+                for i, (out, neuron) in enumerate(zip(outputs, neurons)):
                     out = out.to(output_device)
-                    current_max_seq_len = out.size()[seq_dim]
-                    if current_max_seq_len < max_seq_len:
-                        padding = torch.zeros((out.size()[0], max_seq_len - current_max_seq_len, out.size()[2])) if out_batch_first else torch.zeros((max_seq_len - current_max_seq_len, out.size()[1], out.size()[2]))
-                        padding = padding.to(output_device)
-                        outputs[i] = torch.cat((out, padding), seq_dim)
+                    neuron = neuron.to(output_device)
+                    seq_len = out.size()[seq_dim]
+                    if seq_len < max_seq_len:
+                        padding_out = torch.zeros((out.size()[0], max_seq_len - seq_len, out.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, out.size()[1], out.size()[2]))
+                        padding_out = padding_out.to(output_device)
+                        padding_neuron = torch.zeros((neuron.size()[0], max_seq_len - seq_len, neuron.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, neuron.size()[1], neuron.size()[2]))
+                        padding_neuron = padding_neuron.to(output_device)
+                        outputs[i] = torch.cat((out, padding_out), seq_dim)
+                        neurons[i] = torch.cat((neuron, padding_neuron), seq_dim)
 
         merged_output = nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
+        merged_neurons = nn.parallel.gather(neurons, output_device, dim=(0 if out_batch_first else 1))
         merged_hidden_state = nn.parallel.gather(hidden_states, output_device, dim=1)
         merged_cell_state = nn.parallel.gather(cell_states, output_device, dim=1)
-        return merged_output, (merged_hidden_state, merged_cell_state)
+        return merged_output, merged_neurons, (merged_hidden_state, merged_cell_state)
 
     @TrainerDecorators.validation_wrapper
     def validate(self, batch_data):
@@ -348,7 +356,7 @@ class Trainer(object):
                     loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
                     outputs = []
                     for (input_data, seq_lens), _, _ in loader:
-                        output, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                        output, _, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
                         # Data is (Sequence Index, Batch Index, Feature Index)
                         for batch_index in range(output.shape[0]):
                             flow_length = seq_lens[batch_index]
@@ -406,7 +414,7 @@ class Trainer(object):
                 loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
                 outputs = []
                 for (input_data, seq_lens), _, _ in loader:
-                    output, (hidden_state, cell_state) = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                    output, (hidden_state, cell_state), neurons = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
                     # Data is (Sequence Index, Batch Index, Feature Index)
                     for batch_index in range(output.shape[0]):
                         outputs.append(hidden_state[-1,batch_index,:].detach().cpu().numpy())
@@ -680,7 +688,7 @@ class LSTM():
             labels = labels.to(self.device)
                 
             # Forwards pass
-            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.mask(outputs.size(), seq_lens)
             op_view = outputs[mask].view(-1)
             lab_view = labels[mask].view(-1)
@@ -700,7 +708,7 @@ class LSTM():
             categories = categories.to(self.device)
 
             # Forward pass
-            outputs, _ = self.parallel_forward(data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
             logit_mask = self.logit_mask(outputs.size(), seq_lens)
 
             # Max returns (value ,index)
@@ -741,7 +749,7 @@ class LSTM():
             data = data.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             src_mask, trg_mask = self.masks(outputs.size(), seq_lens)
 
             # Calculate loss
@@ -780,7 +788,7 @@ class LSTM():
             data_reversed = self.reverse_sequences(data, seq_lens).to(self.device)
 
             # Forwards pass
-            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data_reversed[mask])
 
@@ -812,7 +820,7 @@ class LSTM():
                 mask = self.masks(data.size(), seq_lens)
                 loss = self.criterion(data[mask], data[mask])
             else:
-                outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+                outputs, _, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
                 mask = self.masks(outputs.size(), seq_lens)
                 loss = self.criterion(outputs[mask], data[mask])
 
@@ -840,7 +848,7 @@ class LSTM():
             data = data.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(data, seq_lens, in_batch_first=True, out_batch_first=True)
             mask = self.masks(outputs.size(), seq_lens)
             loss = self.criterion(outputs[mask], data[mask])
 
@@ -890,7 +898,7 @@ class LSTM():
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
             loss = self.criterion(outputs[mask], data[mask])
 
             return loss
@@ -927,7 +935,7 @@ class LSTM():
             mask = mask.to(self.device)
 
             # Forwards pass
-            outputs, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
+            outputs, _, _ = self.parallel_forward(masked_data, seq_lens, in_batch_first=True, out_batch_first=True)
             loss = self.criterion(outputs[mask], data[mask])
 
             return loss

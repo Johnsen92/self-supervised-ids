@@ -71,11 +71,12 @@ class PretrainableLSTM(LSTM):
 
         out, (hidden_state, cell_state) = self._lstm(src_packed, (hidden_init, cell_init))
         out, _ = torch.nn.utils.rnn.pad_packed_sequence(out, batch_first=True)
+        neurons = out.detach()
         if self.pretraining:
             out = self._fc_pretraining(out)
         else:
             out = self._fc(out)
-        return out, (hidden_state, cell_state)
+        return out, neurons, (hidden_state, cell_state)
 
 class CompositeLSTM(nn.Module):
     def __init__(
@@ -83,7 +84,8 @@ class CompositeLSTM(nn.Module):
         input_size, 
         hidden_size, 
         output_size, 
-        num_layers
+        num_layers,
+        teacher_forcing=False
     ):
         super().__init__()
         self._encoder_lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
@@ -95,13 +97,14 @@ class CompositeLSTM(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.pretraining = True
+        self.teacher_forcing = teacher_forcing
 
     def split_input(self, seqs, seq_lens):
         current_device = seqs.get_device()
         max_half_seq_len = math.ceil(seqs.size()[1] / 2.)
-        seqs_past = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32)
-        seqs_past_reversed = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32)
-        seqs_future = torch.zeros(seqs.size()[0], seqs.size()[1] - max_half_seq_len, seqs.size()[2], dtype=torch.float32)
+        seqs_past = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32).to(current_device)
+        seqs_past_reversed = torch.zeros(seqs.size()[0], max_half_seq_len, seqs.size()[2], dtype=torch.float32).to(current_device)
+        seqs_future = torch.zeros(seqs.size()[0], seqs.size()[1] - max_half_seq_len, seqs.size()[2], dtype=torch.float32).to(current_device)
         seq_lens_past = []
         seq_lens_future = []
         for i, seq_len in enumerate(seq_lens):
@@ -129,12 +132,15 @@ class CompositeLSTM(nn.Module):
         #seqs_future_packed = torch.nn.utils.rnn.pack_padded_sequence(seqs_future, seq_lens_future, batch_first=True, enforce_sorted=False).to(current_device)
         return seqs_past_packed, (seqs_past_reversed, seq_lens_past), (seqs_future, seq_lens_future)
 
-    def merge_outputs(self, out_past, seq_lens_past, out_future, seq_lens_future):
+    def merge_outputs(self, out_past, neurons_past, seq_lens_past, out_future, neurons_future, seq_lens_future):
         #seqs_past_reversed, seq_lens_past = torch.nn.utils.rnn.pad_packed_sequence(past_reversed_packed, batch_first=True)
         #seqs_future, seq_lens_future = torch.nn.utils.rnn.pad_packed_sequence(future_packed, batch_first=True)
         current_device = out_past.get_device()
         seqs_out = torch.zeros(out_past.size()[0], out_past.size()[1] + out_future.size()[1], out_past.size()[2], dtype=torch.float32)
+        neurons_out = torch.zeros(neurons_past.size()[0], neurons_past.size()[1] + neurons_future.size()[1], neurons_past.size()[2], dtype=torch.float32)
         seq_lens_out = []
+        assert out_past.size()[1] + out_future.size()[1] == neurons_past.size()[1] + neurons_future.size()[1], 'Seq lengths of neurons and outputs don`t match'
+        assert neurons_past.size()[0] == out_past.size()[0], 'Batch size of neurons and output don`t match'
         for i, (seq_len_past, seq_len_future) in enumerate(zip(seq_lens_past, seq_lens_future)):
             # Calculate new sequence lengths
             seq_len = seq_len_past + seq_len_future
@@ -146,12 +152,17 @@ class CompositeLSTM(nn.Module):
             past_idx = torch.LongTensor(past_idx).to(current_device)
             future_idx = torch.LongTensor(future_idx).to(current_device)
 
-            # Select indices
+            # Select indices for output sequences
             seqs_past_masked = torch.index_select(out_past[i, :seq_len_past, :], 0, past_idx)
             seqs_future_masked = torch.index_select(out_future[i, :seq_len_future, :], 0, future_idx)
             seqs_out[i, :seq_len, :] = torch.cat((seqs_past_masked, seqs_future_masked), 0)
+            
+            # Select indices for neurons
+            neurons_past_masked = torch.index_select(neurons_past[i, :seq_len_past, :], 0, past_idx)
+            neurons_future_masked = torch.index_select(neurons_future[i, :seq_len_future, :], 0, future_idx)
+            neurons_out[i, :seq_len, :] = torch.cat((neurons_past_masked, neurons_future_masked), 0)
         
-        return seqs_out.to(current_device), seq_lens_out
+        return seqs_out.to(current_device), neurons_out.to(current_device), seq_lens_out
 
     def forward(self, src_packed):
 
@@ -189,38 +200,55 @@ class CompositeLSTM(nn.Module):
 
             # Reversed past decoder
             past_in = past_out = torch.zeros((seqs_past_reversed.size()[0],1,seqs_past_reversed.size()[2])).to(current_device)
+            past_neurons = torch.zeros((seqs_past_reversed.size()[0],1,self.hidden_size)).to(current_device)
             (past_hidden, past_cell) = (past_hidden_init, past_cell_init)
             for i in range(max(seq_lens_past)):
                 out, (past_hidden, past_cell) = self._past_lstm(past_in, (past_hidden, past_cell))
                 fc_out = self._decoder_fc(out)
                 if i == 0:
+                    past_neurons = out.detach()
                     past_out = fc_out
                 else:
+                    past_neurons = torch.cat((past_neurons, out), 1)
                     past_out = torch.cat((past_out, fc_out), 1)
-                past_in = fc_out.detach()
+
+                # If teacher forcing is active, take ground trough as input, otherwise take prediction of last stage as input
+                if self.teacher_forcing:
+                    past_in = seqs_past_reversed[:,i,:].unsqueeze(1)
+                else:
+                    past_in = fc_out.detach()
 
             # Future decoder
-            future_in = future_out = torch.zeros((seqs_future.size()[0],1,seqs_future.size()[2])).to(current_device)
+            future_in = future_out = torch.zeros((seqs_future.size()[0], 1, seqs_future.size()[2])).to(current_device)
+            future_neurons = torch.zeros((seqs_future.size()[0], 1, self.hidden_size)).to(current_device)
             (future_hidden, future_cell) = (future_hidden_init, future_cell_init)
             for i in range(max(seq_lens_future)):
                 out, (future_hidden, future_cell) = self._future_lstm(future_in, (future_hidden, future_cell))
                 fc_out = self._decoder_fc(out)
                 if i == 0:
+                    future_neurons = out.detach()
                     future_out = fc_out
                 else:
+                    future_neurons = torch.cat((future_neurons, out), 1)
                     future_out = torch.cat((future_out, fc_out), 1)
-                future_in = fc_out.detach()
+                
+                # If teacher forcing is active, take ground trough as input, otherwise take prediction of last stage as input
+                if self.teacher_forcing:
+                    future_in = seqs_future[:,i,:].unsqueeze(1)
+                else:
+                    future_in = fc_out.detach()
 
             # Get final hidden state of future LSTM
             (hidden_state, cell_state) = (future_hidden, future_cell)
 
             #past_out, _ = self._past_lstm(src_past_reversed_packed, (past_hidden_init, past_cell_init))
             #future_out, _ = self._future_lstm(src_future_packed, (future_hidden_init, future_cell_init))
-            out, _ = self.merge_outputs(past_out, seq_lens_past, future_out, seq_lens_future)
+            out, neurons, _ = self.merge_outputs(past_out, past_neurons, seq_lens_past, future_out, future_neurons, seq_lens_future)
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)
-        return out, (hidden_state, cell_state)
+            neurons = encoder_out_unpacked.detach()
+        return out, neurons, (hidden_state, cell_state)
 
 class AutoEncoderLSTM(nn.Module):
     def __init__(
@@ -284,6 +312,7 @@ class AutoEncoderLSTM(nn.Module):
             self._decoder_lstm.flatten_parameters()
 
             decoder_in = decoder_out = torch.zeros((src.size()[0],1,src.size()[2])).to(current_device)
+            decoder_neurons = torch.zeros((src.size()[0],1,self.hidden_size)).to(current_device)
             decoder_in = src_reverse[:,0,:].unsqueeze(1)
             (decoder_hidden, decoder_cell) = (decoder_hidden_init, decoder_cell_init)
             for i in range(src.size()[1]):
@@ -292,9 +321,13 @@ class AutoEncoderLSTM(nn.Module):
                 out, (decoder_hidden, decoder_cell) = self._decoder_lstm(decoder_in, (decoder_hidden, decoder_cell))
                 fc_out = self._decoder_fc(out)
                 if i == 0:
-                    decoder_out = fc_out
+                    decoder_neurons = out.detach()
+                    decoder_out = fc_out.detach()
                 else:
+                    decoder_neurons = torch.cat((decoder_neurons, out), 1)
                     decoder_out = torch.cat((decoder_out, fc_out), 1)
+
+                # If teacher forcing is active, take ground trough as input, otherwise take prediction of last stage as input
                 if self.teacher_forcing and not self.identity:
                     decoder_in = src_reverse[:,i,:].unsqueeze(1)
                 elif not self.identity:
@@ -304,7 +337,9 @@ class AutoEncoderLSTM(nn.Module):
 
             #decoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(decoder_out, batch_first=True)
             out = decoder_out
+            neurons = decoder_neurons
         else:
             encoder_out_unpacked, _ = torch.nn.utils.rnn.pad_packed_sequence(encoder_out, batch_first=True)
             out = self._encoder_fc(encoder_out_unpacked)
-        return out, (hidden_state, cell_state)
+            neurons = encoder_out_unpacked.detach()
+        return out, neurons, (hidden_state, cell_state)
