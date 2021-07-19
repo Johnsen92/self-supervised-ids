@@ -9,12 +9,13 @@ import json
 import os
 import errno
 from sklearn.inspection import plot_partial_dependence
-import matplotlib.pyplot as plt
 from collections import Counter
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
 import re
 from operator import itemgetter
+import seaborn as sns
+import pandas as pd
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -369,7 +370,8 @@ class NeuronData():
     def __init__(self, id, config):
         self.id = id
         self.config = config
-        self.results = {}
+        self.latest = {}
+        self.means = {}
 
     @property
     def mean(self):
@@ -378,6 +380,67 @@ class NeuronData():
     @property
     def last(self):
         pass
+
+class NeuronPlot():
+    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/'):
+        self.mapping = mapping
+        self.reverse_mapping = {v: k for k, v in mapping.items()}
+        self.neuron_data = neuron_data
+        self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
+        self.plot_dir_latest = self.plot_dir + 'latest/'
+        self.plot_dir_means = self.plot_dir + 'means/'
+        os.makedirs(self.plot_dir_latest, exist_ok=True)
+        os.makedirs(self.plot_dir_means, exist_ok=True)
+        self.config = config
+        self._cmap = sns.diverging_palette(240, 10, n=9)
+    
+    @property
+    def label(self):
+        assert len(self.neuron_data) > 0
+        id_string = ''
+        for nd in self.neuron_data:
+            id_string += self.id(nd) + '_'
+        return id_string[:-1]
+
+    def id(self, data):
+        return re.search(r'\_xy(\w+)\_', data.id).group(1)
+
+    def plot_means(self, category):
+        fig, ax = plt.subplots(figsize=(25,5.2))
+        latest_means = []
+        labels = []
+        for index, nd in enumerate(self.neuron_data):
+            labels.append(self.id(nd))
+            latest_means.append(np.mean(nd.means[category], 0))
+
+        means_data = np.vstack(latest_means)
+        data_latest = pd.DataFrame(data=means_data, index=labels)
+        ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
+        ax.set_xlabel(f'Neurons - means - {self.reverse_mapping[category]}')
+        file_name = self.plot_dir_means + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
+        plt.clf()
+
+    def plot_latest(self, category):
+        fig, ax = plt.subplots(figsize=(25,5.2))
+        latest_means = []
+        labels = []
+        for index, nd in enumerate(self.neuron_data):
+            labels.append(self.id(nd))
+            latest_means.append(np.mean(nd.latest[category], 0))
+
+        means_data = np.vstack(latest_means)
+        data_latest = pd.DataFrame(data=means_data, index=labels)
+        ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
+        ax.set_xlabel(f'Neurons - latest - {self.reverse_mapping[category]}')
+        file_name = self.plot_dir_latest + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
+        plt.clf()
+
+    def plot_all(self):
+        for category in self.config['categories']:
+            self.plot_means(category)
+            self.plot_latest(category)
 
 class PDData():
     def __init__(self, id, config):

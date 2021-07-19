@@ -96,5 +96,8 @@ pdp:
 #	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
+neurons:
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ./data/neurons/ -i 'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep0_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep10_lr001_tp100_sp800_xyID_subset|10_flows'
+
 tmp:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} --no_cache

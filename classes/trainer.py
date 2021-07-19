@@ -376,17 +376,16 @@ class Trainer(object):
 
     @torch.no_grad()
     def neuron_activation(self, id, config_file):
-
         with open(config_file, 'r') as f:
             config = json.load(f)
 
         self.model.eval()
         mapping = self.stats.class_stats.mapping
         reverse_mapping = {v:k for k,v in mapping.items()}
-        na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neuron_activation/'
+        na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neurons/'
 
         # PDP data generation parameters
-        max_batch_size = 512
+        max_batch_size = 1024
         max_samples = 1024
 
         if len(config['categories']) == 0:
@@ -415,16 +414,17 @@ class Trainer(object):
                 continue
 
             loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-            neurons_unpadded = []
+            neurons_latest = []
+            neurons_means = []
             for (input_data, seq_lens), _, _ in loader:
-                _, _, neurons = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
-                # Data is (Sequence Index, Batch Index, Feature Index)
+                _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                # neurons is (Batch Index, Sequence Index, Feature Index)
                 for batch_index, seq_len in enumerate(seq_lens):
-                    print(seq_len)
-                    print(batch_index)
-                    neurons_unpadded.append(neurons[seq_len, batch_index, :].detach().cpu().numpy())
+                    neurons_latest.append(neurons[batch_index, seq_len-1, :].detach().cpu().numpy())
+                    neurons_means.append(torch.mean(neurons[batch_index, :seq_len, :].detach().cpu(), 0).numpy())
 
-            neuron_data.results[category] = np.vstack(neurons_unpadded)
+            neuron_data.latest[category] = np.vstack(neurons_latest)
+            neuron_data.means[category] = np.vstack(neurons_means)
             print(f'done')
 
         # Save PDP Data
