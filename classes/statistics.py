@@ -406,7 +406,7 @@ class NeuronPlot():
         return re.search(r'\_xy(\w+)\_', data.id).group(1)
 
     def plot_means(self, category):
-        fig, ax = plt.subplots(figsize=(25,5.2))
+        fig, ax = plt.subplots(figsize=(25,len(self.neuron_data)))
         latest_means = []
         labels = []
         for index, nd in enumerate(self.neuron_data):
@@ -422,7 +422,7 @@ class NeuronPlot():
         plt.clf()
 
     def plot_latest(self, category):
-        fig, ax = plt.subplots(figsize=(25,5.2))
+        fig, ax = plt.subplots(figsize=(25,len(self.neuron_data)))
         latest_means = []
         labels = []
         for index, nd in enumerate(self.neuron_data):

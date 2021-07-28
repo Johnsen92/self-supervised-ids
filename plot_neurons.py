@@ -40,11 +40,12 @@ for id in args.ids:
 	print(file_name)
 
 	# Load pickle
-	with open(file_name, "rb") as f:
+	with open(file_name, 'rb') as f:
 		neuron_data = pickle.load(f)
 	neuron_data_list.append(neuron_data)
 
 neuron_plot = NeuronPlot(config, mapping, neuron_data_list)
 #neuron_plot.plot(0)
 neuron_plot.plot_all()
+
 

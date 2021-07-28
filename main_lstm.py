@@ -45,6 +45,7 @@ parser.add_argument('-i', '--subset_config_index', default=-1, type=int, help='I
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 parser.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
 # ---------------------- Stats & cache -------------------------
+parser.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
 parser.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
 parser.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
 parser.add_argument('-N', '--neuron_config', default=None, help='Path to neuron activation plot config file')
@@ -77,6 +78,10 @@ if not args.subset_config is None:
     run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
 if args.debug:
     run_id += '_debug'
+
+if args.id_only:
+    print(run_id)
+    sys.exit(0)
 
 # Timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -208,7 +213,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'PredictPacket',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.OBSCURE):
         pretrainer = trainer.LSTM.ObscureFeature(
@@ -222,7 +229,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'ObscureFeature',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.MASK):
         pretrainer = trainer.LSTM.MaskPacket(
@@ -236,7 +245,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'MaskPacket',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.ID):
         pretrainer = trainer.LSTM.Identity(
@@ -250,7 +261,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'Identity',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
         model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, identity=True).to(device)
@@ -266,7 +279,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'AutoEncoder',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.COMPOSITE):
         model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, teacher_forcing=True).to(device)
@@ -282,11 +297,15 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'Composite',
+            test_data = test_loader
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
     pretrainer.train()
+    if not args.neuron_config is None:
+        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='pre')
 
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -308,7 +327,8 @@ trainer = trainer.LSTM.Supervised(
     stats = stats, 
     cache = cache,
     json = args.json_dir,
-    writer = writer
+    writer = writer,
+    title = 'Supervised'
 )
 
 # Train model

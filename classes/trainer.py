@@ -198,9 +198,9 @@ class Trainer(object):
                 return self.stats.accuracy, mean_loss
             return wrapper
 
-    def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False):
+    def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False):
         # Strings to be used for file and console outputs
-        self.title = 'Training'
+        self.title = title
         self.cache_filename = 'trained_model'
         self.validation = False
         self.model = model
@@ -375,7 +375,7 @@ class Trainer(object):
             pickle.dump(pd_data, f)
 
     @torch.no_grad()
-    def neuron_activation(self, id, config_file):
+    def neuron_activation(self, id, config_file, postfix=None):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
@@ -428,7 +428,7 @@ class Trainer(object):
             print(f'done')
 
         # Save PDP Data
-        file_name = na_base_dir + id + '.pickle'
+        file_name = na_base_dir + id + ('_' + postfix if not postfix is None else '') + '.pickle'
         with open(file_name, 'wb') as f:
             pickle.dump(neuron_data, f)
 
@@ -664,10 +664,9 @@ class LSTM():
             return self.name
 
     class Supervised(Trainer):
-        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title):
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'Supervised'
             self.cache_filename = 'supervised_trained_model'
             self.validation = True
 
@@ -731,10 +730,9 @@ class LSTM():
             return loss, sigmoided_output, predicted, targets, categories
 
     class PredictPacket(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'PredictPacket'
             self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
@@ -763,10 +761,9 @@ class LSTM():
             return loss
 
     class AutoEncoder(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'AutoEncoder'
             self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
@@ -800,8 +797,8 @@ class LSTM():
             return loss
 
     class Composite(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title):
+            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.title = 'Composite'
             self.cache_filename = 'pretrained_model'
@@ -832,10 +829,9 @@ class LSTM():
             return loss
 
     class Identity(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
             # Strings to be used for file and console outputs
-            self.title = 'Identity'
             self.cache_filename = 'pretrained_model'
 
         def masks(self, op_size, seq_lens):
@@ -860,10 +856,9 @@ class LSTM():
             return loss
 
     class ObscureFeature(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title)
             # Strings to be used for file and console outputs
-            self.title = 'ObscureFeature'
             self.cache_filename = 'pretrained_model'
 
         def obscure(self, data, i_start, i_end):
@@ -909,8 +904,8 @@ class LSTM():
             return loss
 
     class MaskPacket(Trainer):
-        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, None, None, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=True)
+        def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
             # Strings to be used for file and console outputs
             self.title = 'MaskPacket'
             self.cache_filename = 'pretrained_model'

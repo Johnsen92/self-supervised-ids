@@ -309,7 +309,7 @@ class AutoEncoderLSTM(nn.Module):
             #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
 
             src_reverse = self.reverse_seq_order(src_packed)
-            self._decoder_lstm.flatten_parameters()
+            #self._decoder_lstm.flatten_parameters()
 
             decoder_in = decoder_out = torch.zeros((src.size()[0],1,src.size()[2])).to(current_device)
             decoder_neurons = torch.zeros((src.size()[0],1,self.hidden_size)).to(current_device)
