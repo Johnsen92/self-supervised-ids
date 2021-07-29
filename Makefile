@@ -1,9 +1,13 @@
+.PHONY: results
 SHELL:=/bin/bash
 DATA_DIR:=./data/
 STATS_DIR:=./stats/
 CACHE_DIR:=./cache/
 JSON_DIR:=./json/
 RUNS_DIR:=./runs/
+NEURON_DIR:=${DATA_DIR}/neurons/
+PDP_DIR:=${DATA_DIR}/pdp/
+RESULT_DIR:=./results/rn603/
 PYCACHE_DIR:=./classes/__pycache__
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
 LSTM_PROXY_TASKS:= AUTO ID PREDICT OBSCURE MASK 
@@ -18,6 +22,9 @@ SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 PDP_PARAMETERS:=-P ${PDP_FILE}
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
 DATASET:=./data/flows.pickle
+ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
+TMP_FILE:=${CACHE_DIR}/tmp.txt
+
 
 clean:
 	rm ${CACHE_DIR}/*
@@ -95,14 +102,14 @@ lstm_pdp_debug:
 
 pdp:
 #	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
-	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i \
+	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i \
 	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp0_xyNONE_subset|10_flows' \
 	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyAUTO_subset|10_flows' \
 	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' \
 	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
 neurons:
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ./data/neurons/ -i \
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i \
 	'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep0_lr001_tp100_sp0_xyNONE_subset|10_flows' \
 	'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep10_lr001_tp100_sp800_xyID_subset|10_flows' \
 	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyMASK_subset|10_flows' \
@@ -113,17 +120,26 @@ tmp:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} --no_cache
 
 results:
-#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
 		sep=" "; \
 		tmp=$$(python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining --id_only) ; \
 		ids=$$ids$$sep$$tmp ; \
-#		python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining ; \
-		echo $$ids > ${CACHE_DIR}/ids_tmp.txt ; \
+#		python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining -S ${RESULT_DIR}; \
+		echo $$ids > ${ID_TMP_FILE} ; \
 	done
-	
-	for id in $$(cat ${CACHE_DIR}/ids_tmp.txt) ; do \
-		echo $$id ; \
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} --id_only | cat - ${ID_TMP_FILE} > ${TMP_FILE} && mv ${TMP_FILE} ${ID_TMP_FILE}
+
+	$(eval OUT_FILES := $(shell python3 ./script/tables.py -D ${RESULT_DIR}))
+	for out_f in $(OUT_FILES) ; do \
+		out=$$(echo $$out_f | cut -d'/' -f 3 | cut -d'.' -f 1) ; \
+    	python3 ./script/tably.py $$out_f > ${RESULT_DIR}$$out.tex ; \
 	done
+
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE})
+	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i $$(cat ${ID_TMP_FILE})
+
+#	for id in $$(cat ${ID_TMP_FILE}) ; do \
+#		echo $$id ; \
+#	done
 	
 	
