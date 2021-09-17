@@ -44,6 +44,6 @@ for id in args.ids:
 		pd_data = pickle.load(f)
 	pd_data_list.append(pd_data)
 
-pdp = PDPlot(config, mapping, pd_data_list)
+pdp = PDPlot(config, mapping, pd_data_list, plot_dir=args.output_directory)
 pdp.plot_all()
 

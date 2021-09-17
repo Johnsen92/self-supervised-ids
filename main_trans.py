@@ -71,8 +71,8 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
 run_id = f'transformer_{data_filename}_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_ep{args.n_epochs}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
-if args.subset:
-    run_id += '_subset'
+if not args.subset_config is None:
+    run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
 if args.debug:
     run_id += '_debug'
     
@@ -89,9 +89,10 @@ cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disab
 extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
 
 # Load dataset and normalize data, or load from cache
-cache_filename = 'dataset_normalized'
-if not args.no_cache and not cache.exists(cache_filename, no_prefix=True):
+cache_filename = f'dataset_normalized_{data_filename}'
+if not cache.exists(cache_filename, no_prefix=True):
     dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
+    #dataset = FlowsSubset(dataset_all, dataset_all.mapping, min_flow_length=args.min_sequence_length)
     cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
@@ -127,17 +128,21 @@ else:
     train_data, val_data = dataset.split([supervised_size, validation_size], stratify=True)
 
 # If the subset flag is set, only use this small selected dataset for supervised learning
-if args.subset:
-    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key="TRAIN")
-    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key="VALIDATE")
+if not args.subset_config is None:
+    train_data = FlowsSubset(train_data, category_mapping, config_file=args.subset_config, key='TRAIN', config_index=args.subset_config_index)
+    val_data = FlowsSubset(val_data, category_mapping, config_file=args.subset_config, key='VALIDATE', config_index=args.subset_config_index)
     if args.self_supervised > 0:
-        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key="PRETRAIN")
+        pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key='PRETRAIN', config_index=args.subset_config_index)
 
 # Init data loaders
 if args.self_supervised > 0:
-    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
-train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
-val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=24, collate_fn=datasets.collate_flows, drop_last=True)
+    pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+if args.debug:
+    test_loader = val_loader
+else:
+    test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
 
 # Define input and output data width
 data, _, _ = dataset[0]
@@ -199,7 +204,7 @@ stats = statistics.Stats(
     learning_rate = args.learning_rate,
     model_parameters = model_parameters,
     random_seed = random_seed,
-    subset = os.path.basename(args.subset_config)[:-5]
+    subset = os.path.basename(args.subset_config)[:-5] if not args.subset_config is None else ''
 )
 
 # Init summary writer for TensorBoard
@@ -213,7 +218,6 @@ if args.self_supervised > 0:
         trainer.Transformer.Interpolation(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device, 
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -222,15 +226,16 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'Interpolation',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.Transformer.ProxyTask.AUTO):
         # Introduce dropout for denoising autoencoder
-        model.dropout = nn.Dropout(0.2)
+        #model.dropout = nn.Dropout(0.2)
         pretrainer = trainer.Transformer.AutoEncode(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device, 
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -239,13 +244,14 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'AutoEncoder',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.Transformer.ProxyTask.OBSCURE):
         pretrainer = trainer.Transformer.ObscureFeature(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device, 
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -254,13 +260,14 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'ObscureFeature',
+            test_data = test_loader
         )
     elif(args.proxy_task == trainer.Transformer.ProxyTask.MASK):
         pretrainer = trainer.Transformer.MaskPacket(
             model = model, 
             training_data = pretrain_loader, 
-            validation_data = val_loader,
             device = device, 
             criterion = pretraining_criterion, 
             optimizer = optimizer, 
@@ -269,7 +276,9 @@ if args.self_supervised > 0:
             stats = stats, 
             cache = cache,
             json = args.json_dir,
-            writer = writer
+            writer = writer,
+            title = 'MaskPacket',
+            test_data = test_loader
         )
     else:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
@@ -300,7 +309,9 @@ trainer = trainer.Transformer.Supervised(
     stats = stats, 
     cache = cache,
     json = args.json_dir,
-    writer = writer
+    writer = writer,
+    title = 'Supervised',
+    test_data = test_loader
 )
 
 # Train model
