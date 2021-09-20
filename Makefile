@@ -1,4 +1,4 @@
-.PHONY: results tables plots ids data
+.PHONY: results tables plots ids
 SHELL:=/bin/bash
 DATA_DIR:=./data/
 STATS_DIR:=./stats/
@@ -7,7 +7,6 @@ JSON_DIR:=./json/
 RUNS_DIR:=./runs/
 NEURON_DIR:=${DATA_DIR}/neurons/
 PDP_DIR:=${DATA_DIR}/pdp/
-RESULT_DIR:=./results/rn620_10percent/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 RANDOM_SEED:=620
@@ -17,7 +16,9 @@ VALIDATION_EPOCHS:=20
 PRETRAINING_EPOCHS:=10
 TRAINING_PROMILL:=100
 PRETRAINING_PROMILL:=800
-SUBSET_PARAMETERS:= 
+SUBSET_FILE:=./subsets/10_flows.json
+SUBSET_PARAMETERS:=
+RESULT_DIR:=./results/rn620/
 #SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 
 # ---------------------------------------
@@ -25,7 +26,6 @@ SUBSET_PARAMETERS:=
 LSTM_PROXY_TASKS:= PREDICT AUTO ID MASK OBSCURE 
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:= MASK AUTO
-SUBSET_FILE:=./subsets/10_flows.json
 PDP_FILE:=./data/flows_pdp.json
 NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
@@ -36,7 +36,6 @@ NEURON_PARAMETERS:=-N ${NEURON_FILE}
 DATASET:=./data/flows.pickle
 ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
 TMP_FILE:=${CACHE_DIR}/tmp.txt
-
 
 clean:
 	rm ${CACHE_DIR}/*
@@ -129,7 +128,7 @@ neurons:
 	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
 tmp:
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -S ${RESULT_DIR}
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 
 
 # --- RESULTS ---
@@ -161,6 +160,7 @@ plots: ids
 tables: ids
 	rm -r ${RESULT_DIR}/tables/
 	mkdir -p ${RESULT_DIR}/tables/
+	python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/
 	$(eval OUT_FILES := $(shell python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/))
 	for out_f in $(OUT_FILES) ; do \
 		echo $$out_f ; \

@@ -304,17 +304,22 @@ class Trainer(object):
 
     @torch.no_grad()
     def pdp(self, id, config_file):
-
         with open(config_file, 'r') as f:
             config = json.load(f)
 
         self.model.eval()
+        pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+        pdp_file = pdp_base_dir + id + '.pickle'
+        if os.path.exists(pdp_file):
+            print(f'PDP data for {id} already exists. Returning...')
+            return
+
         minmax = self.test_data.dataset.minmax
         stds = self.test_data.dataset.stds
         means = self.test_data.dataset.means
         mapping = self.stats.class_stats.mapping
         reverse_mapping = {v:k for k,v in mapping.items()}
-        pdp_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/pdp/'
+        
 
         # PDP data generation parameters
         max_batch_size = 512
@@ -370,8 +375,7 @@ class Trainer(object):
                 print(f'done')
 
         # Save PDP Data
-        file_name = pdp_base_dir + id + '.pickle'
-        with open(file_name, 'wb') as f:
+        with open(pdp_file, 'wb') as f:
             pickle.dump(pd_data, f)
 
     @torch.no_grad()
@@ -381,8 +385,11 @@ class Trainer(object):
 
         self.model.eval()
         mapping = self.stats.class_stats.mapping
-        reverse_mapping = {v:k for k,v in mapping.items()}
         na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neurons/'
+        na_file = na_base_dir + id + ('_' + postfix if not postfix is None else '') + '.pickle'
+        if os.path.exists(na_file):
+            print(f'Neuron data for {id} already exists. Returning...')
+            return
 
         # PDP data generation parameters
         max_batch_size = 1024
@@ -427,9 +434,8 @@ class Trainer(object):
             neuron_data.means[category] = np.vstack(neurons_means)
             print(f'done')
 
-        # Save PDP Data
-        file_name = na_base_dir + id + ('_' + postfix if not postfix is None else '') + '.pickle'
-        with open(file_name, 'wb') as f:
+        # Save Neuron Data
+        with open(na_file, 'wb') as f:
             pickle.dump(neuron_data, f)
 
 class Transformer():
