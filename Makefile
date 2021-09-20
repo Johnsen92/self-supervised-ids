@@ -1,4 +1,4 @@
-.PHONY: results tables plots data
+.PHONY: results tables plots ids data
 SHELL:=/bin/bash
 DATA_DIR:=./data/
 STATS_DIR:=./stats/
@@ -7,25 +7,30 @@ JSON_DIR:=./json/
 RUNS_DIR:=./runs/
 NEURON_DIR:=${DATA_DIR}/neurons/
 PDP_DIR:=${DATA_DIR}/pdp/
-RESULT_DIR:=./results/rn620_1percent/
+RESULT_DIR:=./results/rn620_10percent/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 RANDOM_SEED:=620
 BATCH_SIZE:=128
-TRAINING_EPOCHS:=100
-VALIDATION_EPOCHS:=10
+TRAINING_EPOCHS:=20
+VALIDATION_EPOCHS:=20
 PRETRAINING_EPOCHS:=10
+TRAINING_PROMILL:=100
+PRETRAINING_PROMILL:=800
+SUBSET_PARAMETERS:= 
+#SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 
+# ---------------------------------------
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
-LSTM_PROXY_TASKS:= PREDICT AUTO ID MASK OBSCURE
+LSTM_PROXY_TASKS:= PREDICT AUTO ID MASK OBSCURE 
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:= MASK AUTO
 SUBSET_FILE:=./subsets/10_flows.json
 PDP_FILE:=./data/flows_pdp.json
 NEURON_FILE:=./data/flows_neurons.json
-PRETRAINING_PARAMETERS:=-s 890 -E ${PRETRAINING_EPOCHS}
-TRAINING_PARAMETERS:=-p 10 -e ${TRAINING_EPOCHS} -V ${VALIDATION_EPOCHS} --random_seed ${RANDOM_SEED} -b ${BATCH_SIZE} 
-SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
+PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
+TRAINING_PARAMETERS:=-p ${TRAINING_PROMILL} -e ${TRAINING_EPOCHS} -V ${VALIDATION_EPOCHS} --random_seed ${RANDOM_SEED} -b ${BATCH_SIZE} 
+
 PDP_PARAMETERS:=-P ${PDP_FILE}
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
 DATASET:=./data/flows.pickle
@@ -62,10 +67,10 @@ lstm_cycle:
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 
 transformer_cycle:
+	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS}
 	for pretraining in ${TRANSFORMER_PROXY_TASKS} ; do \
     	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
 	done
-	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS}
 
 lstm_test_cycle:
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
@@ -132,22 +137,29 @@ data:
 	mkdir -p ${RESULT_DIR}
 	mkdir -p ${RESULT_DIR}/stats/
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
+		python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining -S ${RESULT_DIR}/stats/; \
+	done
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -S ${RESULT_DIR}/stats/
+
+ids: data
+	for pretraining in ${LSTM_PROXY_TASKS} ; do \
 		sep=" "; \
 		tmp=$$(python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining --id_only) ; \
 		ids=$$ids$$sep$$tmp ; \
-		python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining -S ${RESULT_DIR}/stats/; \
 		echo $$ids > ${ID_TMP_FILE} ; \
 	done
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} --id_only | cat - ${ID_TMP_FILE} > ${TMP_FILE} && mv ${TMP_FILE} ${ID_TMP_FILE}
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PDP_PARAMETERS} ${NEURON_PARAMETERS} -S ${RESULT_DIR}/stats/
 
-plots: data
+plots: ids
+	rm -r ${RESULT_DIR}/neurons/
+	rm -r ${RESULT_DIR}/pdp/
 	mkdir -p ${RESULT_DIR}/neurons/
 	mkdir -p ${RESULT_DIR}/pdp/
 	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/
 	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/pdp/
 
-tables: data
+tables: ids
+	rm -r ${RESULT_DIR}/tables/
 	mkdir -p ${RESULT_DIR}/tables/
 	$(eval OUT_FILES := $(shell python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/))
 	for out_f in $(OUT_FILES) ; do \
@@ -157,4 +169,4 @@ tables: data
     	python3 ./script/tably.py $$out_f > ${RESULT_DIR}/tables/$$out.tex ; \
 	done
 
-results: tables plots 
+results: tables plots

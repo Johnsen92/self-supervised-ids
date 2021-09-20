@@ -142,6 +142,9 @@ class TransformerEncoder(nn.Module):
         # Filter out NaNs
         out = out.masked_fill(torch.isnan(out), 0)
 
+        # Get neurons
+        neurons = out.detach()
+
         if self.pretraining:
             # Project input_size to input_size
             out = self._fc_pretraining(out)
@@ -152,7 +155,7 @@ class TransformerEncoder(nn.Module):
             # Create logits as average of seq outputs
             out = self._logits(out, seq_lens)#.to(self.device)
 
-        return out.to(current_device)
+        return out.to(current_device), neurons, (None, None)
 
 class Stage2TransformerEncoder(TransformerEncoder):
     def __init__(

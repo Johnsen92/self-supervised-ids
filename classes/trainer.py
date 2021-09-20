@@ -445,8 +445,8 @@ class Transformer():
             return self.name
 
     class Supervised(Trainer):
-        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer):
-            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, mixed_precision=False)
+        def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title):
+            super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.cache_filename = 'trained_model'
             self.validation = True
@@ -462,7 +462,7 @@ class Transformer():
             labels = labels[0,:,0].to(self.device)
             
             # Forward prop
-            out = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
             
             # Calculate loss
             loss = self.criterion(out, labels)
@@ -480,10 +480,10 @@ class Transformer():
             categories = categories.to(self.device)
 
             # Masked forward pass
-            logits = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
 
             # Apply sigmoid function and round
-            sigmoided_output = torch.sigmoid(logits)
+            sigmoided_output = torch.sigmoid(out)
             predicted = torch.round(sigmoided_output)
 
             # Extract single categories and label vector out of seq (they are all the same)
@@ -491,7 +491,7 @@ class Transformer():
             categories = categories[0, :, 0].squeeze()  
 
             # Calculate loss
-            loss = self.criterion(logits, targets)
+            loss = self.criterion(out, targets)
 
             return loss, sigmoided_output, predicted, targets, categories
 
@@ -519,7 +519,7 @@ class Transformer():
             #TODO: Figure out what to do with sequences of length 1 (results in length 0 after interpolation split)
 
             # Forward pass
-            out = self.model(src_data, trg_data)
+            out, _, _ = self.model(src_data, trg_data)
 
             # Create mask for non-padded items only
             loss = self.criterion(out, trg_data)
@@ -546,7 +546,7 @@ class Transformer():
             data = data.to(self.device)
 
             # Forward pass
-            out = self.parallel_forward(data, seq_lens=seq_lens)
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
 
             # Create mask for non-padded items only
             mask = self.mask(data.size(), seq_lens)
@@ -601,10 +601,10 @@ class Transformer():
             masked_data = masked_data
             
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens=seq_lens)
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
 
-            mask = self.mask(outputs.size(), seq_lens)
-            loss = self.criterion(outputs[mask], data[mask])
+            mask = self.mask(out.size(), seq_lens)
+            loss = self.criterion(out[mask], data[mask])
 
             return loss
 
@@ -639,8 +639,8 @@ class Transformer():
             masked_data = torch.nn.utils.rnn.pack_padded_sequence(masked_data, seq_lens, enforce_sorted=False)
 
             # Forwards pass
-            outputs = self.parallel_forward(data, seq_lens=seq_lens)
-            loss = self.criterion(outputs[mask], data[mask])
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
+            loss = self.criterion(out[mask], data[mask])
 
             return loss
             
