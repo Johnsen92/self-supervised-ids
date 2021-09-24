@@ -1,4 +1,4 @@
-.PHONY: results tables plots ids
+.PHONY: results tables plots ids data
 SHELL:=/bin/bash
 DATA_DIR:=./data/
 STATS_DIR:=./stats/

@@ -430,8 +430,10 @@ class Trainer(object):
                     neurons_latest.append(neurons[batch_index, seq_len-1, :].detach().cpu().numpy())
                     neurons_means.append(torch.mean(neurons[batch_index, :seq_len, :].detach().cpu(), 0).numpy())
 
-            neuron_data.latest[category] = np.vstack(neurons_latest)
-            neuron_data.means[category] = np.vstack(neurons_means)
+            #neuron_data.latest[category] = np.vstack(neurons_latest)
+            neuron_data.latest[category] = np.mean(neurons_latest, axis=0)
+            #neuron_data.means[category] = np.vstack(neurons_means)
+            neuron_data.means[category] = np.mean(neurons_means, axis=0)
             print(f'done')
 
         # Save Neuron Data
