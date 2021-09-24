@@ -379,7 +379,7 @@ class Trainer(object):
             pickle.dump(pd_data, f)
 
     @torch.no_grad()
-    def neuron_activation(self, id, config_file, postfix=None):
+    def neuron_activation(self, id, config_file, title=None, postfix=None):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
@@ -400,7 +400,7 @@ class Trainer(object):
         else:
             categories = config['categories']
 
-        neuron_data = NeuronData(id, config)
+        neuron_data = NeuronData(id, config, title)
 
         for category in categories:
             # Get at most max_samples flows of attack_number

@@ -266,7 +266,7 @@ if args.self_supervised > 0:
             test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.AUTO):
-        model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, identity=True).to(device)
+        model = lstm.AutoEncoderLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, identity=False, teacher_forcing=True).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         pretrainer = trainer.LSTM.AutoEncoder(
             model = model, 
@@ -305,7 +305,7 @@ if args.self_supervised > 0:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
     pretrainer.train()
     if not args.neuron_config is None:
-        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='pre')
+        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='pre', title='Pretraining')
 
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -314,7 +314,7 @@ training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 model.pretraining = False
 
 # Init trainer
-trainer = trainer.LSTM.Supervised(
+finetuner = trainer.LSTM.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -332,18 +332,19 @@ trainer = trainer.LSTM.Supervised(
 )
 
 # Train model
-trainer.train()
+finetuner.train()
 
-# Partial Dependency Plot
-if not args.pdp_config is None:
-    trainer.pdp(run_id, args.pdp_config)
+# Partial dependency data
+if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
+    finetuner.pdp(run_id, args.pdp_config)
 
+# Neuron activation data
 if not args.neuron_config is None:
-    trainer.neuron_activation(run_id, args.neuron_config)
+    finetuner.neuron_activation(run_id, args.neuron_config, title='Supervised')
 
 # Evaluate model
 if not args.debug:
-    trainer.evaluate()
+    finetuner.evaluate()
 
 # Remove temp directory
 cache.clean()

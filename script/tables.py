@@ -7,7 +7,7 @@ import csv
 from datetime import datetime
 
 def get_label_from_path(path):
-    return re.search(r'\_xy(\w+)\_', path).group(1)
+    return re.search(r'\_xy(\w+)', path).group(1)
 
 def stats_table(input_files, output_file):
     out_labels = ['']

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.ma as ma
 import math
 from enum import Enum
 from datetime import datetime
@@ -367,8 +368,9 @@ class Stats():
             return (max_epoch[0], max_epoch[1] * 100.0)
 
 class NeuronData():
-    def __init__(self, id, config):
+    def __init__(self, id, config, title=None):
         self.id = id
+        self.title = title
         self.config = config
         self.latest = {}
         self.means = {}
@@ -381,14 +383,39 @@ class NeuronData():
     def last(self):
         pass
 
+    @property
+    def label(self):
+        return re.search(r'\_xy(\w+)', self.id).group(1)
+
+    def compare(self, nd):
+        latest_class_diff = {k:0 for k in self.latest.keys()}
+        means_class_diff = {k:0 for k in self.means.keys()}
+        print(latest_class_diff)
+        for k in self.latest.keys():
+            latest_mask = np.ones(self.latest[k].shape) - np.round(abs(self.latest[k])).astype(np.int)
+            means_mask = np.ones(self.latest[k].shape) - np.round(abs(self.means[k])).astype(np.int)
+            print(latest_mask)
+            x = ma.array(self.latest[k], mask=latest_mask)
+            y = ma.array(nd.latest[k], mask=latest_mask)
+            latest_class_diff[k] = np.linalg.norm((x - y), ord=1)
+            means_class_diff[k] = np.linalg.norm((self.latest[k] - nd.latest[k]), ord=1)
+            print(latest_class_diff)
+            print(means_class_diff)
+
+        latest_diff = 0
+        means_diff = 0
+        return latest_diff, means_diff
+
+
 class NeuronPlot():
-    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/'):
+    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/', use_titles=False):
         self.mapping = mapping
         self.reverse_mapping = {v: k for k, v in mapping.items()}
         self.neuron_data = neuron_data
         self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
         self.plot_dir_latest = self.plot_dir + 'latest/'
         self.plot_dir_means = self.plot_dir + 'means/'
+        self.use_titles = use_titles
         os.makedirs(self.plot_dir_latest, exist_ok=True)
         os.makedirs(self.plot_dir_means, exist_ok=True)
         self.config = config
@@ -403,14 +430,18 @@ class NeuronPlot():
         return id_string[:-1]
 
     def id(self, data):
-        return re.search(r'\_xy(\w+)\_', data.id).group(1)
+        return re.search(r'\_xy(\w+)', data.id).group(1)
 
     def plot_means(self, category):
         fig, ax = plt.subplots(figsize=(25,len(self.neuron_data)))
         latest_means = []
         labels = []
-        for index, nd in enumerate(self.neuron_data):
-            labels.append(self.id(nd))
+        for nd in self.neuron_data:
+            nd.compare(nd)
+            if self.use_titles:
+                labels.append(nd.title)
+            else:
+                labels.append(nd.label)
             latest_means.append(np.mean(nd.means[category], 0))
 
         means_data = np.vstack(latest_means)
@@ -425,14 +456,17 @@ class NeuronPlot():
         fig, ax = plt.subplots(figsize=(25,len(self.neuron_data)))
         latest_means = []
         labels = []
-        for index, nd in enumerate(self.neuron_data):
-            labels.append(self.id(nd))
+        for nd in self.neuron_data:
+            if self.use_titles:
+                labels.append(nd.title)
+            else:
+                labels.append(nd.label)
             latest_means.append(np.mean(nd.latest[category], 0))
 
         means_data = np.vstack(latest_means)
         data_latest = pd.DataFrame(data=means_data, index=labels)
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
-        ax.set_xlabel(f'Neurons - latest - {self.reverse_mapping[category]}')
+        ax.set_xlabel(f'Neurons -  latest - {self.reverse_mapping[category]}')
         file_name = self.plot_dir_latest + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
@@ -443,15 +477,16 @@ class NeuronPlot():
             self.plot_latest(category)
 
 class PDData():
-    def __init__(self, id, config):
+    def __init__(self, id, config, title=None):
         self.id = id
         self.config = config
+        self.title = title
         self.results = {}
         self.features = {}
 
     @property
     def label(self):
-        return re.search(r'\_xy(\w+)\_', self.id).group(1)
+        return self.title if not self.title is None else re.search(r'\_xy(\w+)', self.id).group(1)
 
 class PDPlot():
     def __init__(self, config, mapping, pd_data, plot_dir='plots/pdp/'):
@@ -473,7 +508,7 @@ class PDPlot():
         return id_string[:-1]
 
     def pd_id(self, pd_data):
-        return re.search(r'\_xy(\w+)\_', pd_data.id).group(1)
+        return re.search(r'\_xy(\w+)', pd_data.id).group(1)
 
     def plot(self, category, feature_index, feature_name):
         #fig, ax = plt.subplots(figsize=(5,2.4))

@@ -16,14 +16,14 @@ VALIDATION_EPOCHS:=20
 PRETRAINING_EPOCHS:=10
 TRAINING_PROMILL:=100
 PRETRAINING_PROMILL:=800
-SUBSET_FILE:=./subsets/10_flows.json
+SUBSET_FILE:=
 SUBSET_PARAMETERS:=
-RESULT_DIR:=./results/rn620/
+RESULT_DIR:=./results/rn620_10percent/
 #SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 
 # ---------------------------------------
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
-LSTM_PROXY_TASKS:= PREDICT AUTO ID MASK OBSCURE 
+LSTM_PROXY_TASKS:= PREDICT AUTO ID MASK OBSCURE
 # Oprions: MASK AUTO OBSCURE
 TRANSFORMER_PROXY_TASKS:= MASK AUTO
 PDP_FILE:=./data/flows_pdp.json
@@ -82,10 +82,7 @@ transformer_test_cycle:
     	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
 	done
 	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} -d --no_cache
-
-lstm_single_category_pretraining:
-	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y BIAUTO -i $$index ; \
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/{TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y BIAUTO -i $$index ; \
 	done
 
 lstm_single_category:
@@ -128,11 +125,12 @@ neurons:
 	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
 tmp:
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS}
 
 
 # --- RESULTS ---
 data:
+	rm -r ${RESULT_DIR}/stats/ -f
 	mkdir -p ${RESULT_DIR}
 	mkdir -p ${RESULT_DIR}/stats/
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
@@ -150,20 +148,20 @@ ids: data
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} --id_only | cat - ${ID_TMP_FILE} > ${TMP_FILE} && mv ${TMP_FILE} ${ID_TMP_FILE}
 
 plots: ids
-	rm -r ${RESULT_DIR}/neurons/
-	rm -r ${RESULT_DIR}/pdp/
+	rm -r ${RESULT_DIR}/neurons/ -f
+	rm -r ${RESULT_DIR}/pdp/ -f
 	mkdir -p ${RESULT_DIR}/neurons/
 	mkdir -p ${RESULT_DIR}/pdp/
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/
-	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/pdp/
+#	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/ -p pre
+#	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/pdp/
 
 tables: ids
-	rm -r ${RESULT_DIR}/tables/
+	rm -r ${RESULT_DIR}/tables/ -f
 	mkdir -p ${RESULT_DIR}/tables/
 	python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/
 	$(eval OUT_FILES := $(shell python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/))
 	for out_f in $(OUT_FILES) ; do \
-		echo $$out_f ; \
 		out=$$(echo $$out_f | cut -d'/' -f 7 | cut -d'.' -f 1) ; \
 		echo $$out ; \
     	python3 ./script/tably.py $$out_f > ${RESULT_DIR}/tables/$$out.tex ; \

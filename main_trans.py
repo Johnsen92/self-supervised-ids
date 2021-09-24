@@ -289,6 +289,9 @@ if args.self_supervised > 0:
     if args.proxy_task == trainer.Transformer.ProxyTask.AUTO:
         model.dropout = nn.Dropout(args.dropout)      
 
+    if not args.neuron_config is None:
+        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='Pretraining')
+
 
 # Init training criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -297,7 +300,7 @@ training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
 model.tune()
 
 # Init trainer for supervised training
-trainer = trainer.Transformer.Supervised(
+finetuner = trainer.Transformer.Supervised(
     model = model, 
     training_data = train_loader, 
     validation_data = val_loader,
@@ -315,8 +318,16 @@ trainer = trainer.Transformer.Supervised(
 )
 
 # Train model
-trainer.train()
+finetuner.train()
+
+# Partial dependency data
+if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
+    finetuner.pdp(run_id, args.pdp_config)
+
+# Neuron activation data
+if not args.neuron_config is None:
+    finetuner.neuron_activation(run_id, args.neuron_config, postfix='Supervised')
 
 # Print and save stats
 if not args.debug:
-    trainer.evaluate()
+    finetuner.evaluate()
