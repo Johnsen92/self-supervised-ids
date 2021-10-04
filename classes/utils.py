@@ -21,14 +21,20 @@ def numpy_sigmoid(x):
     return 1/(1+np.exp(-x))
 
 class Cache():
-    def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False):
+
+    index = 0
+
+    def __init__(self, cache_dir, md5=False, key_prefix='', disabled=False, label=None):
         self.cache_dir = cache_dir if cache_dir[-1] == '/' else cache_dir + '/'
         self.cache_tmp_dir = self.cache_dir + f'tmp_{key_prefix}/'
         self.make_cache_dir()
         self.make_tmp_dir()
         self.md5 = md5
+        self.label = label if not label is None else f'Cache #{Cache.index}'
+        Cache.index += 1
         self.key_prefix = key_prefix
         self.disabled = disabled
+        print(f'Initialize Cache \'{self.label}\' with {"md5" if self.md5 else ""} key prefix \'{self.get_real_key("", False)}\'...done.')
 
     def make_cache_dir(self):
         if not os.path.exists(os.path.dirname(self.cache_dir)):

@@ -73,11 +73,17 @@ with open(args.json_dir + '/args.json', 'w') as f:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
-run_id = f'lstm_{data_filename}_rn{random_seed}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_tep{args.n_epochs}_sep{args.n_epochs_pretraining}_lr{str(args.learning_rate*10).replace(".", "")}_tp{args.train_percent}_sp{args.self_supervised}_xy{args.proxy_task}'
+run_id = f'lstm_{data_filename}_rn{random_seed}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_lr{str(args.learning_rate*10).replace(".", "")}'
 if not args.subset_config is None:
     run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
 if args.debug:
     run_id += '_debug'
+
+# Pretraining ID
+pretraining_id = f'sp{args.self_supervised}_sep{args.n_epochs_pretraining}_xy{args.proxy_task}'
+
+# Training ID
+training_id = f'tep{args.n_epochs}_tp{args.train_percent}'
 
 if args.id_only:
     print(run_id)
@@ -86,23 +92,26 @@ if args.id_only:
 # Timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-# Unique identifier for this run
-run_uid = f'{timestamp}_{run_id}'
+# ID and unique ID (with timestamp) for this run
+id = f'{run_id}_{training_id}_{pretraining_id}'
+uid = f'{timestamp}_{id}'
 
 # Init cache
-cache = utils.Cache(cache_dir=args.cache_dir, md5=True, key_prefix=run_id, disabled=args.no_cache)
+general_cache = utils.Cache(cache_dir=args.cache_dir, key_prefix=id, disabled=args.no_cache, label='LSTM Cache')
+training_cache = utils.Cache(cache_dir=args.cache_dir + '/training', key_prefix=id, disabled=args.no_cache, label='LSTM Training Cache')
+pretraining_cache = utils.Cache(cache_dir=args.cache_dir + '/pretraining', key_prefix=run_id + '_' + pretraining_id, disabled=args.no_cache, label='LSTM Pretraining Cache')
 
 # Extended stats directory for this run
-extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + run_uid + '/'
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
 
 # Load dataset and normalize data, or load from cache
 cache_filename = f'dataset_normalized_{data_filename}' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')
-if not cache.exists(cache_filename, no_prefix=True):
-    dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
+if not general_cache.exists(cache_filename, no_prefix=True):
+    dataset = Flows(data_pickle=args.data_file, cache=general_cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable, expansion_factor=args.feature_expansion)
     #dataset = FlowsSubset(dataset_all, dataset_all.mapping, min_flow_length=args.min_sequence_length)
-    cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
+    general_cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 else:
-    dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    dataset = general_cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
 
 # Get category mapping from dataset 
 category_mapping = dataset.mapping
@@ -193,7 +202,7 @@ stats = statistics.Stats(
 )
 
 # Init summary writer for TensorBoard
-writer = SummaryWriter(f'runs/{run_uid}')
+writer = SummaryWriter(f'runs/{uid}')
 
 # Pretraining if enabled
 if args.self_supervised > 0:
@@ -211,7 +220,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'PredictPacket',
@@ -227,7 +236,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'ObscureFeature',
@@ -243,7 +252,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'MaskPacket',
@@ -259,7 +268,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'Identity',
@@ -277,7 +286,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'AutoEncoder',
@@ -295,7 +304,7 @@ if args.self_supervised > 0:
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
             stats = stats, 
-            cache = cache,
+            cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
             title = 'Composite',
@@ -325,7 +334,7 @@ finetuner = trainer.LSTM.Supervised(
     epochs = args.n_epochs, 
     val_epochs = args.val_epochs,
     stats = stats, 
-    cache = cache,
+    cache = training_cache,
     json = args.json_dir,
     writer = writer,
     title = 'Supervised'
@@ -336,20 +345,22 @@ finetuner.train()
 
 # Partial dependency data
 if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
-    finetuner.pdp(run_id, args.pdp_config)
+    finetuner.pdp(uid, args.pdp_config)
 
 # Neuron activation data
 if not args.neuron_config is None:
-    finetuner.neuron_activation(run_id, args.neuron_config, title='Supervised')
+    finetuner.neuron_activation(uid, args.neuron_config, title='Supervised')
 
 # Evaluate model
 if not args.debug:
     finetuner.evaluate()
 
-# Remove temp directory
-cache.clean()
+# Remove temp directories
+general_cache.clean()
+training_cache.clean()
+pretraining_cache.clean()
 
-print(f'Run with ID \"{run_id}\" has ended successfully')
+print(f'Run with ID \"{id}\" has ended successfully')
 
     
 

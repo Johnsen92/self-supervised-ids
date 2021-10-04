@@ -9,6 +9,7 @@ NEURON_DIR:=${DATA_DIR}/neurons/
 PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
+DATASET:=./data/flows.pickle
 RANDOM_SEED:=620
 BATCH_SIZE:=128
 TRAINING_EPOCHS:=20
@@ -19,6 +20,7 @@ PRETRAINING_PROMILL:=800
 SUBSET_FILE:=./subsets/10_flows.json
 #SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 SUBSET_PARAMETERS:=
+BENIGN_CATEGORY:=10
 
 # ---------------------------------------
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
@@ -28,13 +30,12 @@ TRANSFORMER_PROXY_TASKS:= MASK AUTO
 PDP_FILE:=./data/flows_pdp.json
 NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
-TRAINING_PARAMETERS:=-p ${TRAINING_PROMILL} -e ${TRAINING_EPOCHS} -V ${VALIDATION_EPOCHS} --random_seed ${RANDOM_SEED} -b ${BATCH_SIZE} -c 6
+TRAINING_PARAMETERS:=-p ${TRAINING_PROMILL} -e ${TRAINING_EPOCHS} -V ${VALIDATION_EPOCHS} --random_seed ${RANDOM_SEED} -b ${BATCH_SIZE} -c ${BENIGN_CATEGORY}
 
 
 PDP_PARAMETERS:=-P ${PDP_FILE}
 #PDP_PARAMETERS:=
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
-DATASET:=./data/flows15.pickle
 ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
 TMP_FILE:=${CACHE_DIR}/tmp.txt
 RESULT_DIR:=./results/${DATASET}_rn${RANDOM_SEED}_1percent/
@@ -52,13 +53,7 @@ transformer:
 
 cycle: lstm_cycle transformer_cycle
 	
-test_cycle:
-	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
-	done
-	for pretraining in ${TRANSFORMER_PROXY_TASKS} ; do \
-    	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
-	done
+test_cycle: lstm_test_cycle transformer_test_cycle
 	echo 'Everything seems to work fine'
 
 lstm_cycle:
@@ -75,17 +70,15 @@ transformer_cycle:
 
 lstm_test_cycle:
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining -d --no_cache; \
+    	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${NEURON_PARAMETERS} -y $$pretraining -d ; \
 	done
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -d --no_cache
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -d
 
 transformer_test_cycle:
 	for pretraining in ${TRANSFORMER_PROXY_TASKS} ; do \
-    	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d --no_cache ; \
+    	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y $$pretraining -d ; \
 	done
-	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} -d --no_cache
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i $$(cat ${ID_TMP_FILE}) -O ${RESULT_DIR}/neurons/{TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y BIAUTO -i $$index ; \
-	done
+	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} -d
 
 lstm_single_category:
 	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
