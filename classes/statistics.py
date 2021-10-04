@@ -397,8 +397,9 @@ class NeuronData():
             y_means = ma.array(nd.means[k], mask=means_mask)
             x_latest = ma.array(self.latest[k], mask=latest_mask)
             y_latest = ma.array(nd.latest[k], mask=latest_mask)
-            latest_class_diff[k] = np.sum(abs(x_latest - y_latest))
-            means_class_diff[k] = np.sum(abs(x_means - y_means))
+            # Calculate mean difference. The x2 in the denominator is for normalizing the final value between 0 and 1. The value range is -1 - +1 so the max. difference is 2.
+            latest_class_diff[k] = np.sum(abs(x_latest - y_latest))/(sum(np.round(abs(self.latest[k])).astype(np.int))*2)
+            means_class_diff[k] = np.sum(abs(x_means - y_means))/(sum(np.round(abs(self.latest[k])).astype(np.int))*2)
             #print(latest_class_diff)
             #print(means_class_diff)
 
@@ -419,7 +420,7 @@ class NeuronPlot():
         self.compare = compare
         if compare:
             assert len(self.neuron_data) == 2
-        self.avg_latest_diff, self.avg_means_diff, self.latest_class_diff, self.means_class_diff = self.neuron_data[0].compare(self.neuron_data[1])
+            self.avg_latest_diff, self.avg_means_diff, self.latest_class_diff, self.means_class_diff = self.neuron_data[1].compare(self.neuron_data[0])
         os.makedirs(self.plot_dir_latest, exist_ok=True)
         os.makedirs(self.plot_dir_means, exist_ok=True)
         self.config = config
@@ -447,13 +448,14 @@ class NeuronPlot():
                 labels.append(nd.title)
             else:
                 labels.append(nd.label)
-            means_means.append(nd.means[category], 0)
+            means_means.append(nd.means[category])
             #latest_means.append(np.mean(nd.means[category], 0))
 
         means_data = np.vstack(means_means)
         data_latest = pd.DataFrame(data=means_data, index=labels)
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
-        ax.set_xlabel(f'Neurons - means - {self.reverse_mapping[category]} - L1 difference {self.means_class_diff[category]}')
+        label = f'Neurons - means - {self.reverse_mapping[category]}' + (f' - L1 difference {self.means_class_diff[category]:.2f}' if self.compare else '')
+        ax.set_xlabel(label)
         file_name = self.plot_dir_means + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
@@ -473,7 +475,8 @@ class NeuronPlot():
         means_data = np.vstack(latest_means)
         data_latest = pd.DataFrame(data=means_data, index=labels)
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
-        ax.set_xlabel(f'Neurons -  latest - {self.reverse_mapping[category]} - L1 difference {self.latest_class_diff[category]}')
+        label = f'Neurons -  latest - {self.reverse_mapping[category]}' + f' - L1 difference {self.latest_class_diff[category]:.2f}' if self.compare else ''
+        ax.set_xlabel(label)
         file_name = self.plot_dir_latest + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()

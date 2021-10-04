@@ -36,9 +36,9 @@ def compare_postfix(ids, postfix, config, mapping, out_dir):
 		file_name = args.data_directory + id + '.pickle'
 		with open(file_name, 'rb') as f:
 			neuron_data = pickle.load(f)
-		if neuron_data.label == 'NONE':
-			continue
 		neuron_data_list.append(neuron_data)
+		if neuron_data.label.startswith('NONE'):
+			continue
 
 		# Load postfix pickle
 		file_name = args.data_directory + id + '_' + postfix + '.pickle'
@@ -46,7 +46,7 @@ def compare_postfix(ids, postfix, config, mapping, out_dir):
 			neuron_data = pickle.load(f)
 		neuron_data_list.append(neuron_data)
 
-		neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir, use_titles=True)
+		neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir, use_titles=True, compare=True)
 		neuron_plot.plot_all()
 
 

@@ -259,7 +259,8 @@ class FlowsSubset(Subset):
             subset_ditch = [v for _,v in self.mapping.items()]
             ditch.remove(-1)
             for c in ditch:
-                subset_ditch.remove(c)
+                if c in subset_ditch:
+                    subset_ditch.remove(c)
 
         # Parse absolute number of samples of each category should be collected from dist (and set defaults)
         self._dist = dist
@@ -305,7 +306,7 @@ class FlowsSubset(Subset):
         for c in subset_ditch:
             self.subset_num[c] = 0
 
-        assert sum([v for _, v in self.subset_num.items()]) > 0
+        #assert sum([v for _, v in self.subset_num.items()]) > 0
 
         # Gather samples
         for idx, (seq, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
