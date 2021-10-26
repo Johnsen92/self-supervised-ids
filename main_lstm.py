@@ -74,10 +74,6 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
 run_id = f'lstm_{data_filename}_rn{random_seed}_hs{args.hidden_size}_nl{args.n_layers}_bs{args.batch_size}_lr{str(args.learning_rate*10).replace(".", "")}'
-if not args.subset_config is None:
-    run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
-if args.debug:
-    run_id += '_debug'
 
 # Pretraining ID
 pretraining_id = f'sp{args.self_supervised}_sep{args.n_epochs_pretraining}_xy{args.proxy_task}'
@@ -85,9 +81,10 @@ pretraining_id = f'sp{args.self_supervised}_sep{args.n_epochs_pretraining}_xy{ar
 # Training ID
 training_id = f'tep{args.n_epochs}_tp{args.train_percent}'
 
-if args.id_only:
-    print(run_id)
-    sys.exit(0)
+if not args.subset_config is None:
+    training_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
+if args.debug:
+    training_id += '_debug'
 
 # Timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -95,6 +92,10 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 # ID and unique ID (with timestamp) for this run
 id = f'{run_id}_{training_id}_{pretraining_id}'
 uid = f'{timestamp}_{id}'
+
+if args.id_only:
+    print(id)
+    sys.exit(0)
 
 # Init cache
 general_cache = utils.Cache(cache_dir=args.cache_dir, key_prefix=id, disabled=args.no_cache, label='LSTM Cache')
@@ -293,7 +294,7 @@ if args.self_supervised > 0:
             test_data = test_loader
         )
     elif(args.proxy_task == trainer.LSTM.ProxyTask.COMPOSITE):
-        model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, teacher_forcing=True).to(device)
+        model = lstm.CompositeLSTM(input_size, args.hidden_size, args.output_size, args.n_layers, teacher_forcing=False).to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
         pretrainer = trainer.LSTM.Composite(
             model = model, 
@@ -314,7 +315,7 @@ if args.self_supervised > 0:
         print(f'Proxy task can not be {args.proxy_task} for self supervised training')
     pretrainer.train()
     if not args.neuron_config is None:
-        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='pre', title='Pretraining')
+        pretrainer.neuron_activation(id, args.neuron_config, postfix='pre', title='Pretraining')
 
 # Init criterion
 training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -345,11 +346,11 @@ finetuner.train()
 
 # Partial dependency data
 if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
-    finetuner.pdp(uid, args.pdp_config)
+    finetuner.pdp(id, args.pdp_config)
 
 # Neuron activation data
 if not args.neuron_config is None:
-    finetuner.neuron_activation(uid, args.neuron_config, title='Supervised')
+    finetuner.neuron_activation(id, args.neuron_config, title='Supervised')
 
 # Evaluate model
 if not args.debug:

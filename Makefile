@@ -10,9 +10,9 @@ PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 DATASET:=./data/flows.pickle
-RANDOM_SEED:=620
+RANDOM_SEED:=621
 BATCH_SIZE:=128
-TRAINING_EPOCHS:=100
+TRAINING_EPOCHS:=200
 VALIDATION_EPOCHS:=${TRAINING_EPOCHS}
 PRETRAINING_EPOCHS:=10
 TRAINING_PROMILL:=10
@@ -32,13 +32,14 @@ NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
 TRAINING_PARAMETERS:=-p ${TRAINING_PROMILL} -e ${TRAINING_EPOCHS} -V ${VALIDATION_EPOCHS} --random_seed ${RANDOM_SEED} -b ${BATCH_SIZE} -c ${BENIGN_CATEGORY}
 
-
 PDP_PARAMETERS:=-P ${PDP_FILE}
 #PDP_PARAMETERS:=
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
 ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
 TMP_FILE:=${CACHE_DIR}/tmp.txt
 RESULT_DIR:=./results/${DATASET}_rn${RANDOM_SEED}_1percent/
+
+PARAMETER_FILE:=./runs.csv
 
 clean:
 	rm ${CACHE_DIR}/*
@@ -57,10 +58,10 @@ test_cycle: lstm_test_cycle transformer_test_cycle
 	echo 'Everything seems to work fine'
 
 lstm_cycle:
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
     	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y $$pretraining ; \
 	done
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 
 transformer_cycle:
 	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS}
@@ -163,3 +164,29 @@ tables: ids
 	done
 
 results: tables plots
+
+define LSTM_BODY
+	$(eval PARAMETER_STRING := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m LSTM -i ${1}))
+	for pretraining in ${LSTM_PROXY_TASKS} ; do \
+		python3 main_lstm.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+	done
+	python3 main_lstm.py ${PARAMETER_STRING}
+endef
+
+define TRANSFORMER_BODY
+	$(eval PARAMETER_STRING := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -i ${1}))
+	for pretraining in ${LSTM_PROXY_TASKS} ; do \
+		python3 main_lstm.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+	done
+	python3 main_lstm.py ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
+endef
+
+full_lstm:
+	$(eval NUM_ROWS := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m LSTM -c))
+	$(eval NUMBER_PARAMETER_ROWS := $(shell seq 0 $$((${NUM_ROWS} - 1))))
+	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call LSTM_BODY,${INDEX}))
+
+full_transformer:
+	$(eval NUM_ROWS := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -c))
+	$(eval NUMBER_PARAMETER_ROWS := $(shell seq 0 $$((${NUM_ROWS} - 1))))
+	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))

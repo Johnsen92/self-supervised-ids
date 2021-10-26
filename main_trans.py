@@ -45,6 +45,7 @@ parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate mo
 parser.add_argument('--subset', action='store_true', help='If set, only use a specialized subset for supervised learning')
 parser.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
 # ---------------------- Stats & cache -------------------------
+parser.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
 parser.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
 parser.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
 parser.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
@@ -73,10 +74,6 @@ data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
 run_id = f'transformer_{data_filename}_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_lr{str(args.learning_rate*10).replace(".", "")}'
-if not args.subset_config is None:
-    run_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
-if args.debug:
-    run_id += '_debug'
     
 # Timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -87,9 +84,18 @@ pretraining_id = f'sp{args.self_supervised}_sep{args.n_epochs_pretraining}_xy{ar
 # Training ID
 training_id = f'tep{args.n_epochs}_tp{args.train_percent}'
 
+if not args.subset_config is None:
+    training_id += '_subset|' + os.path.basename(args.subset_config)[:-5]
+if args.debug:
+    training_id += '_debug'
+
 # ID and unique ID (with timestamp) for this run
 id = f'{run_id}_{training_id}_{pretraining_id}'
 uid = f'{timestamp}_{id}'
+
+if args.id_only:
+    print(id)
+    sys.exit(0)
 
 # Init cache
 general_cache = utils.Cache(cache_dir=args.cache_dir, key_prefix=id, disabled=args.no_cache, label='Transformer Cache')
@@ -301,7 +307,7 @@ if args.self_supervised > 0:
         model.dropout = nn.Dropout(args.dropout)      
 
     if not args.neuron_config is None:
-        pretrainer.neuron_activation(run_id, args.neuron_config, postfix='Pretraining')
+        pretrainer.neuron_activation(id, args.neuron_config, postfix='Pretraining')
 
 
 # Init training criterion
@@ -333,11 +339,11 @@ finetuner.train()
 
 # Partial dependency data
 if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
-    finetuner.pdp(uid, args.pdp_config)
+    finetuner.pdp(id, args.pdp_config)
 
 # Neuron activation data
 if not args.neuron_config is None:
-    finetuner.neuron_activation(uid, args.neuron_config, postfix='Supervised')
+    finetuner.neuron_activation(id, args.neuron_config, postfix='Supervised')
 
 # Remove temp directories
 general_cache.clean()
