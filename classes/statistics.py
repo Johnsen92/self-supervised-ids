@@ -17,6 +17,7 @@ import re
 from operator import itemgetter
 import seaborn as sns
 import pandas as pd
+import torch
 
 def formatTime(time_s):
     time_h = time_s // 3600
@@ -126,6 +127,9 @@ class Monitor():
     @property
     def duration_s(self):
         if self._end_time == None:
+            print('Start time not set, setting it to now')
+            self._start_time = timer()
+        if self._end_time == None:
             print('End time not set, setting it to now')
             self._end_time = timer()
         return self._end_time - self._start_time
@@ -214,12 +218,30 @@ class ClassStats():
 class Stats():
     index = 0
 
-    def __init__(self, stats_dir='./', n_samples=None, train_percent=None, pretrain_percent=None, proxy_task=None, val_percent=None, n_epochs=None, n_epochs_pretraining=None, model_parameters=None, batch_size=None, learning_rate=None, losses=None, class_stats=None, n_false_positive=None, n_false_negative=None, title=None, random_seed=None, subset=False):
+    def __init__(
+        self,
+        train_percent, 
+        val_percent, 
+        n_epochs,
+        batch_size, 
+        learning_rate, 
+        model_parameters={},
+        n_epochs_pretraining=0, 
+        pretrain_percent=0, 
+        proxy_task=None,
+        class_stats=None, 
+        title=None, 
+        random_seed=None, 
+        subset=False,
+        stats_dir='./'
+    ):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
-        self.n_samples = n_samples
-        self.n_false_positive = n_false_positive
-        self.n_false_negative = n_false_negative
+        self.n_samples_counted = 0
+        self.n_true_positive = 0
+        self.n_true_negative = 0
+        self.n_false_positive = 0
+        self.n_false_negative = 0
         self.train_percent = train_percent
         self.pretrain_percent = pretrain_percent
         self.proxy_task = proxy_task
@@ -228,11 +250,10 @@ class Stats():
         self.n_epochs_pretraining = n_epochs_pretraining
         self.batch_size = batch_size
         self.learning_rate = learning_rate  
-        self.losses = losses
+        self.losses = []
         self.class_stats = class_stats
         self.model_parameters = model_parameters
         self.random_seed = random_seed
-        self.monitors = []
         self.accuracies = []
         self.subset = subset
 
@@ -272,10 +293,6 @@ class Stats():
         print('done.')
 
     def save_stats(self):
-        time_h, time_m = formatTime(self.training_time_s)
-        n_wrong = self.n_false_negative + self.n_false_positive
-        n_right = self.n_samples - n_wrong
-        p_acc = float(n_right)/float(self.n_samples)*100
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         print('Save statistics...', end='')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
@@ -288,20 +305,22 @@ class Stats():
             f.write(f'Training percentage, {(self.train_percent / 10.0):.2f} %\n')
             f.write(f'Validation percentage, {(self.val_percent / 10.0):.2f} %\n')
             f.write(f'Specialized subset, {self.subset}\n')
-            f.write(f'Training time, {time_h} h {time_m} m\n')
             f.write(f'Learning rate, {self.learning_rate}\n')
             f.write(f'Random Seed, {self.random_seed}\n')
             f.write(f'\nModelparameters,\n')
             if not self.model_parameters is None:
                 for key, val in self.model_parameters.items():
                     f.write(f'{key}, {val}\n')
-            f.write(f'\nResults,\n')
-            f.write(f'Final accuracy, {p_acc:.3f} %\n')
-            f.write(f'Highest observed acc., {self.best_epoch[1]:.3f} %\n')
-            f.write(f'# false positves, {self.n_false_positive}\n')
-            f.write(f'# false negatives, {self.n_false_negative}\n')
-            f.write(f'% false positves, {(self.false_positive * 100):.3f} %\n')
-            f.write(f'% false negatives, {(self.false_negative * 100):.3f} %\n')
+            f.write(f'\nPerformance metrics,\n')
+            #f.write(f'Accuracy, {self.best_epoch[1]:.3f} %\n')
+            f.write(f'Accuracy, {self.accuracy*100.0:.3f} %\n')
+            f.write(f'False alarm rate, {self.false_alarm_rate*100.0:.3f} %\n')
+            f.write(f'Missed alarm rate, {self.missed_alarm_rate*100.0:.3f} %\n')
+            f.write(f'Detection rate, {self.detection_rate*100.0:.3f} %\n')
+            f.write(f'Precision, {self.precision*100.0:.3f} %\n')
+            f.write(f'Specificity, {self.specificity*100.0:.3f} %\n')
+            f.write(f'Recall, {self.recall*100.0:.3f} %\n')
+            f.write(f'F1-Measure, {self.f1_measure*100.0:.3f} %\n')
         print('done.')
         if not self.class_stats == None:
             self.class_stats.save_stats()
@@ -327,37 +346,114 @@ class Stats():
     def mapping(self):
         return self.class_stats.mapping if not self.class_stats is None else {}
 
+    def reset(self):
+        self.n_samples_counted = 0
+        self.n_true_positive = 0
+        self.n_true_negative = 0
+        self.n_false_positive = 0
+        self.n_false_negative = 0
+        if not self.class_stats is None:
+            self.class_stats.reset()
+
+    def add_val_batch(self, predicted, target, categories):
+        self.n_samples_counted += target.size()[0]
+        #self.n_true_negative += (target == 0).sum().item()
+        self.n_true_negative += torch.logical_and((predicted == target),(target == 0)).sum().item()
+        self.n_true_positive += torch.logical_and((predicted == target),(target == 1)).sum().item()
+        assert torch.logical_and((predicted == target),(target == 0)).sum().item() + torch.logical_and((predicted == target),(target == 1)).sum().item() == (predicted == target).sum().item()
+        
+        #self.n_true_positive += (predicted.to(torch.int) == target.to(torch.int) & target.to(torch.int) == 1).sum().item()
+        self.n_false_negative += (predicted < target).sum().item()
+        self.n_false_positive += (predicted > target).sum().item()
+        assert self.n_true == self.n_samples - self.n_false_negative - self.n_false_positive
+        if not self.class_stats is None:
+            self.class_stats.add((predicted == target), categories)
+
+
+# ----------------------------------------------- PERFORMANCE METRICS -----------------------------------------------
+
     @property
     def accuracy(self):
-        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
-        n_right = self.n_samples - self.n_false_negative - self.n_false_positive
-        return float(n_right) / float(self.n_samples)
+        if self.n_samples == 0:
+            return 1.0
+        else:
+            return float(self.n_true) / float(self.n_samples)
 
     @property
-    def false_positive(self):
-        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
-        # Avoid division by 0 by adding minor float value
-        return float(self.n_false_positive) / (float(self.n_false_positive + self.n_false_negative) + 0.00001)
+    def error_rate(self):
+        if self.n_samples == 0:
+            return 1.0
+        else:
+            return float(self.n_false) / float(self.n_samples)
 
     @property
-    def false_negative(self):
-        assert not self.n_false_positive == None and not self.n_false_negative == None and not self.n_samples == None
-        # Avoid division by 0 by adding minor float value
-        return float(self.n_false_negative) / (float(self.n_false_positive + self.n_false_negative) + 0.00001)
+    def detection_rate(self):
+        if self.n_true_positive + self.n_false_negative == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / float(self.n_true_positive + self.n_false_negative)
+
+    @property
+    def precision(self):
+        if self.n_true_positive + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+
+    @property
+    def recall(self):
+        if self.n_true_positive + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+
+    @property
+    def f1_measure(self):
+        return 2 * (self.precision * self.recall) / (self.precision + self.recall)
 
     @property
     def false_alarm_rate(self):
-        pass
-
-    def add_monitor(self, monitor):
-        self.monitors.append(monitor)
+        return self.false_positive_rate
 
     @property
-    def training_time_s(self):
-        time_s = 0
-        for mon in self.monitors:
-            time_s += mon.duration_s
-        return time_s
+    def missed_alarm_rate(self):
+        return self.false_negative_rate
+
+    @property
+    def specificity(self):
+        if self.n_true_negative + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_negative) / (float(self.n_true_negative + self.n_false_positive))
+
+    @property
+    def false_positive_rate(self):
+        if self.n_false_positive + self.n_true_positive == 0:
+            return 0.0
+        else:
+            return float(self.n_false_positive) / (float(self.n_false_positive + self.n_true_positive))
+
+    @property
+    def false_negative_rate(self):
+        if self.n_false_negative + self.n_true_positive == 0:
+            return 0.0
+        else:
+            return float(self.n_false_negative) / (float(self.n_false_negative + self.n_true_positive))
+
+    @property
+    def n_true(self):
+        return self.n_true_negative + self.n_true_positive
+
+    @property
+    def n_false(self):
+        return self.n_false_negative + self.n_false_positive
+
+    @property
+    def n_samples(self):
+        assert self.n_true + self.n_false == self.n_samples_counted
+        return self.n_true + self.n_false
+
+# -------------------------------------------------------------------------------------------------------------------
 
     @property
     def best_epoch(self):

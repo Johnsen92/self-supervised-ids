@@ -353,8 +353,8 @@ if not args.neuron_config is None:
     finetuner.neuron_activation(id, args.neuron_config, title='Supervised')
 
 # Evaluate model
-if not args.debug:
-    finetuner.evaluate()
+#if not args.debug:
+finetuner.evaluate()
 
 # Remove temp directories
 general_cache.clean()

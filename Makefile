@@ -10,16 +10,16 @@ PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 DATASET:=./data/flows.pickle
-RANDOM_SEED:=621
+RANDOM_SEED:=622
 BATCH_SIZE:=128
-TRAINING_EPOCHS:=200
+TRAINING_EPOCHS:=600
 VALIDATION_EPOCHS:=${TRAINING_EPOCHS}
 PRETRAINING_EPOCHS:=10
-TRAINING_PROMILL:=10
+TRAINING_PROMILL:=100
 PRETRAINING_PROMILL:=800
 SUBSET_FILE:=./subsets/10_flows.json
-#SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
-SUBSET_PARAMETERS:=
+SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
+#SUBSET_PARAMETERS:=
 BENIGN_CATEGORY:=10
 
 # ---------------------------------------
@@ -121,7 +121,8 @@ neurons:
 	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
 
 tmp:
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS}
+#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y PREDICT -d --no_cache
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 
 
 # --- RESULTS ---
@@ -190,3 +191,5 @@ full_transformer:
 	$(eval NUM_ROWS := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -c))
 	$(eval NUMBER_PARAMETER_ROWS := $(shell seq 0 $$((${NUM_ROWS} - 1))))
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))
+
+full: full_lstm full_transformer

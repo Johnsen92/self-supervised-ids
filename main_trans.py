@@ -15,6 +15,7 @@ from datetime import datetime
 import numpy as np
 import random
 
+
 # Init argument parser
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)

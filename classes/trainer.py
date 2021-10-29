@@ -137,8 +137,8 @@ class Trainer(object):
                         print(f'Highest accuracy observed with validation period {self.val_epochs}: {best_epoch[1]:.3f}%')
 
                     # Set stats
-                    self.stats.add_monitor(mon)
-                    self.stats.losses = mon.measurements   
+                    #self.stats.add_monitor(mon)
+                    #self.stats.losses = mon.measurements   
 
                     # Store trained model
                     self.cache.save_model(chache_file_name, self.model)
@@ -154,6 +154,11 @@ class Trainer(object):
                         stats_dir = self.stats.stats_dir
                         self.stats = self.cache.load('stats', msg='Loading statistics object')
                         self.stats.set_stats_dir(stats_dir)
+                    else:
+                        self.validate()
+                        # Store statistics object
+                        self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+
             return wrapper
 
         @classmethod       
@@ -166,9 +171,9 @@ class Trainer(object):
                 # Validate model
                 print('Validating model...')
                 with torch.no_grad():
-                    n_correct = n_samples = n_false_positive = n_false_negative = 0
                     validation_losses = []
-                    self.stats.class_stats.reset()
+                    # Reset metric counters in stats and class stats
+                    self.stats.reset()
                     for batch_data in self.validation_data:
                         
                         # -------------------------- Decorated function --------------------------
@@ -176,25 +181,16 @@ class Trainer(object):
                         # ------------------------------------------------------------------------
 
                         # Evaluate results
-                        n_samples += target.size()[0]
-                        n_correct += (predicted == target).sum().item()
-                        n_false_negative += (predicted < target).sum().item()
-                        n_false_positive += (predicted > target).sum().item()
-                        assert n_correct == n_samples - n_false_negative - n_false_positive
+                        self.stats.add_val_batch(predicted, target, categories)
 
                         # Append loss
                         validation_losses.append(loss.item())
-
-                        # Add to class stats
-                        self.stats.class_stats.add((predicted == target), categories)
+                        
 
                     # Save and cache validation results
-                    self.stats.n_samples = n_samples
-                    self.stats.n_false_negative = n_false_negative
-                    self.stats.n_false_positive = n_false_positive
                     mean_loss = sum(validation_losses)/len(validation_losses)
                 
-                print(f'Validation size {self.stats.val_percent}%: Accuracy {(self.stats.accuracy * 100.0):.3f}%, False p.: {self.stats.false_positive:.3f}%, False n.: {self.stats.false_negative:.3f}%, Mean loss: {mean_loss:.3f}')
+                print(f'Validation size {self.stats.val_percent}%: Accuracy {(self.stats.accuracy * 100.0):.3f}%, FAR: {(self.stats.false_alarm_rate * 100.0):.3f}%, Precision: {(self.stats.precision * 100.0):.3f}%, Mean loss: {mean_loss:.3f}')
                 return self.stats.accuracy, mean_loss
             return wrapper
 
