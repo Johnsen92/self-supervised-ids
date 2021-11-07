@@ -24,13 +24,13 @@ parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder'
 parser.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
 parser.add_argument('-J', '--json_dir', default='./json/', help='Json exports folder')
 # ---------------------- Model parameters ----------------------
-parser.add_argument('-x', '--forward_expansion', default=20, type=int, help='Multiplier for input_size for transformer internal data width')
+parser.add_argument('-x', '--forward_expansion', default=4, type=int, help='Multiplier for input_size for transformer internal data width')
 parser.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
 parser.add_argument('-l', '--n_layers', default=10, type=int, help='Number of transformer layers')
 parser.add_argument('-o', '--dropout', default=0.0, type=float, help='Dropout rate')
 parser.add_argument('--output_size', default=1, type=int, help='Size of LSTM output vector')
 # ---------------------- Hyper parameters ----------------------
-parser.add_argument('-b', '--batch_size', default=512, type=int, help='Batch size')
+parser.add_argument('-b', '--batch_size', default=1024, type=int, help='Batch size')
 parser.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs')
 parser.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='Number of epochs for pretraining. If 0 n_epochs is used')
 parser.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
@@ -190,13 +190,6 @@ model = transformer.TransformerEncoder(
 # Init optimizer
 optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
 
-# Init class stats
-class_stats = statistics.ClassStats(
-    stats_dir = extended_stats_dir,
-    mapping = category_mapping,
-    benign = args.benign_category
-)
-
 # Gather model parameters for statistics
 model_parameters = {
     '# Layers' : args.n_layers,
@@ -211,7 +204,8 @@ epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n
 # Init statistics object
 stats = statistics.Stats(
     stats_dir = extended_stats_dir,
-    class_stats = class_stats,
+    benign = args.benign_category,
+    category_mapping = category_mapping,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
     train_percent = args.train_percent,
@@ -241,7 +235,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -259,7 +253,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -275,7 +269,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -291,7 +285,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,

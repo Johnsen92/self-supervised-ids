@@ -54,7 +54,6 @@ class Trainer(object):
                 chache_file_name = self.cache_filename + str(self.training_data.dataset)
                 if self.cache.disabled or not self.cache.exists(chache_file_name):
                     print('Training model...')
-                    observed_acc = []
                     for epoch in range(self.epochs):
                         losses_epoch = []
 
@@ -113,28 +112,28 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
-                        #self.scheduler.step(mean_loss_epoch)
+                        self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
                         if self.validation and (epoch == self.epochs-1 or validate_periodically):
+                            self.stats.new_epoch(epoch)
                             accuracy, loss = self.validate()
                             self.model.train()
-                            observed_acc.append((epoch, accuracy))
                             self.cache.save_model(f'ep_{epoch}_' + chache_file_name, self.model, tmp=True)
                             self.writer.add_scalar('Validation accuracy', accuracy, global_step=epoch)
                             self.writer.add_scalar('Validation mean loss', loss, global_step=epoch)
 
                     # Assert that validation has been executed at least once
-                    if self.validation:
-                        assert len(observed_acc) > 0
-                        self.stats.accuracies = observed_acc
-                        best_epoch = self.stats.best_epoch
-                        self.cache.load_model(f'ep_{best_epoch[0]}_' + chache_file_name, self.model, tmp=True)
-                        accuracy, _ = self.validate()
-                        #print(round(accuracy * 100.0, 3), round(best_epoch[1], 3))
-                        #assert round(accuracy * 100.0, 3) == round(best_epoch[1], 3)
-                        print(f'Highest accuracy observed with validation period {self.val_epochs}: {best_epoch[1]:.3f}%')
+                    # if self.validation:
+                    #     assert len(observed_acc) > 0
+                    #     self.stats.accuracies = observed_acc
+                    #     best_epoch = self.stats.best_epoch
+                    #     self.cache.load_model(f'ep_{best_epoch[0]}_' + chache_file_name, self.model, tmp=True)
+                    #     accuracy, _ = self.validate()
+                    #     #print(round(accuracy * 100.0, 3), round(best_epoch[1], 3))
+                    #     #assert round(accuracy * 100.0, 3) == round(best_epoch[1], 3)
+                    #     print(f'Highest accuracy observed with validation period {self.val_epochs}: {best_epoch[1]:.3f}%')
 
                     # Set stats
                     #self.stats.add_monitor(mon)
@@ -144,20 +143,23 @@ class Trainer(object):
                     self.cache.save_model(chache_file_name, self.model)
 
                     # Store statistics object
-                    self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+                    if not self.stats is None:
+                        self.cache.save('stats', self.stats, msg='Storing statistics to cache')
                 else:
                     # Load cached model
                     self.cache.load_model(chache_file_name, self.model)
 
-                    if self.cache.exists('stats'):
-                        # Load statistics object
-                        stats_dir = self.stats.stats_dir
-                        self.stats = self.cache.load('stats', msg='Loading statistics object')
-                        self.stats.set_stats_dir(stats_dir)
-                    else:
-                        self.validate()
-                        # Store statistics object
-                        self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+                    if not self.stats is None:
+                        if self.cache.exists('stats'):
+                            # Load statistics object
+                            stats_dir = self.stats.stats_dir
+                            self.stats = self.cache.load('stats', msg='Loading statistics object')
+                            self.stats.set_stats_dir(stats_dir)
+                        else:
+                            self.stats.new_epoch(self.epochs)
+                            self.validate()
+                            # Store statistics object
+                            self.cache.save('stats', self.stats, msg='Storing statistics to cache')
 
             return wrapper
 
@@ -170,10 +172,10 @@ class Trainer(object):
 
                 # Validate model
                 print('Validating model...')
+                epoch = self.stats.last_epoch()
                 with torch.no_grad():
                     validation_losses = []
                     # Reset metric counters in stats and class stats
-                    self.stats.reset()
                     for batch_data in self.validation_data:
                         
                         # -------------------------- Decorated function --------------------------
@@ -181,7 +183,7 @@ class Trainer(object):
                         # ------------------------------------------------------------------------
 
                         # Evaluate results
-                        self.stats.add_val_batch(predicted, target, categories)
+                        epoch.add_batch(predicted, target, categories)
 
                         # Append loss
                         validation_losses.append(loss.item())
@@ -190,7 +192,7 @@ class Trainer(object):
                     # Save and cache validation results
                     mean_loss = sum(validation_losses)/len(validation_losses)
                 
-                print(f'Validation size {self.stats.val_percent}%: Accuracy {(self.stats.accuracy * 100.0):.3f}%, FAR: {(self.stats.false_alarm_rate * 100.0):.3f}%, Precision: {(self.stats.precision * 100.0):.3f}%, Mean loss: {mean_loss:.3f}')
+                print(f'Validation size {self.stats.val_percent}%: Accuracy {(epoch.accuracy * 100.0):.3f}%, FAR: {(epoch.false_alarm_rate * 100.0):.3f}%, Precision: {(epoch.precision * 100.0):.3f}%, Mean loss: {mean_loss:.4f}')
                 return self.stats.accuracy, mean_loss
             return wrapper
 
@@ -214,7 +216,6 @@ class Trainer(object):
         self.val_epochs = val_epochs
         assert epochs > 0
         self.stats = stats
-        assert isinstance(stats, Stats)
         self.cache = cache
         assert isinstance(cache, Cache)
         self.device = device
@@ -226,7 +227,7 @@ class Trainer(object):
         self.json = json
         self.writer = writer
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=0.1, patience=50, verbose=True
+            optimizer, factor=0.1, patience=self.epochs // 10, verbose=True
         )
 
     def evaluate(self):

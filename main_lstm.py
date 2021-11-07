@@ -169,13 +169,6 @@ model = lstm.PretrainableLSTM(input_size, args.hidden_size, args.output_size, ar
 # Init optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-# Init class stats
-class_stats = statistics.ClassStats(
-    stats_dir = extended_stats_dir,
-    mapping = category_mapping,
-    benign = args.benign_category
-)
-
 # Gather model parameters for statistic
 model_parameters = {
     'Hidden size' : args.hidden_size,
@@ -188,7 +181,8 @@ epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n
 # Init statistics object
 stats = statistics.Stats(
     stats_dir = extended_stats_dir,
-    class_stats = class_stats,
+    benign = args.benign_category,
+    category_mapping = category_mapping,
     proxy_task = f'{args.proxy_task}',
     pretrain_percent = args.self_supervised,
     train_percent = args.train_percent,
@@ -220,7 +214,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -236,7 +230,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -252,7 +246,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -268,7 +262,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -286,7 +280,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -304,7 +298,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = stats, 
+            stats = None, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,

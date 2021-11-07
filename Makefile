@@ -10,13 +10,14 @@ PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 DATASET:=./data/flows.pickle
-RANDOM_SEED:=622
-BATCH_SIZE:=128
-TRAINING_EPOCHS:=600
-VALIDATION_EPOCHS:=${TRAINING_EPOCHS}
+RANDOM_SEED:=500
+BATCH_SIZE:=512
+TRAINING_EPOCHS:=60
+VALIDATION_EPOCHS:=2
+#VALIDATION_EPOCHS:=${TRAINING_EPOCHS}
 PRETRAINING_EPOCHS:=10
-TRAINING_PROMILL:=100
-PRETRAINING_PROMILL:=800
+TRAINING_PROMILL:=900
+PRETRAINING_PROMILL:=0
 SUBSET_FILE:=./subsets/10_flows.json
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 #SUBSET_PARAMETERS:=
@@ -122,7 +123,7 @@ neurons:
 
 tmp:
 #	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y PREDICT -d --no_cache
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
+	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS}
 
 
 # --- RESULTS ---
@@ -177,9 +178,9 @@ endef
 define TRANSFORMER_BODY
 	$(eval PARAMETER_STRING := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -i ${1}))
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-		python3 main_lstm.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+		python3 main_trans.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
 	done
-	python3 main_lstm.py ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
+	python3 main_trans.py ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
 endef
 
 full_lstm:

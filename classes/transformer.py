@@ -16,12 +16,12 @@ class Transformer(nn.Module):
         self.src_position_embedding = nn.Embedding(max_len, input_size)
         self.trg_position_embedding = nn.Embedding(max_len, input_size)
         self.transformer = nn.Transformer(
-            input_size,
-            num_heads,
-            num_encoder_layers,
-            num_decoder_layers,
-            forward_expansion,
-            dropout
+            d_model = input_size,
+            nhead = num_heads,
+            num_encoder_layers = num_encoder_layers,
+            num_decoder_layers = num_decoder_layers,
+            dim_feedforward = forward_expansion,
+            dropout = dropout
         )
         self.fc_out = nn.Linear(input_size, input_size)
         self.dropout = nn.Dropout(dropout)

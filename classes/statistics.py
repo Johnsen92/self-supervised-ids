@@ -156,7 +156,7 @@ class ClassStats():
     def classes(self):
         return self.mapping.values()
 
-    def add(self, results, classes):
+    def add_batch(self, results, classes):
         for index, c in enumerate(classes):
             c_val = c.item()
             self.number[c_val] += 1
@@ -214,7 +214,108 @@ class ClassStats():
     def set_stats_dir(self, stats_dir):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
-            
+
+class Epoch():
+    def __init__(self, epoch, class_stats):
+        self.epoch = epoch
+        self.n_true_positive = 0
+        self.n_samples_counted = 0
+        self.n_true_positive = 0
+        self.n_true_negative = 0
+        self.n_false_positive = 0
+        self.n_false_negative = 0
+        self.class_stats = class_stats
+
+    def add_batch(self, predicted, target, categories):
+        self.n_samples_counted += target.size()[0]
+        self.n_true_negative += torch.logical_and((predicted == target),(target == 0)).sum().item()
+        self.n_true_positive += torch.logical_and((predicted == target),(target == 1)).sum().item()
+        assert torch.logical_and((predicted == target),(target == 0)).sum().item() + torch.logical_and((predicted == target),(target == 1)).sum().item() == (predicted == target).sum().item()
+        self.n_false_negative += (predicted < target).sum().item()
+        self.n_false_positive += (predicted > target).sum().item()
+        self.class_stats.add_batch((predicted == target), categories)
+
+    @property
+    def accuracy(self):
+        if self.n_samples == 0:
+            return 1.0
+        else:
+            return float(self.n_true) / float(self.n_samples)
+
+    @property
+    def error_rate(self):
+        if self.n_samples == 0:
+            return 1.0
+        else:
+            return float(self.n_false) / float(self.n_samples)
+
+    @property
+    def detection_rate(self):
+        if self.n_true_positive + self.n_false_negative == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / float(self.n_true_positive + self.n_false_negative)
+
+    @property
+    def precision(self):
+        if self.n_true_positive + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+
+    @property
+    def recall(self):
+        if self.n_true_positive + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+
+    @property
+    def f1_measure(self):
+        return 2 * (self.precision * self.recall) / (self.precision + self.recall)
+
+    @property
+    def false_alarm_rate(self):
+        return self.false_positive_rate
+
+    @property
+    def missed_alarm_rate(self):
+        return self.false_negative_rate
+
+    @property
+    def specificity(self):
+        if self.n_true_negative + self.n_false_positive == 0:
+            return 1.0
+        else:
+            return float(self.n_true_negative) / (float(self.n_true_negative + self.n_false_positive))
+
+    @property
+    def false_positive_rate(self):
+        if self.n_false_positive + self.n_true_positive == 0:
+            return 0.0
+        else:
+            return float(self.n_false_positive) / (float(self.n_false_positive + self.n_true_positive))
+
+    @property
+    def false_negative_rate(self):
+        if self.n_false_negative + self.n_true_positive == 0:
+            return 0.0
+        else:
+            return float(self.n_false_negative) / (float(self.n_false_negative + self.n_true_positive))
+
+    @property
+    def n_true(self):
+        return self.n_true_negative + self.n_true_positive
+
+    @property
+    def n_false(self):
+        return self.n_false_negative + self.n_false_positive
+
+    @property
+    def n_samples(self):
+        assert self.n_true + self.n_false == self.n_samples_counted
+        return self.n_true + self.n_false
+
 class Stats():
     index = 0
 
@@ -225,11 +326,12 @@ class Stats():
         n_epochs,
         batch_size, 
         learning_rate, 
+        category_mapping,
+        benign,
         model_parameters={},
         n_epochs_pretraining=0, 
         pretrain_percent=0, 
-        proxy_task=None,
-        class_stats=None, 
+        proxy_task=None, 
         title=None, 
         random_seed=None, 
         subset=False,
@@ -237,11 +339,6 @@ class Stats():
     ):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
         self.make_stats_dir()
-        self.n_samples_counted = 0
-        self.n_true_positive = 0
-        self.n_true_negative = 0
-        self.n_false_positive = 0
-        self.n_false_negative = 0
         self.train_percent = train_percent
         self.pretrain_percent = pretrain_percent
         self.proxy_task = proxy_task
@@ -251,10 +348,11 @@ class Stats():
         self.batch_size = batch_size
         self.learning_rate = learning_rate  
         self.losses = []
-        self.class_stats = class_stats
+        self.mapping = category_mapping
+        self.benign = benign
         self.model_parameters = model_parameters
         self.random_seed = random_seed
-        self.accuracies = []
+        self.epochs = []
         self.subset = subset
 
         if title == None:
@@ -338,39 +436,50 @@ class Stats():
         fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         #plt.show()
 
-    def plot_pdp(self, X, Y, mapping, features=[0], category=0):
-        pdp_plot = PDPlot(X, Y, mapping)
+    def new_epoch(self, n_epoch):
+        class_stats = ClassStats(
+            stats_dir = self.stats_dir,
+            mapping = self.mapping,
+            benign = self.benign
+        )  
+        new_epoch = Epoch(n_epoch, class_stats)
+        self.epochs.append(new_epoch)
+        return new_epoch
+
+    def last_epoch(self):
+        return self.epochs[-1]
+
+    def plot_pdp(self, X, Y, features=[0], category=0):
+        pdp_plot = PDPlot(X, Y, self.mapping)
         pdp_plot.plot(features, category)
 
     @property
-    def mapping(self):
-        return self.class_stats.mapping if not self.class_stats is None else {}
+    def best_epoch(self):
+        return max(self.epochs, key=lambda e: e.accuracy)
 
-    def reset(self):
-        self.n_samples_counted = 0
-        self.n_true_positive = 0
-        self.n_true_negative = 0
-        self.n_false_positive = 0
-        self.n_false_negative = 0
-        if not self.class_stats is None:
-            self.class_stats.reset()
+    @property
+    def class_stats(self):
+        return self.best_epoch.class_stats
 
-    def add_val_batch(self, predicted, target, categories):
-        self.n_samples_counted += target.size()[0]
-        #self.n_true_negative += (target == 0).sum().item()
-        self.n_true_negative += torch.logical_and((predicted == target),(target == 0)).sum().item()
-        self.n_true_positive += torch.logical_and((predicted == target),(target == 1)).sum().item()
-        assert torch.logical_and((predicted == target),(target == 0)).sum().item() + torch.logical_and((predicted == target),(target == 1)).sum().item() == (predicted == target).sum().item()
-        
-        #self.n_true_positive += (predicted.to(torch.int) == target.to(torch.int) & target.to(torch.int) == 1).sum().item()
-        self.n_false_negative += (predicted < target).sum().item()
-        self.n_false_positive += (predicted > target).sum().item()
-        assert self.n_true == self.n_samples - self.n_false_negative - self.n_false_positive
-        if not self.class_stats is None:
-            self.class_stats.add((predicted == target), categories)
+    @property
+    def n_true_positive(self):
+        return self.best_epoch.n_true_positive
 
+    @property
+    def n_true_negative(self):
+        return self.best_epoch.n_true_negative
 
-# ----------------------------------------------- PERFORMANCE METRICS -----------------------------------------------
+    @property
+    def n_false_negative(self):
+        return self.best_epoch.n_false_negative
+
+    @property
+    def n_false_positive(self):
+        return self.best_epoch.n_false_positive
+
+    @property
+    def n_samples_counted(self):
+        return self.best_epoch.n_samples_counted
 
     @property
     def accuracy(self):
@@ -452,16 +561,6 @@ class Stats():
     def n_samples(self):
         assert self.n_true + self.n_false == self.n_samples_counted
         return self.n_true + self.n_false
-
-# -------------------------------------------------------------------------------------------------------------------
-
-    @property
-    def best_epoch(self):
-        if len(self.accuracies) == 0:
-            return (0,0.0)
-        else:
-            max_epoch = max(self.accuracies, key=lambda item:item[1])
-            return (max_epoch[0], max_epoch[1] * 100.0)
 
 class NeuronData():
     def __init__(self, id, config, title=None):
