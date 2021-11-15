@@ -347,7 +347,12 @@ class Trainer(object):
                         # Data is (Sequence Index, Batch Index, Feature Index)
                         for batch_index in range(output.shape[0]):
                             flow_length = seq_lens[batch_index]
-                            flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                            if len(output.size()) == 3:
+                                flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
+                            elif len(output.size()) == 1:
+                                flow_output = output[batch_index].detach().cpu().repeat(flow_length, 1).numpy()
+                            else:
+                                print(f'No case for output with {len(output.size())} dimensions. Error...')
                             outputs.append(flow_output)
 
                     pdp[i] = np.mean(np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
