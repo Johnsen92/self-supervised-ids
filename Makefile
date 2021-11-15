@@ -27,7 +27,7 @@ BENIGN_CATEGORY:=10
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
 LSTM_PROXY_TASKS:= AUTO PREDICT ID MASK OBSCURE
 # Oprions: MASK AUTO OBSCURE
-TRANSFORMER_PROXY_TASKS:= MASK AUTO
+TRANSFORMER_PROXY_TASKS:= AUTO MASK
 PDP_FILE:=./data/flows_pdp.json
 NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
@@ -38,7 +38,7 @@ PDP_PARAMETERS:=-P ${PDP_FILE}
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
 ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
 TMP_FILE:=${CACHE_DIR}/tmp.txt
-RESULT_DIR:=./results/${DATASET}_rn${RANDOM_SEED}_1percent/
+RESULT_DIR:=./results/rn500
 
 PARAMETER_FILE:=./runs.csv
 
@@ -170,23 +170,40 @@ results: tables plots
 define LSTM_BODY
 	$(eval PARAMETER_STRING := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m LSTM -i ${1}))
 	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-		python3 main_lstm.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+		python3 main_lstm.py ${PARAMETER_STRING} -s 800 -E 10 -y $$pretraining -S ${RESULT_DIR}/stats/ ; \
+		sep=" "; \
+		tmp=$$(python3 main_lstm.py ${PARAMETER_STRING} -s 800 -E 10 -y $$pretraining --id_only) ; \
+		ids=$$ids$$sep$$tmp ; \
+		echo $$ids > ${ID_TMP_FILE} ; \
 	done
-	python3 main_lstm.py ${PARAMETER_STRING}
+	python3 main_lstm.py ${PARAMETER_STRING} -S ${RESULT_DIR}/stats/
+	python3 main_lstm.py ${PARAMETER_STRING} --id_only | cat - ${ID_TMP_FILE} > ${TMP_FILE} && mv ${TMP_FILE} ${ID_TMP_FILE}
 endef
 
 define TRANSFORMER_BODY
 	$(eval PARAMETER_STRING := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -i ${1}))
-	for pretraining in ${LSTM_PROXY_TASKS} ; do \
-		python3 main_trans.py ${PARAMETER_STRING} ${PRETRAINING_PARAMETERS} -y $$pretraining ; \
+	for pretraining in ${TRANSFORMER_PROXY_TASKS} ; do \
+		python3 main_trans.py ${PARAMETER_STRING} -s 800 -E 10 -y $$pretraining -S ${RESULT_DIR}/stats/ ; \
 	done
-	python3 main_trans.py ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS}
+	python3 main_trans.py ${PARAMETER_STRING} -S ${RESULT_DIR}/stats/
 endef
 
 full_lstm:
+	rm -r ${RESULT_DIR} -f
+	mkdir -p ${RESULT_DIR}
+	mkdir -p ${RESULT_DIR}/stats/
 	$(eval NUM_ROWS := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m LSTM -c))
 	$(eval NUMBER_PARAMETER_ROWS := $(shell seq 0 $$((${NUM_ROWS} - 1))))
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call LSTM_BODY,${INDEX}))
+	rm -r ${RESULT_DIR}/tables/ -f
+	mkdir -p ${RESULT_DIR}/tables/
+	python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/
+	$(eval OUT_FILES := $(shell python3 ./script/tables.py -D ${RESULT_DIR}/stats/ -O ${RESULT_DIR}/tables/))
+	for out_f in $(OUT_FILES) ; do \
+		out=$$(echo $$out_f | cut -d'/' -f 7 | cut -d'.' -f 1) ; \
+		echo $$out ; \
+    	python3 ./script/tably.py $$out_f > ${RESULT_DIR}/tables/$$out.tex ; \
+	done
 
 full_transformer:
 	$(eval NUM_ROWS := $(shell python3 ./parse_parameters.py -f ${PARAMETER_FILE} -m Transformer -c))

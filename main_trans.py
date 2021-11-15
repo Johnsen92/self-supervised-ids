@@ -24,7 +24,7 @@ parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder'
 parser.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
 parser.add_argument('-J', '--json_dir', default='./json/', help='Json exports folder')
 # ---------------------- Model parameters ----------------------
-parser.add_argument('-x', '--forward_expansion', default=4, type=int, help='Multiplier for input_size for transformer internal data width')
+parser.add_argument('-x', '--forward_expansion', default=2, type=int, help='Multiplier for input_size for transformer internal data width')
 parser.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
 parser.add_argument('-l', '--n_layers', default=10, type=int, help='Number of transformer layers')
 parser.add_argument('-o', '--dropout', default=0.0, type=float, help='Dropout rate')
@@ -74,7 +74,7 @@ with open(args.json_dir + '/args.json', 'w') as f:
 data_filename = os.path.basename(args.data_file)[:-7]
 
 # Identifier for current parameters
-run_id = f'transformer_{data_filename}_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_lr{str(args.learning_rate*10).replace(".", "")}'
+run_id = f'transformer_{data_filename}_rn{random_seed}_do{str(args.dropout*10).replace(".", "")}_nl{args.n_layers}_nh{args.n_heads}_fx{args.forward_expansion}_bs{args.batch_size}_lr{str(args.learning_rate*10).replace(".", "")}'
     
 # Timestamp
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -202,7 +202,24 @@ model_parameters = {
 epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
 
 # Init statistics object
-stats = statistics.Stats(
+pretraining_stats = statistics.Stats(
+    stats_dir = extended_stats_dir,
+    benign = args.benign_category,
+    category_mapping = category_mapping,
+    proxy_task = f'{args.proxy_task}',
+    pretrain_percent = args.self_supervised,
+    train_percent = args.train_percent,
+    val_percent = args.val_percent,
+    n_epochs = args.n_epochs,
+    n_epochs_pretraining = epochs_pretraining,
+    batch_size = args.batch_size,
+    learning_rate = args.learning_rate,
+    model_parameters = model_parameters,
+    random_seed = random_seed,
+    subset = ''
+)
+
+training_stats = statistics.Stats(
     stats_dir = extended_stats_dir,
     benign = args.benign_category,
     category_mapping = category_mapping,
@@ -235,7 +252,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = None, 
+            stats = pretraining_stats, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -244,7 +261,7 @@ if args.self_supervised > 0:
         )
     elif(args.proxy_task == trainer.Transformer.ProxyTask.AUTO):
         # Introduce dropout for denoising autoencoder
-        #model.dropout = nn.Dropout(0.2)
+        model.dropout = nn.Dropout(0.2)
         pretrainer = trainer.Transformer.AutoEncode(
             model = model, 
             training_data = pretrain_loader, 
@@ -253,7 +270,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = None, 
+            stats = pretraining_stats, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -269,7 +286,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = None, 
+            stats = pretraining_stats, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -285,7 +302,7 @@ if args.self_supervised > 0:
             optimizer = optimizer, 
             epochs = epochs_pretraining, 
             val_epochs = args.val_epochs,
-            stats = None, 
+            stats = pretraining_stats, 
             cache = pretraining_cache,
             json = args.json_dir,
             writer = writer,
@@ -298,11 +315,12 @@ if args.self_supervised > 0:
     # Pretrain
     pretrainer.train()
 
+    # If config file is provided, make neuron activation data
+    if not args.neuron_config is None:
+        pretrainer.neuron_activation(id, args.neuron_config, postfix='pre', title='Pretraining', batch_first=False)
+
     if args.proxy_task == trainer.Transformer.ProxyTask.AUTO:
         model.dropout = nn.Dropout(args.dropout)      
-
-    if not args.neuron_config is None:
-        pretrainer.neuron_activation(id, args.neuron_config, postfix='Pretraining')
 
 
 # Init training criterion
@@ -321,7 +339,7 @@ finetuner = trainer.Transformer.Supervised(
     optimizer = optimizer, 
     epochs = args.n_epochs, 
     val_epochs = args.val_epochs,
-    stats = stats, 
+    stats = training_stats, 
     cache = training_cache,
     json = args.json_dir,
     writer = writer,
@@ -333,12 +351,12 @@ finetuner = trainer.Transformer.Supervised(
 finetuner.train()
 
 # Partial dependency data
-if args.proxy_task == trainer.LSTM.ProxyTask.NONE and not args.pdp_config is None:
-    finetuner.pdp(id, args.pdp_config)
+if args.proxy_task == trainer.Transformer.ProxyTask.NONE and not args.pdp_config is None:
+    finetuner.pdp(id, args.pdp_config, batch_first=False)
 
 # Neuron activation data
 if not args.neuron_config is None:
-    finetuner.neuron_activation(id, args.neuron_config, postfix='Supervised')
+    finetuner.neuron_activation(id, args.neuron_config, postfix='Supervised', batch_first=False)
 
 # Remove temp directories
 general_cache.clean()

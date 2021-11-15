@@ -112,7 +112,7 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
-                        self.scheduler.step(mean_loss_epoch)
+                        #self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
@@ -124,21 +124,6 @@ class Trainer(object):
                             self.writer.add_scalar('Validation accuracy', accuracy, global_step=epoch)
                             self.writer.add_scalar('Validation mean loss', loss, global_step=epoch)
 
-                    # Assert that validation has been executed at least once
-                    # if self.validation:
-                    #     assert len(observed_acc) > 0
-                    #     self.stats.accuracies = observed_acc
-                    #     best_epoch = self.stats.best_epoch
-                    #     self.cache.load_model(f'ep_{best_epoch[0]}_' + chache_file_name, self.model, tmp=True)
-                    #     accuracy, _ = self.validate()
-                    #     #print(round(accuracy * 100.0, 3), round(best_epoch[1], 3))
-                    #     #assert round(accuracy * 100.0, 3) == round(best_epoch[1], 3)
-                    #     print(f'Highest accuracy observed with validation period {self.val_epochs}: {best_epoch[1]:.3f}%')
-
-                    # Set stats
-                    #self.stats.add_monitor(mon)
-                    #self.stats.losses = mon.measurements   
-
                     # Store trained model
                     self.cache.save_model(chache_file_name, self.model)
 
@@ -149,17 +134,16 @@ class Trainer(object):
                     # Load cached model
                     self.cache.load_model(chache_file_name, self.model)
 
-                    if not self.stats is None:
-                        if self.cache.exists('stats'):
-                            # Load statistics object
-                            stats_dir = self.stats.stats_dir
-                            self.stats = self.cache.load('stats', msg='Loading statistics object')
-                            self.stats.set_stats_dir(stats_dir)
-                        else:
-                            self.stats.new_epoch(self.epochs)
-                            self.validate()
-                            # Store statistics object
-                            self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+                    if self.cache.exists('stats'):
+                        # Load statistics object
+                        stats_dir = self.stats.stats_dir
+                        self.stats = self.cache.load('stats', msg='Loading statistics object')
+                        self.stats.set_stats_dir(stats_dir)
+                    elif self.validation:
+                        self.stats.new_epoch(self.epochs)
+                        self.validate()
+                        # Store statistics object
+                        self.cache.save('stats', self.stats, msg='Storing statistics to cache')
 
             return wrapper
 
@@ -193,7 +177,7 @@ class Trainer(object):
                     mean_loss = sum(validation_losses)/len(validation_losses)
                 
                 print(f'Validation size {self.stats.val_percent}%: Accuracy {(epoch.accuracy * 100.0):.3f}%, FAR: {(epoch.false_alarm_rate * 100.0):.3f}%, Precision: {(epoch.precision * 100.0):.3f}%, Mean loss: {mean_loss:.4f}')
-                return self.stats.accuracy, mean_loss
+                return epoch.accuracy, mean_loss
             return wrapper
 
     def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False):
@@ -300,7 +284,7 @@ class Trainer(object):
         pass
 
     @torch.no_grad()
-    def pdp(self, id, config_file):
+    def pdp(self, id, config_file, batch_first=True):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
@@ -314,7 +298,7 @@ class Trainer(object):
         minmax = self.test_data.dataset.minmax
         stds = self.test_data.dataset.stds
         means = self.test_data.dataset.means
-        mapping = self.stats.class_stats.mapping
+        mapping = self.stats.mapping
         reverse_mapping = {v:k for k,v in mapping.items()}
         
 
@@ -355,17 +339,18 @@ class Trainer(object):
                         for j in range(sample[0].shape[0]):
                             sample[0][j,feature_ind] = values[i]
 
-                    loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+                    loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first if batch_first else datasets.collate_flows, drop_last=True)
                     outputs = []
                     for (input_data, seq_lens), _, _ in loader:
-                        output, _, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                        output, _, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=True)
+
                         # Data is (Sequence Index, Batch Index, Feature Index)
                         for batch_index in range(output.shape[0]):
                             flow_length = seq_lens[batch_index]
                             flow_output = output[batch_index,:flow_length,:].detach().cpu().numpy()
                             outputs.append(flow_output)
 
-                    pdp[i] = np.mean( np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
+                    pdp[i] = np.mean(np.array([utils.numpy_sigmoid(output[-1]) for output in outputs] ))
 
                 rescaled = values * stds[feature_ind] + means[feature_ind]
                 pd_data.results[(category, feature_ind)] = np.vstack((rescaled,pdp))
@@ -376,12 +361,12 @@ class Trainer(object):
             pickle.dump(pd_data, f)
 
     @torch.no_grad()
-    def neuron_activation(self, id, config_file, title=None, postfix=None):
+    def neuron_activation(self, id, config_file, title=None, postfix=None, batch_first=True):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
         self.model.eval()
-        mapping = self.stats.class_stats.mapping
+        mapping = self.stats.mapping
         na_base_dir = os.path.dirname(self.test_data.dataset.data_pickle) + '/neurons/'
         na_file = na_base_dir + id + ('_' + postfix if not postfix is None else '') + '.pickle'
         if os.path.exists(na_file):
@@ -417,15 +402,17 @@ class Trainer(object):
                 print(f'Did not find enough samples ({len(good_subset)}) for attack category {category}. Continuing...')
                 continue
 
-            loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+            loader = DataLoader(dataset=good_subset, batch_size=batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first if batch_first else datasets.collate_flows, drop_last=True)
             neurons_latest = []
             neurons_means = []
             for (input_data, seq_lens), _, _ in loader:
-                _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=True, out_batch_first=True)
+                _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=batch_first)
+                neurons_adjusted = (neurons if batch_first else neurons.permute(1,0,2)).detach().cpu()
+
                 # neurons is (Batch Index, Sequence Index, Feature Index)
                 for batch_index, seq_len in enumerate(seq_lens):
-                    neurons_latest.append(neurons[batch_index, seq_len-1, :].detach().cpu().numpy())
-                    neurons_means.append(torch.mean(neurons[batch_index, :seq_len, :].detach().cpu(), 0).numpy())
+                    neurons_latest.append(neurons_adjusted[batch_index, seq_len-1, :].numpy())
+                    neurons_means.append(torch.mean(neurons_adjusted[batch_index, :seq_len, :], 0).numpy())
 
             #neuron_data.latest[category] = np.vstack(neurons_latest)
             neuron_data.latest[category] = np.mean(neurons_latest, axis=0)
