@@ -210,4 +210,5 @@ full_transformer:
 	$(eval NUMBER_PARAMETER_ROWS := $(shell seq 0 $$((${NUM_ROWS} - 1))))
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))
 
-full: full_lstm full_transformer
+full:
+	python3 results.py -f ./runs.csv -m LSTM -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}
