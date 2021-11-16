@@ -71,8 +71,8 @@ class Flows(Dataset):
             X = [np.concatenate((item, np.random.rand(item.shape[0], item.shape[1] * (expansion_factor - 1))), axis=1) for item in X]
         print('done')
         # Normalize data between -1 and 1
-        cache_filename = 'normalization_data'
-        if not self.cache == None and not self.cache.exists(cache_filename):
+        cache_filename = f'normalization_data_{self.data_filename}'
+        if not self.cache == None and not self.cache.exists(cache_filename, no_prefix=True):
             print('Calculating normalization data...', end='')
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)

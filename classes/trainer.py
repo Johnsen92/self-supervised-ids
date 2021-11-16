@@ -112,7 +112,7 @@ class Trainer(object):
 
                         # Update scheduler
                         mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
-                        #self.scheduler.step(mean_loss_epoch)
+                        self.scheduler.step(mean_loss_epoch)
 
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
@@ -550,6 +550,10 @@ class Transformer():
 
             # Calculate loss
             loss = self.criterion(out[mask], data[mask])
+
+            if torch.sum(torch.isnan(loss.cpu())).item() > 0:
+                with open('test.txt','w') as file:
+                    file.write('Loss NAN')
 
             return loss
 

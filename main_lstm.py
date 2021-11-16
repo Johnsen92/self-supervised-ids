@@ -103,7 +103,7 @@ training_cache = utils.Cache(cache_dir=args.cache_dir + '/training', key_prefix=
 pretraining_cache = utils.Cache(cache_dir=args.cache_dir + '/pretraining', key_prefix=run_id + '_' + pretraining_id, disabled=args.no_cache, label='LSTM Pretraining Cache')
 
 # Extended stats directory for this run
-extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + id + '/'
 
 # Load dataset and normalize data, or load from cache
 cache_filename = f'dataset_normalized_{data_filename}' + (f'_x{args.feature_expansion}' if args.feature_expansion > 1 else '')

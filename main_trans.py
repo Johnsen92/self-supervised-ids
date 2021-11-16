@@ -104,7 +104,7 @@ training_cache = utils.Cache(cache_dir=args.cache_dir + '/training', key_prefix=
 pretraining_cache = utils.Cache(cache_dir=args.cache_dir + '/pretraining', key_prefix=run_id + '_' + pretraining_id, disabled=args.no_cache, label='Transformer Pretraining Cache')
 
 # Extended stats directory for this run
-extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + uid + '/'
+extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + id + '/'
 
 # Load dataset and normalize data, or load from cache
 cache_filename = f'dataset_normalized_{data_filename}'
@@ -261,7 +261,7 @@ if args.self_supervised > 0:
         )
     elif(args.proxy_task == trainer.Transformer.ProxyTask.AUTO):
         # Introduce dropout for denoising autoencoder
-        model.dropout = nn.Dropout(0.2)
+        #model.dropout = nn.Dropout(0.2)
         pretrainer = trainer.Transformer.AutoEncode(
             model = model, 
             training_data = pretrain_loader, 
