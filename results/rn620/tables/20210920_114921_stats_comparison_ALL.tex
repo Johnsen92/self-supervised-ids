@@ -1,0 +1,33 @@
+\begin{table}[htb]
+    \centering
+    \begin{tabular}{@{}ccccccc@{}}
+        \toprule
+         &  ID &  OBSCURE &  MASK &  PREDICT &  NONE &  AUTO \\
+        \midrule
+        Hyperparameters &  &  &  &  &  &  \\
+        Epochs Supervised &  600 &  600 &  600 &  600 &  600 &  600 \\
+        Epochs Pretraining &  10 &  10 &  10 &  10 &  600 &  10 \\
+        Batch size &  128 &  128 &  128 &  128 &  128 &  128 \\
+        Proxy task &  ID &  OBSCURE &  MASK &  PREDICT &  NONE &  AUTO \\
+        Pretraining percentage &  80.00 \% &  80.00 \% &  80.00 \% &  80.00 \% &  0.00 \% &  80.00 \% \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Validation percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &  10\_flows &  10\_flows &  10\_flows &  10\_flows &  10\_flows &  10\_flows \\
+        Training time &  3 h 30 m &  3 h 46 m &  3 h 38 m &  3 h 34 m &  1 h 16 m &  10 h 49 m \\
+        Learning rate &  0.001 &  0.001 &  0.001 &  0.001 &  0.001 &  0.001 \\
+        Random Seed &  620 &  620 &  620 &  620 &  620 &  620 \\
+         \\
+        Modelparameters &  &  &  &  &  &  \\
+        Hidden size &  512 &  512 &  512 &  512 &  512 &  512 \\
+        \# Layers &  3 &  3 &  3 &  3 &  3 &  3 \\
+         \\
+        Results &  &  &  &  &  &  \\
+        Final accuracy &  96.875 \% &  96.551 \% &  95.489 \% &  96.559 \% &  96.241 \% &  96.266 \% \\
+        Highest observed acc. &  96.874 \% &  96.550 \% &  95.486 \% &  96.558 \% &  96.242 \% &  96.267 \% \\
+        \# false positves &  5751 &  6632 &  5977 &  6147 &  6600 &  6850 \\
+        \# false negatives &  1482 &  1350 &  4462 &  1816 &  2099 &  1791 \\
+        \% false positves &  79.511 \% &  83.087 \% &  57.256 \% &  77.195 \% &  75.871 \% &  79.273 \% \\
+        \% false negatives &  20.489 \% &  16.913 \% &  42.744 \% &  22.805 \% &  24.129 \% &  20.727 \% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
