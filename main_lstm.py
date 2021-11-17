@@ -38,7 +38,8 @@ parser.add_argument('-m', '--max_sequence_length', default=100, type=int, help='
 parser.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
 parser.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
 parser.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
-parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation')
+parser.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation. -1 choose a reasonable value')
+parser.add_argument('--val_batch_size', default=8192, type=int, help='Batch size used for validation. Selected to not strain GPU too much')
 parser.add_argument('-y', '--proxy_task', default=trainer.LSTM.ProxyTask.NONE, type=lambda proxy_task: trainer.LSTM.ProxyTask[proxy_task], choices=list(trainer.LSTM.ProxyTask))
 parser.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
 parser.add_argument('-i', '--subset_config_index', default=-1, type=int, help='If the subset configuration file contains multiple configurations, this index is needed')
@@ -54,6 +55,10 @@ parser.add_argument('--random_seed', default=0, type=int, help='Seed for random 
 args = parser.parse_args(sys.argv[1:])
 
 assert args.train_percent + args.self_supervised + args.val_percent <= 1000
+
+# If val_epochs is set to auto mode, calculate reasonable value
+if args.val_epochs == -1:
+    args.val_epochs = max(1, args.n_epochs // 100)
 
 # Set random seed
 if args.random_seed == 0:
@@ -148,11 +153,14 @@ if not args.subset_config is None:
     if args.self_supervised > 0:
         pretrain_data = FlowsSubset(pretrain_data, category_mapping, config_file=args.subset_config, key='PRETRAIN', config_index=args.subset_config_index)
 
+# Assure val batch size is at most the size of validation data split
+args.val_batch_size = min(len(val_data), args.val_batch_size)
+
 # Init data loaders
 if args.self_supervised > 0:
     pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
-val_loader = DataLoader(dataset=val_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
+val_loader = DataLoader(dataset=val_data, batch_size=args.val_batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows_batch_first, drop_last=True)
 if args.debug:
     test_loader = val_loader
 else:
