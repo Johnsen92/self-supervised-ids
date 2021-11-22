@@ -143,7 +143,7 @@ class Flows(Dataset):
 class FlowsSubset(Subset):
     # Parse subset configuration from json file
     def parse(config_file, key, index=-1):
-        assert os.path.isfile(config_file)
+        assert os.path.isfile(config_file), f'{config_file} not found...'
         with open(config_file, 'r') as f:
             config = json.load(f)
 

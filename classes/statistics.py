@@ -115,6 +115,13 @@ class Monitor():
         # If called before first call of __call__ function, return 0
         else:
             return formatTime(0)
+
+    @property
+    def time_passed(self):
+        if self._start_time == None:
+            print('Start time not set, setting it to now')
+            self._start_time = timer()
+        return formatTime(timer() - self._start_time)
         
     @property
     def measurements(self):
@@ -126,7 +133,7 @@ class Monitor():
 
     @property
     def duration_s(self):
-        if self._end_time == None:
+        if self._start_time == None:
             print('Start time not set, setting it to now')
             self._start_time = timer()
         if self._end_time == None:
@@ -216,7 +223,7 @@ class ClassStats():
         self.make_stats_dir()
 
 class Epoch():
-    def __init__(self, epoch, class_stats):
+    def __init__(self, epoch, class_stats, training_time, training_loss = 0, validation_loss = 0):
         self.epoch = epoch
         self.n_true_positive = 0
         self.n_samples_counted = 0
@@ -224,6 +231,9 @@ class Epoch():
         self.n_true_negative = 0
         self.n_false_positive = 0
         self.n_false_negative = 0
+        self.training_loss = training_loss
+        self.validation_loss = validation_loss
+        self.training_time = training_time
         self.class_stats = class_stats
 
     def add_batch(self, predicted, target, categories):
@@ -386,6 +396,14 @@ class Stats():
         with open(self.stats_dir + 'losses_' + now + '.csv', 'w') as f:
             for item in self.losses:
                 f.write(f'{item:.6f}\n')
+
+        with open(self.stats_dir + 'training_losses_' + now + '.csv', 'w') as f:
+            for epoch, loss in self.training_losses:
+                f.write(f'{epoch}, {loss:.6f}\n')
+
+        with open(self.stats_dir + 'validation_losses_' + now + '.csv', 'w') as f:
+            for epoch, loss in self.validation_losses:
+                f.write(f'{epoch}, {loss:.6f}\n')
         print('done.')
 
     def save_stats(self):
@@ -407,6 +425,9 @@ class Stats():
             if not self.model_parameters is None:
                 for key, val in self.model_parameters.items():
                     f.write(f'{key}, {val}\n')
+            f.write(f'\nTraining metrics,\n')     
+            f.write(f'Best epoch, {self.best_epoch.epoch}\n')
+            f.write(f'Time to best epoch, {self.best_epoch.training_time[0]}h {self.best_epoch.training_time[1]}m\n')
             f.write(f'\nPerformance metrics,\n')
             #f.write(f'Accuracy, {self.best_epoch[1]:.3f} %\n')
             f.write(f'Accuracy, {self.accuracy*100.0:.3f} %\n')
@@ -434,16 +455,33 @@ class Stats():
         fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         #plt.show()
 
-    def new_epoch(self, n_epoch):
+    def add_epoch(self, epoch):
+        self.epochs.append(epoch)
+
+    def new_epoch(self, epoch, training_time, training_loss):
         class_stats = ClassStats(
             stats_dir = self.stats_dir,
             mapping = self.mapping,
             benign = self.benign
         )  
-        new_epoch = Epoch(n_epoch, class_stats)
+        new_epoch = Epoch(
+            epoch = epoch, 
+            class_stats = class_stats, 
+            training_time = training_time, 
+            training_loss = training_loss
+        )
         self.epochs.append(new_epoch)
         return new_epoch
 
+    @property
+    def validation_losses(self):
+        return [(e.epoch, e.validation_loss) for e in self.epochs]
+
+    @property
+    def training_losses(self):
+        return [(e.epoch, e.training_loss) for e in self.epochs]
+
+    @property
     def last_epoch(self):
         return self.epochs[-1]
 
@@ -559,6 +597,10 @@ class Stats():
     def n_samples(self):
         assert self.n_true + self.n_false == self.n_samples_counted
         return self.n_true + self.n_false
+
+    @property
+    def training_time_to_best_epoch(self):
+        return self.best_epoch.training_time
 
 class NeuronData():
     def __init__(self, id, config, title=None):

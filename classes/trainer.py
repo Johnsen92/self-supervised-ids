@@ -96,9 +96,6 @@ class Trainer(object):
                                 self._scaler.step(self.optimizer)
                                 self._scaler.update()
 
-                            # Plot to tensorboard
-                            self.writer.add_scalar(self.title + ' loss', loss, global_step=mon.iter)
-
                             # Append loss for avg epoch loss calculation to be used in learning rate scheduler
                             losses_epoch.append(loss.item())
 
@@ -114,31 +111,45 @@ class Trainer(object):
                         mean_loss_epoch = sum(losses_epoch) / max(len(losses_epoch),1)
                         self.scheduler.step(mean_loss_epoch)
 
+                        # Plot to tensorboard
+                        self.writer.add_scalar(self.title + ' loss', mean_loss_epoch, global_step=epoch)
+
                         # Validation is performed if enabled and after the last epoch or periodically if val_epochs is set not set to 0
                         validate_periodically = (epoch + 1) % self.val_epochs == 0 if self.val_epochs != 0 else False
                         if self.validation and (epoch == self.epochs-1 or validate_periodically):
-                            self.stats.new_epoch(epoch)
+                            self.stats.new_epoch(
+                                epoch = epoch, 
+                                training_time = mon.time_passed, 
+                                training_loss = mean_loss_epoch)
                             accuracy, loss = self.validate()
                             self.model.train()
-                            self.cache.save_model(f'ep_{epoch}_' + chache_file_name, self.model, tmp=True)
+                            if self.stats.last_epoch.epoch == self.stats.best_epoch.epoch:
+                                self.cache.save_model(chache_file_name, self.model, tmp=True)
+                                self.cache.save('best_epoch', self.stats.last_epoch)
+                                print(f"New best epoch: {self.stats.last_epoch.epoch}, Time: {self.stats.training_time_to_best_epoch[0]}h {self.stats.training_time_to_best_epoch[1]}m")
                             self.writer.add_scalar('Validation accuracy', accuracy, global_step=epoch)
                             self.writer.add_scalar('Validation mean loss', loss, global_step=epoch)
 
-                    # Store trained model
-                    self.cache.save_model(chache_file_name, self.model)
-
-                    # Store statistics object
-                    if not self.stats is None:
+                    # Store statistics object and load and save best epoch
+                    if self.validation:
+                        self.cache.load_model(chache_file_name, self.model, tmp=True)
                         self.cache.save('stats', self.stats, msg='Storing statistics to cache')
+
+                    # Safe model
+                    self.cache.save_model(chache_file_name, self.model)
                 else:
                     # Load cached model
                     self.cache.load_model(chache_file_name, self.model)
 
                     if self.cache.exists('stats'):
                         # Load statistics object
-                        stats_dir = self.stats.stats_dir
                         self.stats = self.cache.load('stats', msg='Loading statistics object')
-                        self.stats.set_stats_dir(stats_dir)
+                        self.stats.make_stats_dir()
+                        print(f"Best epoch: {self.stats.best_epoch.epoch}, Time: {self.stats.training_time_to_best_epoch[0]}h {self.stats.training_time_to_best_epoch[1]}m")
+                    elif self.cache.exists('best_epoch'):
+                        best_epoch = self.cache.load('best_epoch', msg='Loading best epoch')
+                        self.stats.add_epoch(best_epoch)
+                        print(f"Best epoch: {self.stats.best_epoch.epoch}, Time: {self.stats.training_time_to_best_epoch[0]}h {self.stats.training_time_to_best_epoch[1]}m")
                     elif self.validation:
                         self.stats.new_epoch(self.epochs)
                         self.validate()
@@ -156,7 +167,7 @@ class Trainer(object):
 
                 # Validate model
                 print('Validating model...')
-                epoch = self.stats.last_epoch()
+                epoch = self.stats.last_epoch
                 with torch.no_grad():
                     validation_losses = []
                     # Reset metric counters in stats and class stats
@@ -176,6 +187,7 @@ class Trainer(object):
                     # Save and cache validation results
                     mean_loss = sum(validation_losses)/len(validation_losses)
                 
+                epoch.validation_loss = mean_loss
                 print(f'Validation size {self.stats.val_percent}%: Accuracy {(epoch.accuracy * 100.0):.3f}%, FAR: {(epoch.false_alarm_rate * 100.0):.3f}%, Precision: {(epoch.precision * 100.0):.3f}%, Mean loss: {mean_loss:.4f}')
                 return epoch.accuracy, mean_loss
             return wrapper
@@ -430,17 +442,6 @@ class Trainer(object):
             pickle.dump(neuron_data, f)
 
 class Transformer():
-    class ProxyTask(Enum):
-        NONE = 0,
-        AUTO = 1,
-        PREDICT = 2,
-        OBSCURE = 3,
-        MASK = 4,
-        INTER = 5
-
-        def __str__(self):
-            return self.name
-
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title):
             super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False)
@@ -646,18 +647,6 @@ class Transformer():
             return loss
             
 class LSTM():
-    class ProxyTask(Enum):
-        NONE = 1,
-        PREDICT = 2,
-        OBSCURE = 3,
-        MASK = 4,
-        ID = 5,
-        AUTO = 6,
-        COMPOSITE = 7
-
-        def __str__(self):
-            return self.name
-
     class Supervised(Trainer):
         def __init__(self, model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title):
             super().__init__(model, training_data, validation_data, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)

@@ -1,4 +1,3 @@
-import math
 import pickle
 import os.path
 import hashlib
@@ -8,6 +7,7 @@ import torch
 from enum import Enum
 import numpy as np
 import shutil
+from  argparse import ArgumentParser
 
 def make_dir(path):
     if not os.path.exists(os.path.dirname(path)):
@@ -19,6 +19,95 @@ def make_dir(path):
 
 def numpy_sigmoid(x):
     return 1/(1+np.exp(-x))
+
+class ProxyTask(Enum):
+    NONE = 0,
+    AUTO = 1,
+    PREDICT = 2,
+    OBSCURE = 3,
+    MASK = 4,
+    ID = 5,
+    INTER = 6,
+    COMPOSITE = 7
+
+    def __str__(self):
+        return self.name
+
+class ModelArgumentParser(ArgumentParser):
+    def __init__(self, description):
+        super(ModelArgumentParser, self).__init__(description = description)
+        self.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
+        self.add_argument('-d', '--debug', action='store_true', help='Debug flag')
+        self.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
+        self.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
+        self.add_argument('-J', '--json_dir', default='./json/', help='Json exports folder')
+        self.add_argument('-L', '--log_dir', default='./runs/', help='Tensorboard logdir')
+        # ---------------------- Hyper parameters ----------------------
+        self.add_argument('-e', '--n_epochs', default=10, type=int, help='Number of epochs for supervised training')
+        self.add_argument('-E', '--n_epochs_pretraining', default=0, type=int, help='Number of epochs for pretraining. If 0, n_epochs is used')
+        self.add_argument('-b', '--batch_size', default=128, type=int, help='Batch size')
+        self.add_argument('-r', '--learning_rate', default=0.001, type=float, help='Initial learning rate for optimizer as decimal number')
+        self.add_argument('--min_sequence_length', default=1, type=int, help='Shorter sequences will no be included')
+        self.add_argument('-m', '--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
+        self.add_argument('--output_size', default=1, type=int, help='Size of output tensor')
+        # ---------------------- Training config -----------------------
+        self.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
+        self.add_argument('-s', '--self_supervised', default=0, type=int, help='Pretraining per-mill of data')
+        self.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
+        self.add_argument('-V', '--val_epochs', default=0, type=int, help='Validate model after every val_epochs of supervised training. 0 disables periodical validation. -1 choose a reasonable value')
+        self.add_argument('--val_batch_size', default=8192, type=int, help='Batch size used for validation. Selected to not strain GPU too much')
+        self.add_argument('-y', '--proxy_task', default=ProxyTask.NONE, type=lambda proxy_task: ProxyTask[proxy_task], choices=list(ProxyTask))
+        self.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
+        self.add_argument('-i', '--subset_config_index', default=-1, type=int, help='If the subset configuration file contains multiple configurations, this index is needed')
+        self.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
+        self.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
+        # ---------------------- Stats & cache -------------------------
+        self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
+        self.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
+        self.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
+        self.add_argument('-N', '--neuron_config', default=None, help='Path to neuron activation plot config file')
+        self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+        self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
+
+    def parse_args(self, args=None, namespace=None):
+        args = super(ModelArgumentParser, self).parse_args(args, namespace)
+        if args.proxy_task == ProxyTask.NONE:
+            args.self_supervised = 0
+            args.n_epochs_pretraining = 0
+        assert args.train_percent + args.self_supervised + args.val_percent <= 1000
+        # If val_epochs is set to auto mode, calculate reasonable value
+        if args.val_epochs == -1:
+            args.val_epochs = max(1, args.n_epochs // 100)
+
+        if not os.path.exists(os.path.dirname(args.log_dir)):
+            try:
+                os.makedirs(os.path.dirname(args.log_dir))
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
+        return args
+
+class LSTMArgumentParser(ModelArgumentParser):
+    def __init__(self, description):
+        super(LSTMArgumentParser, self).__init__(description = description)
+        # ---------------------- Model parameters ----------------------
+        self.add_argument('-l', '--hidden_size', default=512, type=int, help='Size of hidden states and cell states')
+        self.add_argument('-n', '--n_layers', default=3, type=int, help='Number of LSTM layers')
+
+    def parse_args(self, args=None, namespace=None):
+        return super(LSTMArgumentParser, self).parse_args(args, namespace)
+
+class TransformerArgumentParser(ModelArgumentParser):
+    def __init__(self, description):
+        super(TransformerArgumentParser, self).__init__(description = description)
+        # ---------------------- Model parameters ----------------------
+        self.add_argument('-x', '--forward_expansion', default=2, type=int, help='Multiplier for input_size for transformer internal data width')
+        self.add_argument('-n', '--n_heads', default=3, type=int, help='Number of attention heads')
+        self.add_argument('-l', '--n_layers', default=10, type=int, help='Number of transformer layers')
+        self.add_argument('-o', '--dropout', default=0.0, type=float, help='Dropout rate')
+
+    def parse_args(self, args=None, namespace=None):
+        return super(TransformerArgumentParser, self).parse_args(args, namespace)
 
 class Cache():
 
@@ -148,5 +237,3 @@ class Run():
         while self.exists(key, epoch):
             epoch += 1
         return epoch - 1
-
-    
