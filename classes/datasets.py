@@ -81,9 +81,9 @@ class Flows(Dataset):
             print('done')
             
             # Store for future use
-            cache.save(cache_filename, (means, stds), msg='Storing normalization data')
+            cache.save(cache_filename, (means, stds), msg='Storing normalization data', no_prefix=True)
         else:
-            (means, stds) = cache.load(cache_filename, msg='Loading normalization data')
+            (means, stds) = cache.load(cache_filename, msg='Loading normalization data', no_prefix=True)
 
         assert means.shape[0] == X[0].shape[-1], f'means.shape: {means.shape}, x.shape: {X[0].shape}'
         assert stds.shape[0] == X[0].shape[-1], f'stds.shape: {stds.shape}, x.shape: {X[0].shape}'

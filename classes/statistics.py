@@ -384,6 +384,8 @@ class Stats():
 
     def set_stats_dir(self, stats_dir):
         self.stats_dir = stats_dir if stats_dir[-1] == '/' else stats_dir + '/'
+        for e in self.epochs:
+            e.class_stats.set_stats_dir(stats_dir)
         self.make_stats_dir()
 
     def plot_stats(self):

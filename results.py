@@ -10,6 +10,8 @@ from classes.statistics import PDPlot, NeuronPlot
 from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask
 from main_lstm import main as train_lstm
 from main_trans import main as train_trans
+from tqdm import tqdm
+import time
 
 def build_parameters(parameters, values):
     assert len(parameters) == len(values)
@@ -128,13 +130,13 @@ CSV_MODEL_INDEX = 1
 CSV_GROUP_INDEX = 0
 EXPECTED_RESULTS_FILES = 6
 
-stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + 'stats/'
 with open(args.parameter_file, newline='') as param_file_csv:
-    # Props if you can read this line...
+    # Props if you can read this line... (just generates a dictionary out of unique entries in groups column)
     groups = { k:[] for k in list(set([row[0] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:]])) }
-parameters = ''
+
+ids = []
 param_file_csv = open(args.parameter_file, newline='')
-rows = csv.reader(param_file_csv, delimiter=',', quotechar='"')
+rows = [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')]
 for i, row in enumerate(rows):
     if i == 1:
         parameters = row
@@ -142,15 +144,17 @@ for i, row in enumerate(rows):
         labels = row
     elif row[CSV_MODEL_INDEX] == args.model:
         parameter_string, parameter_list = build_parameters(parameters, row)
-        if row[CSV_MODEL_INDEX] == 'LSTM':
+        if row[CSV_MODEL_INDEX] == 'lstm':
             train = train_lstm
             model_parser = LSTMArgumentParser(parameter_list)
-        elif row[CSV_MODEL_INDEX] == 'Transformer':
+        elif row[CSV_MODEL_INDEX] == 'transformer':
             model_parser = TransformerArgumentParser(parameter_list)
             train = train_trans
         dataroot_basename = os.path.basename(row[1])[:-7]
-        add_parameter(parameter_list, '-S', f'{args.stats_dir}/stats/')
-        add_parameter(parameter_list, '-L', f'{args.stats_dir}/runs/')
+        stats_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}/stats/'
+        log_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}/runs/'
+        add_parameter(parameter_list, '-S', stats_dir)
+        add_parameter(parameter_list, '-L', log_dir)
         add_parameter(parameter_list, '--debug')
         model_args = model_parser.parse_args(parameter_list)
         if len(args.proxy_tasks) != 0 and not model_args.proxy_task in args.proxy_tasks:
@@ -158,8 +162,10 @@ for i, row in enumerate(rows):
         add_parameter(parameter_list, '--id_only')
         model_args_id_only = model_parser.parse_args(parameter_list)
         id = train(model_args_id_only)
+        ids.append(id)
         groups[row[CSV_GROUP_INDEX]].append(id)
         stats_dir_extended = f'{stats_dir}{id}/'
+        print(f'----------------------------------------------------------------{i-1}/{len(rows-2)}---------------------------------------------------------------------------')
         if not os.path.exists(stats_dir_extended):
             print(f'Make results for ID {id}...')
             train(model_args)
