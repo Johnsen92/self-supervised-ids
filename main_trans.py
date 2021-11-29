@@ -12,19 +12,14 @@ import numpy as np
 import random
 
 def main(args):
-    # If val_epochs is set to auto mode, calculate reasonable value
-    if args.val_epochs == -1:
-        args.val_epochs = max(1, args.n_epochs // 100)
+    # Set number of threads used by PyTorch
+    torch.set_num_threads(args.n_threads)
 
     # Set random seed
-    if args.random_seed == 0:
-        SEED = random.randint(1, pow(2,16)-1)
-    else:
-        SEED = args.random_seed
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    random_seed = SEED
+    random.seed(args.random_seed)
+    np.random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+    random_seed = args.random_seed
 
     # Serialize arguments and store them in json export folder
     with open(args.json_dir + '/args.json', 'w') as f:
@@ -117,13 +112,13 @@ def main(args):
 
     # Init data loaders
     if args.self_supervised > 0:
-        pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-    train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
-    val_loader = DataLoader(dataset=val_data, batch_size=args.val_batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+        pretrain_loader = DataLoader(dataset=pretrain_data, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker_threads, collate_fn=datasets.collate_flows, drop_last=True)
+    train_loader = DataLoader(dataset=train_data, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker_threads, collate_fn=datasets.collate_flows, drop_last=True)
+    val_loader = DataLoader(dataset=val_data, batch_size=args.val_batch_size, shuffle=True, num_workers=args.n_worker_threads, collate_fn=datasets.collate_flows, drop_last=True)
     if args.debug:
         test_loader = val_loader
     else:
-        test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=12, collate_fn=datasets.collate_flows, drop_last=True)
+        test_loader = DataLoader(dataset=dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.n_worker_threads, collate_fn=datasets.collate_flows, drop_last=True)
 
     # Define input and output data width
     data, _, _ = dataset[0]

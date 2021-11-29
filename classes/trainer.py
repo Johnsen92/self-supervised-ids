@@ -568,19 +568,23 @@ class Transformer():
 
         def obscure(self, data, i_start, i_end):
             assert i_end >= i_start
+            mask = torch.zeros(data.size(), dtype=torch.bool)
             assert i_end < data.size()[2]
             masked_data = data
             data_size = data.size()
             masked_data[:, :, i_start:i_end] = -torch.ones(data_size[0], data_size[1], i_end-i_start)
-            return masked_data
+            mask[:, :, i_start:i_end] = True
+            return masked_data, mask
 
         def obscure_random(self, data, n_features):
             masked_data = data
             max_seq_length, batch_size, input_size = data.shape
+            mask = torch.zeros(data.size(), dtype=torch.bool)
             for _ in range(n_features):
                 idx = random.randint(0, input_size-1)
                 masked_data[:, :, idx] = torch.zeros(max_seq_length, batch_size)
-            return masked_data
+                mask[:, :, idx] = True
+            return masked_data, mask
 
         def mask(self, op_size, seq_lens):
             mask = torch.zeros(op_size, dtype=torch.bool)
@@ -596,7 +600,7 @@ class Transformer():
             data = data.to(self.device)
 
             # Obscure features
-            masked_data = self.obscure_random(data, 1)
+            masked_data, mask = self.obscure(data, 6, 7)
 
             # Pack data
             masked_data = torch.nn.utils.rnn.pack_padded_sequence(data, seq_lens, enforce_sorted=False)
@@ -607,7 +611,7 @@ class Transformer():
             # Forwards pass
             out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
 
-            mask = self.mask(out.size(), seq_lens)
+            # mask = self.mask(out.size(), seq_lens)
             loss = self.criterion(out[mask], data[mask])
 
             return loss
@@ -853,7 +857,8 @@ class LSTM():
             assert i_end < input_size
             mask = torch.zeros(data.size(), dtype=torch.bool)
             masked_data = data
-            masked_data[:, :, i_start:i_end] = -torch.ones(batch_size, max_seq_length, i_end-i_start)
+            #masked_data[:, :, i_start:i_end] = -torch.ones(batch_size, max_seq_length, i_end-i_start)
+            masked_data[:, :, i_start:i_end] = torch.zeros(batch_size, max_seq_length, i_end-i_start)
             mask[:, :, i_start:i_end] = True
             return masked_data, mask
 
@@ -876,7 +881,8 @@ class LSTM():
             (data, seq_lens), _, _ = batch_data
 
             # Obscure features
-            masked_data, mask = self.obscure_random(data, 6, 9, 0.3)
+            #masked_data, mask = self.obscure_random(data, 6, 9, 0.3)
+            masked_data, mask = self.obscure(data, 6, 7)
 
             # Move data to selected device 
             masked_data = data.to(self.device)

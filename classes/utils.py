@@ -8,6 +8,7 @@ from enum import Enum
 import numpy as np
 import shutil
 from  argparse import ArgumentParser
+import random
 
 def make_dir(path):
     if not os.path.exists(os.path.dirname(path)):
@@ -60,14 +61,17 @@ class ModelArgumentParser(ArgumentParser):
         self.add_argument('-G', '--subset_config', default=None, help='Path to config file for specialized subset')
         self.add_argument('-i', '--subset_config_index', default=-1, type=int, help='If the subset configuration file contains multiple configurations, this index is needed')
         self.add_argument('--remove_changeable', action='store_true', help='If set, remove features an attacker could easily manipulate')
-        self.add_argument('-x', '--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
-        # ---------------------- Stats & cache -------------------------
+        self.add_argument('--feature_expansion', default=1, type=int, help='Factor by which the number of input features is extended by random data')
+        self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
+        # ---------------------- Stats & Cache -------------------------
         self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
         self.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
         self.add_argument('-P', '--pdp_config', default=None, help='Path to PD plot config file')
         self.add_argument('-N', '--neuron_config', default=None, help='Path to neuron activation plot config file')
         self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-        self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
+        # ---------------------- Pytorch & Numpy -----------------------
+        self.add_argument('--n_threads', default=2, type=int, help='Number of threads used by PyTorch')
+        self.add_argument('--n_worker_threads', default=4, type=int, help='Number of worker threads to load dataset')
 
     def parse_args(self, args=None, namespace=None):
         args = super(ModelArgumentParser, self).parse_args(args, namespace)
@@ -78,6 +82,11 @@ class ModelArgumentParser(ArgumentParser):
         # If val_epochs is set to auto mode, calculate reasonable value
         if args.val_epochs == -1:
             args.val_epochs = max(1, args.n_epochs // 100)
+
+        if args.random_seed == 0:
+            args.random_seed = random.randint(1, pow(2,16)-1)
+        else:
+            args.random_seed = args.random_seed
 
         if not os.path.exists(os.path.dirname(args.log_dir)):
             try:

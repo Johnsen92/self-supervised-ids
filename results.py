@@ -2,7 +2,6 @@ import argparse
 import sys
 import csv
 import os
-import subprocess
 import json
 import pickle
 import argparse
@@ -12,6 +11,7 @@ from main_lstm import main as train_lstm
 from main_trans import main as train_trans
 from tqdm import tqdm
 import time
+import errno
 
 def build_parameters(parameters, values):
     assert len(parameters) == len(values)
@@ -153,9 +153,17 @@ for i, row in enumerate(rows):
         dataroot_basename = os.path.basename(row[1])[:-7]
         stats_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}/stats/'
         log_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}/runs/'
+        errorlog_dir = f'{args.stats_dir}/logs/'
+        if not os.path.exists(errorlog_dir):
+            try:
+                 os.makedirs(errorlog_dir)
+            except OSError as exc: # Guard against race condition
+                if exc.errno != errno.EEXIST:
+                    raise
         add_parameter(parameter_list, '-S', stats_dir)
         add_parameter(parameter_list, '-L', log_dir)
-        add_parameter(parameter_list, '--debug')
+        if args.debug:
+            add_parameter(parameter_list, '--debug')
         model_args = model_parser.parse_args(parameter_list)
         if len(args.proxy_tasks) != 0 and not model_args.proxy_task in args.proxy_tasks:
             continue
@@ -165,16 +173,21 @@ for i, row in enumerate(rows):
         ids.append(id)
         groups[row[CSV_GROUP_INDEX]].append(id)
         stats_dir_extended = f'{stats_dir}{id}/'
-        print(f'----------------------------------------------------------------{i-1}/{len(rows-2)}---------------------------------------------------------------------------')
-        if not os.path.exists(stats_dir_extended):
-            print(f'Make results for ID {id}...')
-            train(model_args)
-        elif len(os.listdir(stats_dir_extended)) != EXPECTED_RESULTS_FILES:
-            print(f'Make results for ID {id}...')
-            os.system(f'rm -r {stats_dir_extended} -f')
-            train(model_args)
-        else:
-            print(f'Skipping {id}...')
+        print(f'----------------------------------------------------------------{i-1}/{len(rows)-2}---------------------------------------------------------------------------')
+        try:
+            if not os.path.exists(stats_dir_extended):
+                print(f'Make results for ID {id}...')
+                train(model_args)
+            elif len(os.listdir(stats_dir_extended)) != EXPECTED_RESULTS_FILES:
+                print(f'Make results for ID {id}...')
+                os.system(f'rm -r {stats_dir_extended} -f')
+                train(model_args)
+            else:
+                print(f'Skipping {id}...')
+        except:
+            with open(f'{errorlog_dir}/{id}.txt') as f:
+                f.write(f'Error in run {id}')
+            print(f'An error occured during run {id}')
 
         
 

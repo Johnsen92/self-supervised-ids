@@ -17,7 +17,7 @@ VALIDATION_EPOCHS:=-1
 #VALIDATION_EPOCHS:=${TRAINING_EPOCHS}
 PRETRAINING_EPOCHS:=5
 TRAINING_PROMILL:=100
-PRETRAINING_PROMILL:=50
+PRETRAINING_PROMILL:=100
 SUBSET_FILE:=./subsets/10_flows.json
 SUBSET_PARAMETERS:=-G ${SUBSET_FILE}
 #SUBSET_PARAMETERS:=
@@ -27,7 +27,7 @@ BENIGN_CATEGORY:=10
 # Options: PREDICT ID AUTO OBSCURE MASK COMPOSITE
 LSTM_PROXY_TASKS:= AUTO PREDICT ID MASK OBSCURE COMPOSITE
 # Oprions: MASK AUTO OBSCURE
-TRANSFORMER_PROXY_TASKS:= AUTO MASK
+TRANSFORMER_PROXY_TASKS:= AUTO MASK OBSCURE
 PDP_FILE:=./data/flows_pdp.json
 NEURON_FILE:=./data/flows_neurons.json
 PRETRAINING_PARAMETERS:=-s ${PRETRAINING_PROMILL} -E ${PRETRAINING_EPOCHS}
@@ -123,7 +123,12 @@ neurons:
 
 tmp:
 #	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y PREDICT -d --no_cache
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PRETRAINING_PARAMETERS} -y ID --no_cache
+#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PRETRAINING_PARAMETERS} -y ID --no_cache
+	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y OBSCURE ${NEURON_PARAMETERS} --no_cache
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i lstm_flows_rn501_hs512_nl3_bs128_lr001_tep5_tp100_sp100_sep10_xyOBSCURE -O ${RESULT_DIR}/neurons/ -p pre
+
+tmp_neurons:
+	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i lstm_flows_rn501_hs512_nl3_bs128_lr001_tep5_tp100_sp100_sep10_xyOBSCURE -O ${RESULT_DIR}/neurons/ -p pre
 
 
 # --- RESULTS ---
@@ -211,4 +216,5 @@ full_transformer:
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))
 
 full:
-	python3 results.py -f ./runs_test.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}
+	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS}
+#	python3 results.py -f ./runs_lstm.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}

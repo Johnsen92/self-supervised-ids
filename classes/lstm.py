@@ -195,8 +195,8 @@ class CompositeLSTM(nn.Module):
             #decoder_hidden_init = h_state[-1,:,:].expand(3, h_state.shape[1], h_state.shape[2]).to(current_device)
             #decoder_cell_init = c_state[-1,:,:].expand(3, c_state.shape[1], c_state.shape[2]).to(current_device)
 
-            self._past_lstm.flatten_parameters()
-            self._future_lstm.flatten_parameters()
+            #self._past_lstm.flatten_parameters()
+            #self._future_lstm.flatten_parameters()
 
             # Reversed past decoder
             past_in = past_out = torch.zeros((seqs_past_reversed.size()[0],1,seqs_past_reversed.size()[2])).to(current_device)
