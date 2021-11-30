@@ -10,7 +10,7 @@ PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 DATASET:=./data/flows.pickle
-RANDOM_SEED:=501
+RANDOM_SEED:=500
 BATCH_SIZE:=128
 TRAINING_EPOCHS:=5
 VALIDATION_EPOCHS:=-1
@@ -38,7 +38,7 @@ PDP_PARAMETERS:=-P ${PDP_FILE}
 NEURON_PARAMETERS:=-N ${NEURON_FILE}
 ID_TMP_FILE:=${CACHE_DIR}/ids_tmp.txt
 TMP_FILE:=${CACHE_DIR}/tmp.txt
-RESULT_DIR:=./results/rn501/
+RESULT_DIR:=./results/rn500/
 
 PARAMETER_FILE:=./runs.csv
 
@@ -216,5 +216,5 @@ full_transformer:
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))
 
 full:
-	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS}
-#	python3 results.py -f ./runs_lstm.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}
+#	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS}
+	python3 results.py -f ./runs_lstm.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}

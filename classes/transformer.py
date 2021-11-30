@@ -153,11 +153,7 @@ class TransformerEncoder(nn.Module):
             out = self._fc(out)
             
             # Create logits as average of seq outputs
-            out = self._logits(out, seq_lens)#.to(self.device)
-
-        if torch.sum(torch.isnan(out.cpu())).item() > 0:
-            with open('test.txt','w') as file:
-                file.write('Forward NAN')
+            out = self._logits(out, seq_lens)
 
         return out.to(current_device), neurons, (None, None)
 

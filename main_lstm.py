@@ -315,7 +315,7 @@ def main(args):
     finetuner.train()
 
     # Partial dependency data
-    if args.proxy_task == utils.ProxyTask.NONE and not args.pdp_config is None:
+    if not args.pdp_config is None:
         finetuner.pdp(id, args.pdp_config)
 
     # Neuron activation data
