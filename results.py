@@ -218,9 +218,6 @@ def generate_tables(ids, mode, data_dir, out_dir):
                 if id in ids and not re.search(rx, file) is None:
                     data[k].insert(0,os.path.join(root, file))
 
-    # Timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     os.makedirs(out_dir, exist_ok=True)
 
     out_files = []
