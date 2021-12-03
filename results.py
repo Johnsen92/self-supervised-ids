@@ -15,6 +15,7 @@ import re
 from enum import Enum
 from datetime import datetime
 import shutil
+import copy
 
 class Mode(Enum):
     ALL = 0,
@@ -42,7 +43,7 @@ def add_parameter(parameter_list, parameter, value = None):
         parameter_list.append(value)
     return parameter_list
 
-def compare_ids(ids, config, mapping, out_dir):
+def compare_ids(ids, config, mapping, out_dir, base_name):
 	neuron_data_list = []
 	for id in ids:
 		# Comprise file name
@@ -54,10 +55,10 @@ def compare_ids(ids, config, mapping, out_dir):
 			neuron_data = pickle.load(f)
 		neuron_data_list.append(neuron_data)
 
-	neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir)
+	neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir, base_name=base_name)
 	neuron_plot.plot_all()
 
-def compare_postfix(ids, postfix, config, mapping, out_dir, input_dir):
+def compare_postfix(ids, postfix, config, mapping, out_dir, input_dir, base_name):
 	for id in ids:
 		neuron_data_list = []
 		# Comprise file name
@@ -76,7 +77,7 @@ def compare_postfix(ids, postfix, config, mapping, out_dir, input_dir):
 			neuron_data = pickle.load(f)
 		neuron_data_list.append(neuron_data)
 
-		neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir, use_titles=True, compare=True)
+		neuron_plot = NeuronPlot(config, mapping, neuron_data_list, plot_dir=out_dir, use_titles=True, compare=True, base_name=base_name)
 		neuron_plot.plot_all()
 
 def plot_neurons(ids, input_dir, output_dir, config_file, postfix):
@@ -94,9 +95,9 @@ def plot_neurons(ids, input_dir, output_dir, config_file, postfix):
     reverse_mapping = {v: k for k, v in mapping.items()}
 
     if postfix is None:
-        compare_ids(ids, config, mapping, output_dir)
+        compare_ids(ids, config, mapping, output_dir, dataroot_filename)
     else:
-        compare_postfix(ids, postfix, config, mapping, output_dir, input_dir)
+        compare_postfix(ids, postfix, config, mapping, output_dir, input_dir, dataroot_filename)
 
 def plot_pdp(ids, input_dir, output_dir, config_file):
     dataroot_basename = config_file.split('_')[0]
@@ -124,7 +125,7 @@ def plot_pdp(ids, input_dir, output_dir, config_file):
             pd_data = pickle.load(f)
         pd_data_list.append(pd_data)
 
-    pdp = PDPlot(config, mapping, pd_data_list, plot_dir=output_dir)
+    pdp = PDPlot(config, mapping, pd_data_list, plot_dir=output_dir, base_name=dataroot_filename)
     pdp.plot_all()
 
 def make_dir(dir):
@@ -191,6 +192,14 @@ def class_table(input_files, output_file):
         for row in out_rows:
             writer.writerow(row)
 
+def sort_files(file_list, order=['NONE', 'PREDICT', 'OBSCURE', 'MASK', 'AUTO', 'ID', 'COMPOSITE']):
+    files_sorted = []
+    for item in order:
+        filtered = [file for file in file_list if not re.search(item, file) is None]
+        if len(filtered) > 0:  
+            files_sorted.append(filtered[0])
+    return files_sorted
+
 def generate_tables(ids, mode, data_dir, out_dir):
     regex = {}
 
@@ -217,12 +226,13 @@ def generate_tables(ids, mode, data_dir, out_dir):
     out_files = []
 
     for table, file_list in data.items():
+        files_sorted = sort_files(file_list)
         if table == Mode.STATS:
-            out_file = out_dir + '/' + timestamp + '_stats_comparison_' + str(mode) + '.csv'
-            stats_table(file_list, out_file)
+            out_file = f'{out_dir}/stats_comparison_{str(mode)}.csv'
+            stats_table(files_sorted, out_file)
         elif table == Mode.CLASS:
-            out_file = out_dir + '/' + timestamp + '_class_comparison_' + str(mode) + '.csv'
-            class_table(file_list, out_file)
+            out_file = f'{out_dir}/class_comparison_{str(mode)}.csv'
+            class_table(files_sorted, out_file)
         out_files.append(out_file)
 
     out_files_str = ''
@@ -245,7 +255,8 @@ EXPECTED_RESULTS_FILES = 6
 
 with open(args.parameter_file, newline='') as param_file_csv:
     # Props if you can read this line... (just generates a dictionary out of unique entries in groups column)
-    pdp_groups = table_groups = { k:[] for k in list(set([row[0] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:]])) }
+    table_groups = { k:[] for k in list(set([row[0] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:]])) }
+    pdp_groups = copy.deepcopy(table_groups)
 
 neuron_ids = []
 
@@ -324,17 +335,25 @@ plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)
 make_dir(plots_dir)
 
-# Generate Neuron Activation Plots
+# # Generate Neuron Activation Plots
 # neuron_dir = f'{plots_dir}/neuron/'
+# make_dir(neuron_dir)
 # if len(neuron_ids) > 0:
 #     for id, config in neuron_ids:
 #         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
 
-# Generate Neuron Activation Plots
+# # Generate Partial Dependency Plots
 # pdp_dir = f'{plots_dir}/pdp/'
-# for group, pdp_ids in pdp_groups:
+# make_dir(pdp_dir)
+# for group, pdp_ids in pdp_groups.items():
+#     if len(pdp_ids) == 0:
+#         continue
 #     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
 #     ids = [id for id, _ in pdp_ids]
 #     config = [config for _, config in pdp_ids][0]
 #     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+
+
+
+
 

@@ -645,16 +645,20 @@ class NeuronData():
         return avg_latest_diff, avg_means_diff, latest_class_diff, means_class_diff
 
 class NeuronPlot():
-    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/', use_titles=False, compare=False):
+    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/', use_titles=False, compare=False, base_name=None):
+        if base_name == None:
+            self.base_name = ''
+        else:
+            self.base_name = f'{base_name}_'
         self.mapping = mapping
+        self.compare = compare
         self.reverse_mapping = {v: k for k, v in mapping.items()}
         self.neuron_data = neuron_data
-        self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
+        self.plot_dir = f'{plot_dir}{self.base_name}{self.label}/'
         self.plot_dir_latest = self.plot_dir + 'latest/'
         self.plot_dir_means = self.plot_dir + 'means/'
         self.use_titles = use_titles
         # If compare is set, two NeuronData rows are expected for the plot which shall be compared. The comparison is not kommutative
-        self.compare = compare
         if compare:
             assert len(self.neuron_data) == 2
             self.avg_latest_diff, self.avg_means_diff, self.latest_class_diff, self.means_class_diff = self.neuron_data[1].compare(self.neuron_data[0])
@@ -667,8 +671,11 @@ class NeuronPlot():
     def label(self):
         assert len(self.neuron_data) > 0
         id_string = ''
-        for nd in self.neuron_data:
-            id_string += self.id(nd) + '_'
+        if self.compare:
+            id_string += self.id(self.neuron_data[0]) + '_'
+        else:
+            for nd in self.neuron_data:
+                id_string += self.id(nd) + '_'
         return id_string[:-1]
 
     def id(self, data):
@@ -736,11 +743,15 @@ class PDData():
         return self.title if not self.title is None else re.search(r'\_xy(\w+)', self.id).group(1)
 
 class PDPlot():
-    def __init__(self, config, mapping, pd_data, plot_dir='plots/pdp/'):
+    def __init__(self, config, mapping, pd_data, plot_dir='plots/pdp/', base_name=None):
+        if base_name == None:
+            self.base_name = ''
+        else:
+            self.base_name = f'{base_name}_'
         self.mapping = mapping
         self.reverse_mapping = {v: k for k, v in mapping.items()}
         self.pd_data = pd_data
-        self.plot_dir = f'{plot_dir}{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.label}/'
+        self.plot_dir = f'{plot_dir}{self.base_name}{self.label}/'
         os.makedirs(self.plot_dir, exist_ok=True)
         self.config = config
         self._colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
