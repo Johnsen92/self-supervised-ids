@@ -16,6 +16,7 @@ from enum import Enum
 from datetime import datetime
 import shutil
 import copy
+import traceback
 
 class Mode(Enum):
     ALL = 0,
@@ -195,12 +196,13 @@ def class_table(input_files, output_file):
 def sort_files(file_list, order=['NONE', 'PREDICT', 'OBSCURE', 'MASK', 'AUTO', 'ID', 'COMPOSITE']):
     files_sorted = []
     for item in order:
-        filtered = [file for file in file_list if not re.search(item, file) is None]
+        filtered = [file for file in file_list if not re.search(re.escape(item), file) is None]
         if len(filtered) > 0:  
-            files_sorted.append(filtered[0])
+            for f in filtered:
+                files_sorted.append(f)
     return files_sorted
 
-def generate_tables(ids, mode, data_dir, out_dir):
+def generate_tables(ids, mode, data_dir, out_dir, order=None):
     regex = {}
 
     if mode == Mode.STATS or mode == Mode.ALL: 
@@ -216,14 +218,13 @@ def generate_tables(ids, mode, data_dir, out_dir):
             for file in files:
                 id = root.split('/')[-1]
                 if id in ids and not re.search(rx, file) is None:
-                    data[k].insert(0,os.path.join(root, file))
+                    data[k].append(os.path.join(root, file))
 
     os.makedirs(out_dir, exist_ok=True)
-
     out_files = []
 
     for table, file_list in data.items():
-        files_sorted = sort_files(file_list)
+        files_sorted = sort_files(file_list, order)
         if table == Mode.STATS:
             out_file = f'{out_dir}/stats_comparison_{str(mode)}.csv'
             stats_table(files_sorted, out_file)
@@ -250,13 +251,20 @@ CSV_MODEL_INDEX = 1
 CSV_GROUP_INDEX = 0
 EXPECTED_RESULTS_FILES = 6
 
-with open(args.parameter_file, newline='') as param_file_csv:
+i = 0
+table_groups = {}
+while True:
     # Props if you can read this line... (just generates a dictionary out of unique entries in groups column)
-    table_groups = { k:[] for k in list(set([row[0] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:]])) }
-    pdp_groups = copy.deepcopy(table_groups)
+    with open(args.parameter_file, newline='') as param_file_csv:
+        groups = { k:[] for k in list(set([row[0].split('|')[i] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:] if len(row[0].split('|')) > i and row[0].split('|')[i] != ''])) }
+        if len(groups.items()) == 0:
+            break
+        table_groups.update(groups)
+        i += 1
 
+pdp_groups = copy.deepcopy(table_groups)
 neuron_ids = []
-
+ids = []
 param_file_csv = open(args.parameter_file, newline='')
 rows = [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')]
 for i, row in enumerate(rows):
@@ -288,11 +296,16 @@ for i, row in enumerate(rows):
         add_parameter(parameter_list, '--id_only')
         model_args_id_only = model_parser.parse_args(parameter_list)
         id = train(model_args_id_only)
+        ids.append(id)
         if not model_args.neuron_config is None:
             neuron_ids.append((id, model_args.neuron_config))
-        table_groups[row[CSV_GROUP_INDEX]].append(id)
+        for group in row[CSV_GROUP_INDEX].split('|'): 
+            if group != '':
+                table_groups[group].append(id)
         if not model_args.pdp_config is None:
-            pdp_groups[row[CSV_GROUP_INDEX]].append((id, model_args.pdp_config))
+            for group in row[CSV_GROUP_INDEX].split('|'): 
+                if group != '':
+                    pdp_groups[group].append((id, model_args.pdp_config))
         stats_dir_extended = f'{stats_dir}{id}/'
         print(f'----------------------------------------------------------------{i-1}/{len(rows)-2}---------------------------------------------------------------------------')
         try:
@@ -305,8 +318,9 @@ for i, row in enumerate(rows):
                 train(model_args)
             else:
                 print(f'Skipping {id}...')
-        except:
-            with open(f'{errorlog_dir}/{id}.txt') as f:
+        except not KeyboardInterrupt:
+            with open(f'{errorlog_dir}/{datetime.now():%Y%m%d}_{id}.txt','w+') as f:
+                f.write(traceback.format_exc())
                 f.write(f'Error in run {id}')
             print(f'An error occured during run {id}')
 
@@ -318,7 +332,7 @@ for k, group_ids in table_groups.items():
         continue
     group_dir = f'{table_dir}/group_{k}'
     print(f'Generating tables for group {k}...', end='')
-    generate_tables(group_ids, Mode.ALL, stats_dir, group_dir)
+    generate_tables(group_ids, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
 
 # Generate Latex Tables

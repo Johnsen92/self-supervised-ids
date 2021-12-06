@@ -19,6 +19,7 @@ import seaborn as sns
 import pandas as pd
 import torch
 
+
 def formatTime(time_s):
     time_h = time_s // 3600
     time_m = math.floor((float(time_s) / 3600.0 - time_h) * 60.0)
@@ -177,7 +178,6 @@ class ClassStats():
             for key, val in self.mapping.items():
                 accuracy = self.right[val] / self.number[val] * 100.0 if not self.number[val] == 0 else 100.0
                 f.write(f'{key}, {val}, {self.number[val]}, {self.right[val]}, {accuracy:.3f}\n')
-
             n_attack = self.n_samples - self.number[self.benign]
             n_right_attack = self.n_right - self.right[self.benign]
             accuracy_benign = (self.right[self.benign] * 100.0) / self.number[self.benign] if not self.number[self.benign] == 0 else 100.0

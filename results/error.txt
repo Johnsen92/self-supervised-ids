@@ -1,0 +1,29 @@
+Traceback (most recent call last):
+  File "results.py", line 315, in <module>
+    train(model_args)
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/main_trans.py", line 316, in main
+    finetuner.neuron_activation(id, args.neuron_config, postfix='Supervised', batch_first=False)
+  File "/home/jonas/.local/lib/python3.6/site-packages/torch/autograd/grad_mode.py", line 26, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/classes/trainer.py", line 428, in neuron_activation
+    _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=batch_first)
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/classes/trainer.py", line 284, in parallel_forward
+    merged_output = nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
+  File "/home/jonas/.local/lib/python3.6/site-packages/torch/nn/parallel/scatter_gather.py", line 68, in gather
+    res = gather_map(outputs)
+  File "/home/jonas/.local/lib/python3.6/site-packages/torch/nn/parallel/scatter_gather.py", line 55, in gather_map
+    return Gather.apply(target_device, dim, *outputs)
+  File "/home/jonas/.local/lib/python3.6/site-packages/torch/nn/parallel/_functions.py", line 70, in forward
+    ctx.input_sizes = tuple(map(lambda i: i.size(ctx.dim), inputs))
+  File "/home/jonas/.local/lib/python3.6/site-packages/torch/nn/parallel/_functions.py", line 70, in <lambda>
+    ctx.input_sizes = tuple(map(lambda i: i.size(ctx.dim), inputs))
+IndexError: Dimension out of range (expected to be in range of [-1, 0], but got 1)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "results.py", line 323, in <module>
+    with open(f'{errorlog_dir}/{id}.txt') as f:
+FileNotFoundError: [Errno 2] No such file or directory: './results/rn500//logs//transformer_flows_rn500_do00_nl10_nh3_fx2_bs1024_lr001_tep600_tp100_subset|10_flows_sp0_sep0_xyNONE.txt'
+Makefile:219: recipe for target 'full' failed
+make: *** [full] Error 1

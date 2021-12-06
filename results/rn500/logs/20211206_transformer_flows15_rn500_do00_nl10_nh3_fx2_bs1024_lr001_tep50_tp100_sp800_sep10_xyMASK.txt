@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "results.py", line 320, in <module>
+    train(model_args)
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/main_trans.py", line 98, in main
+    train_data, pretrain_data, val_data = dataset.split([supervised_size, pretraining_size, validation_size], stratify=True)
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/classes/datasets.py", line 126, in split
+    splits.append(FlowsSubset(self, self.mapping, X_idx_split, verbose=False))
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/classes/datasets.py", line 312, in __init__
+    for idx, (seq, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
+  File "/home/jonas/ucloud/thesis/code/self-supervised-ids/classes/datasets.py", line 312, in <listcomp>
+    for idx, (seq, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:
+KeyboardInterrupt
+Error in run transformer_flows15_rn500_do00_nl10_nh3_fx2_bs1024_lr001_tep50_tp100_sp800_sep10_xyMASK

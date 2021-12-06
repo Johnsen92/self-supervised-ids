@@ -153,7 +153,7 @@ class TransformerEncoder(nn.Module):
             out = self._fc(out)
             
             # Create logits as average of seq outputs
-            out = self._logits(out, seq_lens)
+            out = self._logits(out, seq_lens).unsqueeze(1).unsqueeze(0)
 
         return out.to(current_device), neurons, (None, None)
 

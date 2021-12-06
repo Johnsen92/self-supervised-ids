@@ -124,9 +124,9 @@ neurons:
 tmp:
 #	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y PREDICT -d --no_cache
 #	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PRETRAINING_PARAMETERS} -y ID --no_cache
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} -y OBSCURE ${NEURON_PARAMETERS} --no_cache
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i lstm_flows_rn501_hs512_nl3_bs128_lr001_tep5_tp100_sp100_sep10_xyOBSCURE -O ${RESULT_DIR}/neurons/ -p pre
-
+#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${NEURON_PARAMETERS} --no_cache --debug
+	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${NEURON_PARAMETERS} --no_cache --debug
+	
 tmp_neurons:
 	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i lstm_flows_rn501_hs512_nl3_bs128_lr001_tep5_tp100_sp100_sep10_xyOBSCURE -O ${RESULT_DIR}/neurons/ -p pre
 

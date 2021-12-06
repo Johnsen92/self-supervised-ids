@@ -262,24 +262,29 @@ class Trainer(object):
         assert len(outputs) == len(neurons), 'Length of outputs and neurons do not match'
 
         # If the chunks have different maximum sequence lengths, pad the shorter ones so all are the same length
-        if len(outputs[0].size()) > 1:
-            seq_dim = 1 if out_batch_first else 0
-            max_seq_lens = [out.size()[seq_dim] for out in outputs]
+        seq_dim = 1 if out_batch_first else 0
+        
+        # Padding for output sequences
+        max_seq_lens = [out.size()[seq_dim] for out in outputs]
+        max_seq_len = max(max_seq_lens)
+        for i, out in enumerate(outputs):
+            out = out.to(output_device)
+            seq_len = out.size()[seq_dim]
+            if seq_len < max_seq_len:
+                padding_out = torch.zeros((out.size()[0], max_seq_len - seq_len, out.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, out.size()[1], out.size()[2]))
+                padding_out = padding_out.to(output_device)
+                outputs[i] = torch.cat((out, padding_out), seq_dim)
 
-            # If the max sequence lengths of all the chunks are the same, we can skip this
-            if not max_seq_lens.count(max_seq_lens[0]) == len(max_seq_lens):
-                max_seq_len = max(max_seq_lens)
-                for i, (out, neuron) in enumerate(zip(outputs, neurons)):
-                    out = out.to(output_device)
-                    neuron = neuron.to(output_device)
-                    seq_len = out.size()[seq_dim]
-                    if seq_len < max_seq_len:
-                        padding_out = torch.zeros((out.size()[0], max_seq_len - seq_len, out.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, out.size()[1], out.size()[2]))
-                        padding_out = padding_out.to(output_device)
-                        padding_neuron = torch.zeros((neuron.size()[0], max_seq_len - seq_len, neuron.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, neuron.size()[1], neuron.size()[2]))
-                        padding_neuron = padding_neuron.to(output_device)
-                        outputs[i] = torch.cat((out, padding_out), seq_dim)
-                        neurons[i] = torch.cat((neuron, padding_neuron), seq_dim)
+        # Padding for neuron sequences
+        max_seq_lens = [neuron.size()[seq_dim] for neuron in neurons]
+        max_seq_len = max(max_seq_lens)
+        for i, neuron in enumerate(neurons):
+            neuron = neuron.to(output_device)
+            seq_len = neuron.size()[seq_dim]
+            if seq_len < max_seq_len:
+                padding_neuron = torch.zeros((neuron.size()[0], max_seq_len - seq_len, neuron.size()[2])) if out_batch_first else torch.zeros((max_seq_len - seq_len, neuron.size()[1], neuron.size()[2]))
+                padding_neuron = padding_neuron.to(output_device)
+                neurons[i] = torch.cat((neuron, padding_neuron), seq_dim)
 
         merged_output = nn.parallel.gather(outputs, output_device, dim=(0 if out_batch_first else 1))
         merged_neurons = nn.parallel.gather(neurons, output_device, dim=(0 if out_batch_first else 1))
@@ -380,7 +385,7 @@ class Trainer(object):
             pickle.dump(pd_data, f)
 
     @torch.no_grad()
-    def neuron_activation(self, id, config_file, title=None, postfix=None, batch_first=True):
+    def neuron_activation(self, id, config_file, title=None, postfix=None, batch_first=True, out_batch_first=False):
         with open(config_file, 'r') as f:
             config = json.load(f)
 
@@ -425,7 +430,7 @@ class Trainer(object):
             neurons_latest = []
             neurons_means = []
             for (input_data, seq_lens), _, _ in loader:
-                _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=batch_first)
+                _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=out_batch_first)
                 neurons_adjusted = (neurons if batch_first else neurons.permute(1,0,2)).detach().cpu()
 
                 # neurons is (Batch Index, Sequence Index, Feature Index)
@@ -433,9 +438,7 @@ class Trainer(object):
                     neurons_latest.append(neurons_adjusted[batch_index, seq_len-1, :].numpy())
                     neurons_means.append(torch.mean(neurons_adjusted[batch_index, :seq_len, :], 0).numpy())
 
-            #neuron_data.latest[category] = np.vstack(neurons_latest)
             neuron_data.latest[category] = np.mean(neurons_latest, axis=0)
-            #neuron_data.means[category] = np.vstack(neurons_means)
             neuron_data.means[category] = np.mean(neurons_means, axis=0)
             print(f'done')
 
@@ -459,11 +462,11 @@ class Transformer():
 
             # Get input and targets and get to cuda
             data = data.to(self.device)
-            labels = labels[0,:,0].to(self.device)
+            labels = labels[0,:,0].unsqueeze(1).unsqueeze(0).to(self.device)
             
             # Forward prop
-            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
-            
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
+
             # Calculate loss
             loss = self.criterion(out, labels)
 
@@ -480,15 +483,15 @@ class Transformer():
             categories = categories.to(self.device)
 
             # Masked forward pass
-            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens, out_batch_first=True)
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)[0, :, 0]
 
             # Apply sigmoid function and round
             sigmoided_output = torch.sigmoid(out)
             predicted = torch.round(sigmoided_output)
 
             # Extract single categories and label vector out of seq (they are all the same)
-            targets = labels[0, :, 0].squeeze()
-            categories = categories[0, :, 0].squeeze()  
+            targets = labels[0, :, 0]
+            categories = categories[0, :, 0]
 
             # Calculate loss
             loss = self.criterion(out, targets)

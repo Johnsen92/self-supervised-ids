@@ -1,1 +1,1 @@
-Forward NAN
+Loss NAN

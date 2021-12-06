@@ -50,7 +50,6 @@ def main(args):
     uid = f'{timestamp}_{id}'
 
     if args.id_only:
-        print(id)
         return id
 
     # Init cache
@@ -109,6 +108,8 @@ def main(args):
 
     # Assure val batch size is at most the size of validation data split
     args.val_batch_size = min(len(val_data), args.val_batch_size)
+
+    args.batch_size = min(len(train_data), args.batch_size)
 
     # Init data loaders
     if args.self_supervised > 0:
@@ -219,7 +220,7 @@ def main(args):
             )
         elif(args.proxy_task == utils.ProxyTask.AUTO):
             # Introduce dropout for denoising autoencoder
-            #model.dropout = nn.Dropout(0.2)
+            model.dropout = nn.Dropout(0.2)
             pretrainer = trainer.Transformer.AutoEncode(
                 model = model, 
                 training_data = pretrain_loader, 
@@ -331,3 +332,4 @@ if __name__=="__main__":
     # Init argument parser
     parser = utils.TransformerArgumentParser(description='Self-seupervised machine learning IDS')
     args = parser.parse_args(sys.argv[1:])
+    main(args)
