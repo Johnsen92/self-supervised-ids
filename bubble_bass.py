@@ -18,6 +18,10 @@ def update_epoch(old_epoch):
     new_epoch.n_false_negative = old_epoch.n_false_negative
     new_epoch.training_loss = old_epoch.training_loss
     new_epoch.validation_loss = old_epoch.validation_loss
+    print(old_epoch.recall)
+    print(old_epoch.precision)
+    #print(new_epoch.recall)
+    #print(new_epoch.precision)
     return new_epoch
 
 def update_stats(old_stats):

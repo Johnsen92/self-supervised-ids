@@ -278,7 +278,7 @@ class Epoch():
         if self.n_true_positive + self.n_false_positive == 0:
             return 1.0
         else:
-            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_negative))
 
     @property
     def f1_measure(self):
@@ -518,71 +518,47 @@ class Stats():
 
     @property
     def accuracy(self):
-        if self.n_samples == 0:
-            return 1.0
-        else:
-            return float(self.n_true) / float(self.n_samples)
+        return self.best_epoch.accuracy
 
     @property
     def error_rate(self):
-        if self.n_samples == 0:
-            return 1.0
-        else:
-            return float(self.n_false) / float(self.n_samples)
+        return self.best_epoch.error_rate
 
     @property
     def detection_rate(self):
-        if self.n_true_positive + self.n_false_negative == 0:
-            return 1.0
-        else:
-            return float(self.n_true_positive) / float(self.n_true_positive + self.n_false_negative)
+        return self.best_epoch.detection_rate
 
     @property
     def precision(self):
-        if self.n_true_positive + self.n_false_positive == 0:
-            return 1.0
-        else:
-            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+        return self.best_epoch.precision
 
     @property
     def recall(self):
-        if self.n_true_positive + self.n_false_positive == 0:
-            return 1.0
-        else:
-            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_positive))
+        return self.best_epoch.recall
 
     @property
     def f1_measure(self):
-        return 2 * (self.precision * self.recall) / (self.precision + self.recall)
-
+        return self.best_epoch.f1_measure
+    
     @property
     def false_alarm_rate(self):
-        return self.false_positive_rate
+        return self.best_epoch.false_alarm_rate
 
     @property
     def missed_alarm_rate(self):
-        return self.false_negative_rate
+        return self.best_epoch.missed_alarm_rate
 
     @property
     def specificity(self):
-        if self.n_true_negative + self.n_false_positive == 0:
-            return 1.0
-        else:
-            return float(self.n_true_negative) / (float(self.n_true_negative + self.n_false_positive))
+        return self.best_epoch.specificity
 
     @property
     def false_positive_rate(self):
-        if self.n_false_positive + self.n_true_positive == 0:
-            return 0.0
-        else:
-            return float(self.n_false_positive) / (float(self.n_false_positive + self.n_true_positive))
+        return self.best_epoch.false_positive_rate
 
     @property
     def false_negative_rate(self):
-        if self.n_false_negative + self.n_true_positive == 0:
-            return 0.0
-        else:
-            return float(self.n_false_negative) / (float(self.n_false_negative + self.n_true_positive))
+        return self.best_epoch.false_negative_rate
 
     @property
     def n_true(self):

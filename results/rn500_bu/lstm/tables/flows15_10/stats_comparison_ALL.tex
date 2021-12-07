@@ -1,0 +1,40 @@
+\begin{table}[htb]
+    \centering
+    \begin{tabular}{@{}ccccccc@{}}
+        \toprule
+         &  NONE &  PREDICT &  OBSCURE &  AUTO &  ID &  COMPOSITE \\
+        \midrule
+        Hyperparameters &  &  &  &  &  &  \\
+        Epochs Supervised &  50 &  50 &  50 &  50 &  50 &  50 \\
+        Epochs Pretraining &  50 &  10 &  10 &  10 &  10 &  10 \\
+        Batch size &  128 &  128 &  128 &  128 &  128 &  128 \\
+        Proxy task &  NONE &  PREDICT &  OBSCURE &  AUTO &  ID &  COMPOSITE \\
+        Pretraining percentage &  0.00 \% &  80.00 \% &  80.00 \% &  80.00 \% &  80.00 \% &  80.00 \% \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Validation percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &   &   &   &   &   &   \\
+        Learning rate &  0.001 &  0.001 &  0.001 &  0.001 &  0.001 &  0.001 \\
+        Random Seed &  500 &  500 &  500 &  500 &  500 &  500 \\
+         \\
+        Modelparameters &  &  &  &  &  &  \\
+        Hidden size &  512 &  512 &  512 &  512 &  512 &  512 \\
+        \# Layers &  3 &  3 &  3 &  3 &  3 &  3 \\
+         \\
+        Training metrics &  &  &  &  &  &  \\
+        Best epoch &  25 &  23 &  25 &  13 &  25 &  15 \\
+        Time to best epoch &  0h 44m &  0h 40m &  0h 44m &  0h 29m &  0h 44m &  0h 56m \\
+         \\
+        Performance metrics &  &  &  &  &  &  \\
+        Accuracy &  98.654 \% &  98.737 \% &  98.721 \% &  98.699 \% &  98.740 \% &  98.691 \% \\
+        False alarm rate &  18.834 \% &  16.626 \% &  17.029 \% &  17.742 \% &  16.540 \% &  17.198 \% \\
+        Missed alarm rate &  19.316 \% &  19.773 \% &  19.603 \% &  19.458 \% &  19.658 \% &  20.589 \% \\
+        Detection rate &  80.684 \% &  80.227 \% &  80.397 \% &  80.542 \% &  80.342 \% &  79.411 \% \\
+        Precision &  81.166 \% &  83.374 \% &  82.971 \% &  82.258 \% &  83.460 \% &  82.802 \% \\
+        Specificity &  99.313 \% &  99.414 \% &  99.394 \% &  99.364 \% &  99.415 \% &  99.397 \% \\
+        Recall &  81.166 \% &  83.374 \% &  82.971 \% &  82.258 \% &  83.460 \% &  82.802 \% \\
+        F1-Measure &  81.166 \% &  83.374 \% &  82.971 \% &  82.258 \% &  83.460 \% &  82.802 \% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Experiments 2.1.1 - 2.1.6 with \gls{lstm} model finetuned with 10\% of dataset UNSW-NB15.}
+    \label{table:results:lstm:flows15_10}
+\end{table}
