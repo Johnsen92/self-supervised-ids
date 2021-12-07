@@ -13,12 +13,12 @@ PREAMBLE = r"""\documentclass[11pt, a4paper]{article}
 \begin{document}"""
 
 HEADER = r"""\begin{{table}}[htb]
-{indent}\centering{caption}{label}
+{indent}\centering
 {indent}\begin{{tabular}}{{@{{}}{align}@{{}}}}
 {indent}{indent}\toprule"""
 
 FOOTER = r"""{indent}{indent}\bottomrule
-{indent}\end{{tabular}}
+{indent}\end{{tabular}}{caption}{label}
 \end{{table}}"""
 
 LABEL = '\n{indent}\\label{{{label}}}'
@@ -156,12 +156,12 @@ class Tably:
         content = '\n'.join(rows)
         if not self.fragment:
             header = HEADER.format(
-            label=add_label(self.label, indent),
-            caption=add_caption(self.caption, indent),
             align=format_alignment(self.align, len(columns)),
             indent=indent,
             )
-            footer = FOOTER.format(indent=indent)
+            footer = FOOTER.format(indent=indent,
+            label=add_label(self.label, indent),
+            caption=add_caption(self.caption, indent))
             return '\n'.join((header, content, footer))
         else:
             return content
