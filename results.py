@@ -237,6 +237,11 @@ def generate_tables(ids, mode, data_dir, out_dir, order=None):
     for o_f in out_files:
         out_files_str += o_f + ' '
 
+def get_group_description(group, group_description_file):
+    with open(group_description_file, newline='') as f:
+        group_descriptions = { r[0]:(r[1], r[2]) for r in [row for row in csv.reader(f, delimiter=',', quotechar='"')][1:]}
+    return group_descriptions[group]
+
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--parameter_file', help='File with table of parameters', required=True)
 parser.add_argument('-m', '--model', help='Only return lines of the chosen model', required=True)
@@ -245,6 +250,7 @@ parser.add_argument('-p', '--proxy_tasks', nargs='+', type=lambda proxy_task: Pr
 parser.add_argument('-N', '--neuron_data_dir', default='./data/neurons/', help='Folder for neuron activation plot configuration files')
 parser.add_argument('-P', '--pdp_data_dir', default='./data/pdp/', help='Folder for PDP configuration files')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
+parser.add_argument('-G', '--group_description', default='./groups_lstm.csv', help='CSV file containing caption and labels for groups occuring in run config')
 args = parser.parse_args(sys.argv[1:])
 
 CSV_MODEL_INDEX = 1
@@ -330,7 +336,7 @@ rm_dir(table_dir)
 for k, group_ids in table_groups.items():
     if len(group_ids) <= 1:
         continue
-    group_dir = f'{table_dir}/group_{k}'
+    group_dir = f'{table_dir}/{k}'
     print(f'Generating tables for group {k}...', end='')
     generate_tables(group_ids, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
@@ -340,7 +346,9 @@ path = os.walk(table_dir)
 for root, dir, files in path:
     for file in files:
         csv_file = os.path.join(root, file)
-        os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex')
+        group = csv_file.split('/')[-2]
+        group_label, group_caption = get_group_description(group, args.group_description)
+        os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -l "{group_label}" -c "{group_caption}"')
 
 plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)

@@ -395,10 +395,6 @@ class Stats():
         assert not self.losses == None
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         print('Save loss progression...', end='')
-        with open(self.stats_dir + 'losses_' + now + '.csv', 'w') as f:
-            for item in self.losses:
-                f.write(f'{item:.6f}\n')
-
         with open(self.stats_dir + 'training_losses_' + now + '.csv', 'w') as f:
             for epoch, loss in self.training_losses:
                 f.write(f'{epoch}, {loss:.6f}\n')
@@ -445,16 +441,17 @@ class Stats():
             self.class_stats.save_stats()
 
     def plot_losses(self):
-        assert not self.losses == None
-        x = np.array(range(len(self.losses)), dtype=float)
-        x = np.round(x/len(self.losses)*100,3)
-        y = np.array(self.losses, dtype=float)
-        fig, ax = plt.subplots()
-        ax.plot(x, y)
-        ax.set(xlabel='% of Training', ylabel='Loss', title='Loss progression')
-        ax.grid()
-        now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        fig.savefig(self.stats_dir + 'loss_' + now + '.png')
+        pass
+        # assert not self.losses == None
+        # x = np.array(range(len(self.losses)), dtype=float)
+        # x = np.round(x/len(self.losses)*100,3)
+        # y = np.array(self.losses, dtype=float)
+        # fig, ax = plt.subplots()
+        # ax.plot(x, y)
+        # ax.set(xlabel='% of Training', ylabel='Loss', title='Loss progression')
+        # ax.grid()
+        # now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        # fig.savefig(self.stats_dir + 'loss_' + now + '.png')
         #plt.show()
 
     def add_epoch(self, epoch):
