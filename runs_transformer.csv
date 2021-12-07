@@ -1,0 +1,22 @@
+Group,Model,Dataset,Proxy Task,Benign Category,Random Seed,Batch Size,Training %,Training Epochs,Validation Epochs,Subset File,Pretraining %,Pretraining Epochs,PDP File,Neurons File
+Group,Model,-f,-y,-c,--random_seed,-b,-p,-e,-V,-G,-s,-E,-P,-N
+|flows_supervised,transformer,./data/flows.pickle,NONE,10,500,1024,900,50,-1,,0,0,,
+flows_10|flows_supervised,transformer,./data/flows.pickle,NONE,10,500,1024,100,50,-1,,0,0,,
+flows_10,transformer,./data/flows.pickle,MASK,10,500,1024,100,50,-1,,800,10,,
+flows_10,transformer,./data/flows.pickle,OBSCURE,10,500,1024,100,50,-1,,800,10,,
+flows_1|flows_supervised,transformer,./data/flows.pickle,NONE,10,500,1024,10,200,-1,,0,0,,
+flows_1,transformer,./data/flows.pickle,MASK,10,500,1024,10,200,-1,,800,10,,
+flows_1,transformer,./data/flows.pickle,OBSCURE,10,500,1024,10,200,-1,,800,10,,
+flows_subset|flows_supervised,transformer,./data/flows.pickle,NONE,10,500,1024,100,600,-1,./subsets/10_flows.json,0,0,./data/flows_pdp.json,./data/flows_neurons.json
+flows_subset,transformer,./data/flows.pickle,MASK,10,500,1024,100,600,-1,./subsets/10_flows.json,800,10,./data/flows_pdp.json,./data/flows_neurons.json
+flows_subset,transformer,./data/flows.pickle,OBSCURE,10,500,1024,100,600,-1,./subsets/10_flows.json,800,10,./data/flows_pdp.json,./data/flows_neurons.json
+|flows15_supervised,transformer,./data/flows15.pickle,NONE,6,500,1024,900,50,-1,,0,0,,
+flows15_10|flows_supervised,transformer,./data/flows15.pickle,NONE,6,500,1024,100,50,-1,,0,0,,
+flows15_10,transformer,./data/flows15.pickle,MASK,6,500,1024,100,50,-1,,800,10,,
+flows15_10,transformer,./data/flows15.pickle,OBSCURE,6,500,1024,100,50,-1,,800,10,,
+flows15_1|flows_supervised,transformer,./data/flows15.pickle,NONE,6,500,1024,10,200,-1,,0,0,,
+flows15_1,transformer,./data/flows15.pickle,MASK,6,500,1024,10,200,-1,,800,10,,
+flows15_1,transformer,./data/flows15.pickle,OBSCURE,6,500,1024,10,200,-1,,800,10,,
+flows15_subset|flows_supervised,transformer,./data/flows15.pickle,NONE,6,500,1024,100,600,-1,./subsets/10_flows15.json,0,0,./data/flows15_pdp.json,./data/flows15_neurons.json
+flows15_subset,transformer,./data/flows15.pickle,MASK,6,500,1024,100,600,-1,./subsets/10_flows15.json,800,10,./data/flows15_pdp.json,./data/flows15_neurons.json
+flows15_subset,transformer,./data/flows15.pickle,OBSCURE,6,500,1024,100,600,-1,./subsets/10_flows15.json,800,10,./data/flows15_pdp.json,./data/flows15_neurons.json

@@ -1,0 +1,24 @@
+Hyperparameters,
+Epochs Supervised, 600
+Epochs Pretraining, 10
+Batch size, 128
+Proxy task, MASK
+Pretraining percentage, 80.00 %
+Training percentage, 10.00 %
+Validation percentage, 10.00 %
+Specialized subset, 10_flows
+Training time, 3 h 38 m
+Learning rate, 0.001
+Random Seed, 601
+
+Modelparameters,
+Hidden size, 512
+# Layers, 3
+
+Results,
+Final accuracy, 96.772 %
+Highest observed acc., 96.771 %
+# false positves, 4053
+# false negatives, 3417
+% false positves, 54.257 %
+% false negatives, 45.743 %

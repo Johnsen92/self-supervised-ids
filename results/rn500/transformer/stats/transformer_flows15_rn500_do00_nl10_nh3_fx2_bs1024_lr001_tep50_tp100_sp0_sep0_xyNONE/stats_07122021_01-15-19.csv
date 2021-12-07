@@ -1,0 +1,31 @@
+Hyperparameters,
+Epochs Supervised, 50
+Epochs Pretraining, 50
+Batch size, 1024
+Proxy task, NONE
+Pretraining percentage, 0.00 %
+Training percentage, 10.00 %
+Validation percentage, 10.00 %
+Specialized subset, 
+Learning rate, 0.001
+Random Seed, 500
+
+Modelparameters,
+# Layers, 10
+# Heads, 3
+Forward expansion, 2
+Dropout, 0.0
+
+Training metrics,
+Best epoch, 47
+Time to best epoch, 1h 6m
+
+Performance metrics,
+Accuracy, 98.545 %
+False alarm rate, 24.921 %
+Missed alarm rate, 11.889 %
+Detection rate, 88.111 %
+Precision, 75.079 %
+Specificity, 98.928 %
+Recall, 75.079 %
+F1-Measure, 75.079 %

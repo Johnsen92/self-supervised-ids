@@ -1,0 +1,30 @@
+, NONE, NONE, NONE, NONE
+Hyperparameters,,,,
+Epochs Supervised, 50, 50, 200, 600
+Epochs Pretraining, 50, 50, 200, 600
+Batch size, 128, 128, 128, 128
+Proxy task, NONE, NONE, NONE, NONE
+Pretraining percentage, 0.00 %, 0.00 %, 0.00 %, 0.00 %
+Training percentage, 90.00 %, 10.00 %, 1.00 %, 10.00 %
+Validation percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %
+Specialized subset, , , , 10_flows15
+Learning rate, 0.001, 0.001, 0.001, 0.001
+Random Seed, 500, 500, 500, 500
+
+Modelparameters,,,,
+Hidden size, 512, 512, 512, 512
+# Layers, 3, 3, 3, 3
+
+Training metrics,,,,
+Best epoch, 41, 25, 159, 77
+Time to best epoch, 8h 38m, 0h 44m, 0h 52m, 0h 6m
+
+Performance metrics,,,,
+Accuracy, 98.930 %, 98.654 %, 98.305 %, 97.754 %
+False alarm rate, 13.685 %, 18.834 %, 25.327 %, 30.685 %
+Missed alarm rate, 17.064 %, 19.316 %, 21.154 %, 34.405 %
+Detection rate, 82.936 %, 80.684 %, 78.846 %, 65.595 %
+Precision, 86.315 %, 81.166 %, 74.673 %, 69.315 %
+Specificity, 99.517 %, 99.313 %, 99.019 %, 98.934 %
+Recall, 86.315 %, 81.166 %, 74.673 %, 69.315 %
+F1-Measure, 86.315 %, 81.166 %, 74.673 %, 69.315 %

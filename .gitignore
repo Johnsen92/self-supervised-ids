@@ -14,4 +14,3 @@ latex/*.synctex.gz
 classes/__pycache__
 *.pyc
 .~*
-*.csv

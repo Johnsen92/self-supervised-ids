@@ -1,0 +1,30 @@
+, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
+Hyperparameters,,,,,,
+Epochs Supervised, 50, 50, 50, 50, 50, 50
+Epochs Pretraining, 50, 10, 10, 10, 10, 10
+Batch size, 128, 128, 128, 128, 128, 128
+Proxy task, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
+Pretraining percentage, 0.00 %, 80.00 %, 80.00 %, 80.00 %, 80.00 %, 80.00 %
+Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %
+Validation percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %
+Specialized subset, , , , , , 
+Learning rate, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001
+Random Seed, 500, 500, 500, 500, 500, 500
+
+Modelparameters,,,,,,
+Hidden size, 512, 512, 512, 512, 512, 512
+# Layers, 3, 3, 3, 3, 3, 3
+
+Training metrics,,,,,,
+Best epoch, 49, 47, 49, 46, 48, 47
+Time to best epoch, 1h 34m, 1h 35m, 1h 40m, 1h 59m, 1h 43m, 3h 13m
+
+Performance metrics,,,,,,
+Accuracy, 99.632 %, 99.705 %, 99.620 %, 99.630 %, 99.727 %, 99.733 %
+False alarm rate, 0.289 %, 0.278 %, 0.384 %, 0.337 %, 0.229 %, 0.229 %
+Missed alarm rate, 1.172 %, 0.892 %, 1.123 %, 1.129 %, 0.854 %, 0.829 %
+Detection rate, 98.828 %, 99.108 %, 98.877 %, 98.871 %, 99.146 %, 99.171 %
+Precision, 99.711 %, 99.722 %, 99.616 %, 99.663 %, 99.771 %, 99.771 %
+Specificity, 99.903 %, 99.907 %, 99.871 %, 99.887 %, 99.923 %, 99.923 %
+Recall, 99.711 %, 99.722 %, 99.616 %, 99.663 %, 99.771 %, 99.771 %
+F1-Measure, 99.711 %, 99.722 %, 99.616 %, 99.663 %, 99.771 %, 99.771 %
