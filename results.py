@@ -361,7 +361,7 @@ for root, dir, files in path:
         group = f'{group_prefix}_{group_name}'
 
         group_label, group_caption = get_group_description(group, args.group_description)
-        os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -l "{group_label}" -c "{group_caption}" -e')
+        os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -l "{group_label}" -c "{group_caption}"')
 
 plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)
