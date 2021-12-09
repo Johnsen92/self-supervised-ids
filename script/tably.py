@@ -391,12 +391,10 @@ def arg_parser():
     )
     return parser.parse_args()
 
-
 def main():
     options = arg_parser()
     tably = Tably(options)
     tably.run()
-
 
 if __name__ == '__main__':
     main()

@@ -246,6 +246,10 @@ def get_group_description(group, group_description_file):
         group_descriptions = { f'{r[0]}_{r[1]}':(r[2], r[3]) for r in [row for row in csv.reader(f, delimiter=',', quotechar='"')][1:]}
     return group_descriptions[group]
 
+def string_replace(file, string_replace_list):
+    for v,k in string_replace_list.items():
+        os.system(f"sed -i 's/\<{v}\>/{k}/g' {file}")
+
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--parameter_file', help='File with table of parameters', required=True)
 parser.add_argument('-m', '--model', help='Only return lines of the chosen model', required=True)
@@ -255,6 +259,7 @@ parser.add_argument('-N', '--neuron_data_dir', default='./data/neurons/', help='
 parser.add_argument('-P', '--pdp_data_dir', default='./data/pdp/', help='Folder for PDP configuration files')
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-G', '--group_description', default='./groups_lstm.csv', help='CSV file containing caption and labels for groups occuring in run config')
+parser.add_argument('-R', '--string_replace', default='./result_string_replace.csv', help='CSV file containing a list of strings to replace in output files')
 args = parser.parse_args(sys.argv[1:])
 
 CSV_EXPERIMENT_INDEX = 0
@@ -272,6 +277,9 @@ while True:
             break
         table_groups.update(groups)
         i += 1
+
+with open(args.string_replace, newline='') as string_replace_file_csv:
+    string_replace_list = { row[0]: row[1] for row in csv.reader(string_replace_file_csv, delimiter=',', quotechar='"') if len(row) == 2 }
 
 pdp_groups = copy.deepcopy(table_groups)
 neuron_ids = []
@@ -352,6 +360,7 @@ path = os.walk(table_dir)
 for root, dir, files in path:
     for file in files:
         csv_file = os.path.join(root, file)
+        string_replace(csv_file, string_replace_list)
         if 'class_comparison' in file:
             group_prefix = 'class'
         elif 'stats_comparison' in file:

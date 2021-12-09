@@ -2,7 +2,7 @@
 Epochs Supervised, 600, 600, 600
 Proxy task, NONE, MASK, OBSCURE
 Training percentage, 10.00 %, 10.00 %, 10.00 %
-Specialized subset, 10_flows, 10_flows, 10_flows
+Specialized subset, CIC17_10, CIC17_10, CIC17_10
 
 \textbf{Training metrics},,,
 Best epoch, 587, 191, 251

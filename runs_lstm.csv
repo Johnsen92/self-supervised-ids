@@ -19,7 +19,7 @@ Experiment #,Group,Model,-f,-y,-c,--random_seed,-b,-p,-e,-V,-G,-s,-E,-P,-N
 2.3.4,flows_subset,lstm,./data/flows.pickle,AUTO,10,500,128,100,600,-1,./subsets/10_flows.json,800,10,./data/flows_pdp.json,./data/flows_neurons.json
 2.3.5,flows_subset,lstm,./data/flows.pickle,ID,10,500,128,100,600,-1,./subsets/10_flows.json,800,10,./data/flows_pdp.json,./data/flows_neurons.json
 2.3.6,flows_subset,lstm,./data/flows.pickle,COMPOSITE,10,500,128,100,600,-1,./subsets/10_flows.json,800,10,./data/flows_pdp.json,./data/flows_neurons.json
-1.1.2,|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,500,128,900,50,-1,,0,0,,
+1.2.1,|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,500,128,900,50,-1,,0,0,,
 2.4.1,flows15_10|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,500,128,100,50,-1,,0,0,,
 2.4.2,flows15_10,lstm,./data/flows15.pickle,PREDICT,6,500,128,100,50,-1,,800,10,,
 2.4.3,flows15_10,lstm,./data/flows15.pickle,OBSCURE,6,500,128,100,50,-1,,800,10,,
