@@ -1,0 +1,42 @@
+\begin{table}[htb]
+    \centering
+    \begin{tabular}{@{}cccc@{}}
+        \toprule
+         &  NONE &  MASK &  OBSCURE \\
+        \midrule
+        Hyperparameters &  &  &  \\
+        Epochs Supervised &  600 &  600 &  600 \\
+        Epochs Pretraining &  600 &  10 &  10 \\
+        Batch size &  1024 &  512 &  512 \\
+        Proxy task &  NONE &  MASK &  OBSCURE \\
+        Pretraining percentage &  0.00 \% &  80.00 \% &  80.00 \% \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Validation percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &  10\_flows &  10\_flows &  10\_flows \\
+        Learning rate &  0.001 &  0.001 &  0.001 \\
+        Random Seed &  500 &  500 &  500 \\
+         \\
+        Modelparameters &  &  &  \\
+        \# Layers &  10 &  10 &  10 \\
+        \# Heads &  3 &  3 &  3 \\
+        Forward expansion &  2 &  2 &  2 \\
+        Dropout &  0.0 &  0.0 &  0.0 \\
+         \\
+        Training metrics &  &  &  \\
+        Best epoch &  587 &  191 &  251 \\
+        Time to best epoch &  0h 53m &  0h 17m &  0h 23m \\
+         \\
+        Performance metrics &  &  &  \\
+        Accuracy &  40.524 \% &  92.099 \% &  92.814 \% \\
+        False alarm rate &  99.106 \% &  15.599 \% &  10.565 \% \\
+        Missed alarm rate &  98.768 \% &  15.662 \% &  18.849 \% \\
+        Detection rate &  1.232 \% &  84.338 \% &  81.151 \% \\
+        Precision &  0.894 \% &  84.401 \% &  89.435 \% \\
+        Specificity &  53.806 \% &  94.725 \% &  96.758 \% \\
+        Recall &  1.232 \% &  84.338 \% &  81.151 \% \\
+        F1-Measure &  1.036 \% &  84.370 \% &  85.092 \% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Experiments 3.3.1-6 with transformer encoder model finetuned with subset CIC17\_10 of dataset CIC-IDS2017.}
+    \label{table:results:lstm:stats_flows_subset}
+\end{table}

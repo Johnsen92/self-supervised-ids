@@ -1,0 +1,32 @@
+, NONE, MASK, OBSCURE
+Hyperparameters,,,
+Epochs Supervised, 200, 200, 200
+Epochs Pretraining, 200, 10, 10
+Batch size, 1024, 1024, 1024
+Proxy task, NONE, MASK, OBSCURE
+Pretraining percentage, 0.00 %, 80.00 %, 80.00 %
+Training percentage, 1.00 %, 1.00 %, 1.00 %
+Validation percentage, 10.00 %, 10.00 %, 10.00 %
+Specialized subset, , , 
+Learning rate, 0.001, 0.001, 0.001
+Random Seed, 500, 500, 500
+
+Modelparameters,,,
+# Layers, 10, 10, 10
+# Heads, 3, 3, 3
+Forward expansion, 2, 2, 2
+Dropout, 0.0, 0.0, 0.0
+
+Training metrics,,,
+Best epoch, 83, 109, 97
+Time to best epoch, 0h 29m, 0h 39m, 0h 34m
+
+Performance metrics,,,
+Accuracy, 99.189 %, 99.105 %, 99.084 %
+False alarm rate, 1.839 %, 2.264 %, 2.312 %
+Missed alarm rate, 1.360 %, 1.254 %, 1.288 %
+Detection rate, 98.640 %, 98.746 %, 98.712 %
+Precision, 98.161 %, 97.736 %, 97.688 %
+Specificity, 99.374 %, 99.226 %, 99.209 %
+Recall, 98.640 %, 98.746 %, 98.712 %
+F1-Measure, 98.400 %, 98.239 %, 98.197 %

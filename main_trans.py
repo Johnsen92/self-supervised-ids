@@ -157,9 +157,6 @@ def main(args):
         'Dropout' : args.dropout
     }
 
-    # If pretraining epochs argument is set, use it, else default to supervised epochs argument
-    epochs_pretraining = args.n_epochs if args.n_epochs_pretraining == 0 else args.n_epochs_pretraining
-
     # Init statistics object
     pretraining_stats = statistics.Stats(
         stats_dir = extended_stats_dir,
@@ -170,7 +167,7 @@ def main(args):
         train_percent = args.train_percent,
         val_percent = args.val_percent,
         n_epochs = args.n_epochs,
-        n_epochs_pretraining = epochs_pretraining,
+        n_epochs_pretraining = args.n_epochs_pretraining,
         batch_size = args.batch_size,
         learning_rate = args.learning_rate,
         model_parameters = model_parameters,
@@ -187,7 +184,7 @@ def main(args):
         train_percent = args.train_percent,
         val_percent = args.val_percent,
         n_epochs = args.n_epochs,
-        n_epochs_pretraining = epochs_pretraining,
+        n_epochs_pretraining = args.n_epochs_pretraining,
         batch_size = args.batch_size,
         learning_rate = args.learning_rate,
         model_parameters = model_parameters,
@@ -209,7 +206,7 @@ def main(args):
                 device = device, 
                 criterion = pretraining_criterion, 
                 optimizer = optimizer, 
-                epochs = epochs_pretraining, 
+                epochs = args.n_epochs_pretraining, 
                 val_epochs = args.val_epochs,
                 stats = pretraining_stats, 
                 cache = pretraining_cache,
@@ -227,7 +224,7 @@ def main(args):
                 device = device, 
                 criterion = pretraining_criterion, 
                 optimizer = optimizer, 
-                epochs = epochs_pretraining, 
+                epochs = args.n_epochs_pretraining, 
                 val_epochs = args.val_epochs,
                 stats = pretraining_stats, 
                 cache = pretraining_cache,
@@ -243,7 +240,7 @@ def main(args):
                 device = device, 
                 criterion = pretraining_criterion, 
                 optimizer = optimizer, 
-                epochs = epochs_pretraining, 
+                epochs = args.n_epochs_pretraining, 
                 val_epochs = args.val_epochs,
                 stats = pretraining_stats, 
                 cache = pretraining_cache,
@@ -259,7 +256,7 @@ def main(args):
                 device = device, 
                 criterion = pretraining_criterion, 
                 optimizer = optimizer, 
-                epochs = epochs_pretraining, 
+                epochs = args.n_epochs_pretraining, 
                 val_epochs = args.val_epochs,
                 stats = pretraining_stats, 
                 cache = pretraining_cache,

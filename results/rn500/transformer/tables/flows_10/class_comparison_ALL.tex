@@ -1,28 +1,29 @@
 \begin{table}[htb]
     \centering
-    \begin{tabular}{@{}ccccccccc@{}}
+    \begin{tabular}{@{}ccccc@{}}
         \toprule
-         &  &  & NONE &  & MASK &  & OBSCURE &  \\
+         &  & 3.1.1 & 3.1.2 & 3.1.3 \\
         \midrule
-        Class &  Alias &  Occurance &  Right &  Accuracy &  Accuracy &  Right &  Accuracy &  Right \\
-        Botnet:ARES &  0 &  75 &  70 &  93.333 &  94.595 &  70 &  2.632 &  2 \\
-        Brute Force:FTP-Patator &  1 &  25 &  11 &  44.000 &  3.846 &  1 &  0.000 &  0 \\
-        Brute Force:SSH-Patator &  2 &  254 &  246 &  96.850 &  94.902 &  242 &  0.000 &  0 \\
-        DDoS:LOIT &  3 &  9365 &  9357 &  99.915 &  99.968 &  9355 &  99.915 &  9362 \\
-        DoS / DDoS:DoS GoldenEye &  4 &  741 &  736 &  99.325 &  98.654 &  733 &  92.059 &  684 \\
-        DoS / DDoS:DoS Hulk &  5 &  23214 &  23213 &  99.996 &  99.991 &  23147 &  99.892 &  23153 \\
-        DoS / DDoS:DoS Slowhttptest &  6 &  418 &  413 &  98.804 &  98.801 &  412 &  92.840 &  389 \\
-        DoS / DDoS:DoS slowloris &  7 &  387 &  386 &  99.742 &  97.172 &  378 &  96.354 &  370 \\
-        DoS / DDoS:Heartbleed &  8 &  0 &  0 &  100.000 &  100.000 &  0 &  100.000 &  0 \\
-        Infiltration:Dropbox download - (Portscan + Nmap) from victim &  9 &  7557 &  7033 &  93.066 &  93.237 &  7059 &  91.957 &  6963 \\
-        Normal &  10 &  171390 &  170950 &  99.743 &  99.690 &  170880 &  99.027 &  169725 \\
-        PortScan:PortScan - Firewall off &  11 &  15843 &  15667 &  98.889 &  98.980 &  15715 &  99.735 &  15816 \\
-        PortScan:PortScan - Firewall on &  12 &  38 &  28 &  73.684 &  81.579 &  31 &  76.316 &  29 \\
-        Web Attack:Sql Injection &  13 &  1 &  0 &  0.000 &  100.000 &  1 &  0.000 &  0 \\
-        Web Attack:XSS &  14 &  68 &  0 &  0.000 &  0.000 &  0 &  0.000 &  0 \\
-        Benign &  10 &  171390 &  170950 &  99.743\% &  99.690\% &  170880 &  99.027\% &  169725 \\
-        Attack &  !10 &  57986 &  57160 &  98.576\% &  98.584\% &  57144 &  97.905\% &  56768 \\
-        Overall &  ALL &  229376 &  228110 &  99.448\% &  99.411\% &  228024 &  98.743\% &  226493 \\
+        Class &  Alias &  Accuracy &  Accuracy &  Accuracy \\
+        Botnet:ARES &  0 &  93.333\% &  94.595\% &  2.632\% \\
+        Brute Force:FTP-Patator &  1 &  44.000\% &  3.846\% &  0.000\% \\
+        Brute Force:SSH-Patator &  2 &  96.850\% &  94.902\% &  0.000\% \\
+        DDoS:LOIT &  3 &  99.915\% &  99.968\% &  99.915\% \\
+        DoS / DDoS:DoS GoldenEye &  4 &  99.325\% &  98.654\% &  92.059\% \\
+        DoS / DDoS:DoS Hulk &  5 &  99.996\% &  99.991\% &  99.892\% \\
+        DoS / DDoS:DoS Slowhttptest &  6 &  98.804\% &  98.801\% &  92.840\% \\
+        DoS / DDoS:DoS slowloris &  7 &  99.742\% &  97.172\% &  96.354\% \\
+        DoS / DDoS:Heartbleed &  8 &  100.000\% &  100.000\% &  100.000\% \\
+        Infiltration:Dropbox download - (Portscan + Nmap) from victim &  9 &  93.066\% &  93.237\% &  91.957\% \\
+        Normal &  10 &  99.743\% &  99.690\% &  99.027\% \\
+        PortScan:PortScan - Firewall off &  11 &  98.889\% &  98.980\% &  99.735\% \\
+        PortScan:PortScan - Firewall on &  12 &  73.684\% &  81.579\% &  76.316\% \\
+        Web Attack:Sql Injection &  13 &  0.000\% &  100.000\% &  0.000\% \\
+        Web Attack:XSS &  14 &  0.000\% &  0.000\% &  0.000\% \\
+         \\
+        Benign &  10 &  99.743\% &  99.690\% &  99.027\% \\
+        Attack &  !10 &  98.576\% &  98.584\% &  97.905\% \\
+        Overall &  ALL &  99.448\% &  99.411\% &  98.743\% \\
         \bottomrule
     \end{tabular}
     \caption{Per category analysis of experiments 3.1.1-6 with transformer encoder model finetuned with 10\% of dataset CIC-IDS2017.}

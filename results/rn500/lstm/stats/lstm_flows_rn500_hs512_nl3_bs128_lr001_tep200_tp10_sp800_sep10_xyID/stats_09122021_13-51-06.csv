@@ -1,0 +1,17 @@
+Epochs Supervised, 200
+Proxy task, ID
+Training percentage, 1.00 %
+Specialized subset, 
+
+\textbf{Training metrics},
+Best epoch, 177
+Time to best epoch, 1h 15m
+
+\textbf{Performance metrics},
+Accuracy, 99.479 %
+Detection rate, 98.617 %
+Precision, 99.319 %
+Specificity, 99.771 %
+F1-Measure, 98.967 %
+False alarm rate, 0.681 %
+Missed alarm rate, 1.383 %

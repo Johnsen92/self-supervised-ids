@@ -30,7 +30,7 @@ def build_parameters(parameters, values):
     assert len(parameters) == len(values)
     par_str = ''
     par_list = []
-    for i in range(2, len(parameters), 1):
+    for i in range(len(parameters)):
         if values[i] != '':
             par_str += f'{parameters[i]} {values[i]} '
             par_list.append(parameters[i])
@@ -143,7 +143,7 @@ def rm_dir(dir):
 def get_label_from_path(path):
     return re.search(r'\_xy(\w+)', path).group(1)
 
-def stats_table(input_files, output_file):
+def stats_table(input_files, output_file, headers):
     out_labels = ['']
     out_rows = []
     first = True
@@ -152,7 +152,8 @@ def stats_table(input_files, output_file):
             table = csv.reader(f, delimiter=',')
             for i, row in enumerate(table):
                 if len(row) == 2 and row[0]=='Proxy task':
-                    out_labels.append(row[1])
+                    #out_labels.append(row[1])
+                    out_labels.append(headers[file])
                 if first:
                     out_rows.append(row)
                 elif len(row) >= 2:
@@ -165,26 +166,26 @@ def stats_table(input_files, output_file):
         for row in out_rows:
             writer.writerow(row)
 
-def class_table(input_files, output_file):
+def class_table(input_files, output_file, headers):
     out_labels = ['']
     out_rows = []
     first = True
     for file in input_files:
         if first:
             out_labels.append('')
-            out_labels.append('')
-        out_labels.append(get_label_from_path(file))
-        out_labels.append('')
+        out_labels.append(headers[file])
         with open(file, 'r') as f:
             table = csv.reader(f, delimiter=',')
             for i, row in enumerate(table):
-                if len(row) != 5:
-                    continue
                 if first:
-                    out_rows.append(row)
-                else:
+                    if len(row) == 5:
+                        out_rows.append(row[:2])
+                        out_rows[i].append(row[-1])
+                    else:
+                        out_rows.append(row)
+                elif len(row) == 5:
                     out_rows[i].append(row[-1])
-                    out_rows[i].append(row[-2])
+                
             first = False
 
     with open(output_file, 'w+') as out_f:
@@ -202,7 +203,7 @@ def sort_files(file_list, order=['NONE', 'PREDICT', 'OBSCURE', 'MASK', 'AUTO', '
                 files_sorted.append(f)
     return files_sorted
 
-def generate_tables(ids, mode, data_dir, out_dir, order=None):
+def generate_tables(entries, mode, data_dir, out_dir, order=None):
     regex = {}
 
     if mode == Mode.STATS or mode == Mode.ALL: 
@@ -211,14 +212,17 @@ def generate_tables(ids, mode, data_dir, out_dir, order=None):
         regex[Mode.CLASS] = r"class\_stats"
 
     data = {}
+    experiments = {}
     for k, rx in regex.items():
         data[k] = []
         path = os.walk(data_dir)
         for root, dir, files in path:
             for file in files:
                 id = root.split('/')[-1]
-                if id in ids and not re.search(rx, file) is None:
-                    data[k].append(os.path.join(root, file))
+                if id in [id for id, _ in entries] and not re.search(rx, file) is None:
+                    path = os.path.join(root, file)
+                    experiments[path] = [exp for i, exp in entries if i == id][0]
+                    data[k].append(path)
 
     os.makedirs(out_dir, exist_ok=True)
     out_files = []
@@ -227,10 +231,10 @@ def generate_tables(ids, mode, data_dir, out_dir, order=None):
         files_sorted = sort_files(file_list, order)
         if table == Mode.STATS:
             out_file = f'{out_dir}/stats_comparison_{str(mode)}.csv'
-            stats_table(files_sorted, out_file)
+            stats_table(files_sorted, out_file, experiments)
         elif table == Mode.CLASS:
             out_file = f'{out_dir}/class_comparison_{str(mode)}.csv'
-            class_table(files_sorted, out_file)
+            class_table(files_sorted, out_file, experiments)
         out_files.append(out_file)
 
     out_files_str = ''
@@ -253,16 +257,17 @@ parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-G', '--group_description', default='./groups_lstm.csv', help='CSV file containing caption and labels for groups occuring in run config')
 args = parser.parse_args(sys.argv[1:])
 
-CSV_MODEL_INDEX = 1
-CSV_GROUP_INDEX = 0
+CSV_EXPERIMENT_INDEX = 0
+CSV_GROUP_INDEX = 1
+CSV_MODEL_INDEX = 2
 EXPECTED_RESULTS_FILES = 4
 
 i = 0
 table_groups = {}
 while True:
-    # Props if you can read this line... (just generates a dictionary out of unique entries in groups column)
+    # Props if you can read this line... (just generates a dictionary out of unique entries separated by '|' in groups column)
     with open(args.parameter_file, newline='') as param_file_csv:
-        groups = { k:[] for k in list(set([row[0].split('|')[i] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:] if len(row[0].split('|')) > i and row[0].split('|')[i] != ''])) }
+        groups = { k:[] for k in list(set([row[CSV_GROUP_INDEX].split('|')[i] for row in [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')][2:] if len(row[CSV_GROUP_INDEX].split('|')) > i and row[CSV_GROUP_INDEX].split('|')[i] != ''])) }
         if len(groups.items()) == 0:
             break
         table_groups.update(groups)
@@ -275,11 +280,11 @@ param_file_csv = open(args.parameter_file, newline='')
 rows = [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')]
 for i, row in enumerate(rows):
     if i == 1:
-        parameters = row
+        parameters = row[3:]
     elif i == 0:
         labels = row
     elif row[CSV_MODEL_INDEX] == args.model:
-        parameter_string, parameter_list = build_parameters(parameters, row)
+        parameter_string, parameter_list = build_parameters(parameters, row[3:])
         if row[CSV_MODEL_INDEX] == 'lstm':
             train = train_lstm
             model_parser = LSTMArgumentParser(parameter_list)
@@ -302,12 +307,13 @@ for i, row in enumerate(rows):
         add_parameter(parameter_list, '--id_only')
         model_args_id_only = model_parser.parse_args(parameter_list)
         id = train(model_args_id_only)
+        experiment = row[CSV_EXPERIMENT_INDEX]
         ids.append(id)
         if not model_args.neuron_config is None:
             neuron_ids.append((id, model_args.neuron_config))
         for group in row[CSV_GROUP_INDEX].split('|'): 
             if group != '':
-                table_groups[group].append(id)
+                table_groups[group].append((id, experiment))
         if not model_args.pdp_config is None:
             for group in row[CSV_GROUP_INDEX].split('|'): 
                 if group != '':
@@ -333,12 +339,12 @@ for i, row in enumerate(rows):
 # Generate CSV Tables
 table_dir = f'{base_dir}/tables/'
 rm_dir(table_dir)
-for k, group_ids in table_groups.items():
-    if len(group_ids) <= 1:
+for k, group_entries in table_groups.items():
+    if len(group_entries) <= 1:
         continue
     group_dir = f'{table_dir}/{k}'
     print(f'Generating tables for group {k}...', end='')
-    generate_tables(group_ids, Mode.ALL, stats_dir, group_dir, order=ids)
+    generate_tables(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
 
 # Generate Latex Tables

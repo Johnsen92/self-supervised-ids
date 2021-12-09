@@ -175,24 +175,40 @@ class ClassStats():
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'class_stats_' + now + '.csv', 'w') as f:
             f.write('Class, Alias, Occurance, Right, Accuracy\n')
-            for key, val in self.mapping.items():
-                accuracy = self.right[val] / self.number[val] * 100.0 if not self.number[val] == 0 else 100.0
-                f.write(f'{key}, {val}, {self.number[val]}, {self.right[val]}, {accuracy:.3f}\n')
-            n_attack = self.n_samples - self.number[self.benign]
-            n_right_attack = self.n_right - self.right[self.benign]
-            accuracy_benign = (self.right[self.benign] * 100.0) / self.number[self.benign] if not self.number[self.benign] == 0 else 100.0
-            accuracy_attack = (n_right_attack * 100.0) / n_attack if not n_attack == 0 else 100.0
-            accuracy = (float(self.n_right) * 100.0) / float(self.n_samples)
-            f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {accuracy_benign:.3f}%\n')
-            f.write(f'Attack, !{self.benign}, {n_attack}, {n_right_attack}, {accuracy_attack:.3f}%\n')
-            f.write(f'Overall, ALL, {self.n_samples}, {self.n_right}, {accuracy:.3f}%\n')
+            for k,v in self.mapping.items():
+                f.write(f'{k}, {v}, {self.number[v]}, {self.right[v]}, {self.accuracy_per_category[v]*100.0:.3f}%\n')
             f.write('\n')
-            benign_rate = float(self.number[self.benign]) / float(self.n_samples) * 100.0
-            attack_rate = float(n_attack) / float(self.n_samples) * 100.0
-            
-            f.write(f'Samples, {self.n_samples}\n')
-            f.write(f'Benign, {benign_rate:.2f}%\n')
-            f.write(f'Attack, {attack_rate:.2f}%\n')
+            f.write(f'Benign, {self.benign}, {self.number[self.benign]}, {self.right[self.benign]}, {self.accuracy_benign*100.0:.3f}%\n')
+            f.write(f'Attack, !{self.benign}, {self.n_attack}, {self.n_right_attack}, {self.accuracy_attack*100.0:.3f}%\n')
+            f.write(f'Overall, ALL, {self.n_samples}, {self.n_right}, {self.accuracy*100.0:.3f}%\n')
+
+    @property
+    def accuracy_per_category(self):
+        return {v: (float(self.right[v]) / float(self.number[v]) if self.number[v] != 0 else 1.0) for _,v in self.mapping.items()}
+
+    @property
+    def n_attack(self):
+        return self.n_samples - self.number[self.benign]
+
+    @property
+    def n_right_attack(self):
+        return self.n_right - self.right[self.benign]
+
+    @property
+    def accuracy_benign(self):
+        return float(self.right[self.benign]) / float(self.number[self.benign]) if not self.number[self.benign] == 0 else 1.0
+
+    @property
+    def accuracy_attack(self):
+        return float(self.n_right_attack) / float(self.n_attack) if not self.n_attack == 0 else 1.0
+
+    @property
+    def benign_rate(self):
+        return float(self.number[self.benign]) / float(self.n_samples)
+
+    @property
+    def attack_rate(self):
+        return float(self.n_attack) / float(self.n_samples)
 
     @property
     def n_samples(self):
@@ -275,10 +291,7 @@ class Epoch():
 
     @property
     def recall(self):
-        if self.n_true_positive + self.n_false_positive == 0:
-            return 1.0
-        else:
-            return float(self.n_true_positive) / (float(self.n_true_positive + self.n_false_negative))
+        return self.detection_rate
 
     @property
     def f1_measure(self):
@@ -408,9 +421,32 @@ class Stats():
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         print('Save statistics...', end='')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
+            f.write(f'Epochs Supervised, {self.n_epochs}\n')
+            f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')
+            f.write(f'Training percentage, {(self.train_percent / 10.0):.2f} %\n')
+            f.write(f'Specialized subset, {self.subset}\n')
+            f.write(f'\n\\textbf{{Training metrics}},\n')     
+            f.write(f'Best epoch, {self.best_epoch.epoch}\n')
+            f.write(f'Time to best epoch, {self.best_epoch.training_time[0]}h {self.best_epoch.training_time[1]}m\n')
+            f.write(f'\n\\textbf{{Performance metrics}},\n')
+            f.write(f'Accuracy, {self.accuracy*100.0:.3f} %\n')
+            f.write(f'Detection rate, {self.detection_rate*100.0:.3f} %\n')
+            f.write(f'Precision, {self.precision*100.0:.3f} %\n')
+            f.write(f'Specificity, {self.specificity*100.0:.3f} %\n')
+            f.write(f'F1-Measure, {self.f1_measure*100.0:.3f} %\n')
+            f.write(f'False alarm rate, {self.false_alarm_rate*100.0:.3f} %\n')
+            f.write(f'Missed alarm rate, {self.missed_alarm_rate*100.0:.3f} %\n')
+        print('done.')
+        if not self.class_stats == None:
+            self.class_stats.save_stats()
+
+    def save_stats_complete(self):
+        now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        print('Save statistics...', end='')
+        with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
             f.write(f'Hyperparameters,\n')
             f.write(f'Epochs Supervised, {self.n_epochs}\n')
-            f.write(f'Epochs Pretraining, {0 if self.proxy_task == 0 else self.n_epochs_pretraining}\n')
+            f.write(f'Epochs Pretraining, {0 if self.proxy_task is None else self.n_epochs_pretraining}\n')
             f.write(f'Batch size, {self.batch_size}\n')
             f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')
             f.write(f'Pretraining percentage, {(self.pretrain_percent / 10.0):.2f} %\n')

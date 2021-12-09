@@ -1,0 +1,15 @@
+Class, Alias, Occurance, Right, Accuracy
+Analysis, 0, 53, 14, 26.415%
+Backdoors, 1, 40, 32, 80.000%
+DoS, 2, 392, 316, 80.612%
+Exploits, 3, 2913, 2717, 93.272%
+Fuzzers, 4, 2069, 1072, 51.812%
+Generic, 5, 428, 391, 91.355%
+Normal, 6, 197546, 196391, 99.415%
+Reconnaissance, 7, 1186, 1155, 97.386%
+Shellcode, 8, 154, 113, 73.377%
+Worms, 9, 19, 18, 94.737%
+
+Benign, 6, 197546, 196391, 99.415%
+Attack, !6, 7254, 5828, 80.342%
+Overall, ALL, 204800, 202219, 98.740%
