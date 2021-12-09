@@ -1,0 +1,42 @@
+\begin{table}[htb]
+    \centering
+    \begin{tabular}{@{}cccc@{}}
+        \toprule
+         &  NONE &  MASK &  OBSCURE \\
+        \midrule
+        Hyperparameters &  &  &  \\
+        Epochs Supervised &  600 &  600 &  600 \\
+        Epochs Pretraining &  600 &  10 &  10 \\
+        Batch size &  1024 &  1024 &  1024 \\
+        Proxy task &  NONE &  MASK &  OBSCURE \\
+        Pretraining percentage &  0.00 \% &  80.00 \% &  80.00 \% \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Validation percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &  10\_flows15 &  10\_flows15 &  10\_flows15 \\
+        Learning rate &  0.001 &  0.001 &  0.001 \\
+        Random Seed &  500 &  500 &  500 \\
+         \\
+        Modelparameters &  &  &  \\
+        \# Layers &  10 &  10 &  10 \\
+        \# Heads &  3 &  3 &  3 \\
+        Forward expansion &  2 &  2 &  2 \\
+        Dropout &  0.0 &  0.0 &  0.0 \\
+         \\
+        Training metrics &  &  &  \\
+        Best epoch &  563 &  371 &  515 \\
+        Time to best epoch &  0h 52m &  0h 35m &  0h 49m \\
+         \\
+        Performance metrics &  &  &  \\
+        Accuracy &  97.684 \% &  96.471 \% &  97.749 \% \\
+        False alarm rate &  29.279 \% &  0.000 \% &  29.372 \% \\
+        Missed alarm rate &  41.090 \% &  100.000 \% &  37.851 \% \\
+        Detection rate &  58.910 \% &  0.000 \% &  62.149 \% \\
+        Precision &  70.721 \% &  100.000 \% &  70.628 \% \\
+        Specificity &  99.106 \% &  100.000 \% &  99.053 \% \\
+        Recall &  58.910 \% &  100.000 \% &  62.149 \% \\
+        F1-Measure &  64.277 \% &  100.000 \% &  66.118 \% \\
+        \bottomrule
+    \end{tabular}
+    \caption{Experiments 3.6.1-6 with transformer encoder model finetuned with subset UNSW15\_10 of dataset UNSW-NB15.}
+    \label{table:results:lstm:stats_flows15_subset}
+\end{table}

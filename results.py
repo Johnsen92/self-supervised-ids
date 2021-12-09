@@ -239,7 +239,7 @@ def generate_tables(ids, mode, data_dir, out_dir, order=None):
 
 def get_group_description(group, group_description_file):
     with open(group_description_file, newline='') as f:
-        group_descriptions = { r[0]:(r[1], r[2]) for r in [row for row in csv.reader(f, delimiter=',', quotechar='"')][1:]}
+        group_descriptions = { f'{r[0]}_{r[1]}':(r[2], r[3]) for r in [row for row in csv.reader(f, delimiter=',', quotechar='"')][1:]}
     return group_descriptions[group]
 
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
@@ -255,7 +255,7 @@ args = parser.parse_args(sys.argv[1:])
 
 CSV_MODEL_INDEX = 1
 CSV_GROUP_INDEX = 0
-EXPECTED_RESULTS_FILES = 6
+EXPECTED_RESULTS_FILES = 4
 
 i = 0
 table_groups = {}
@@ -320,7 +320,7 @@ for i, row in enumerate(rows):
                 train(model_args)
             elif len(os.listdir(stats_dir_extended)) != EXPECTED_RESULTS_FILES:
                 print(f'Make results for ID {id}...')
-                os.system(f'rm -r {stats_dir_extended} -f')
+                os.system(f'rm -r "{stats_dir_extended}" -f')
                 train(model_args)
             else:
                 print(f'Skipping {id}...')
@@ -346,7 +346,14 @@ path = os.walk(table_dir)
 for root, dir, files in path:
     for file in files:
         csv_file = os.path.join(root, file)
-        group = csv_file.split('/')[-2]
+        if 'class_comparison' in file:
+            group_prefix = 'class'
+        elif 'stats_comparison' in file:
+            group_prefix = 'stats'
+        
+        group_name = csv_file.split('/')[-2]
+        group = f'{group_prefix}_{group_name}'
+
         group_label, group_caption = get_group_description(group, args.group_description)
         os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -l "{group_label}" -c "{group_caption}"')
 

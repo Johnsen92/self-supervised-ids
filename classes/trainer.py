@@ -185,7 +185,6 @@ class Trainer(object):
                         # Append loss
                         validation_losses.append(loss.item())
                         
-
                     # Save and cache validation results
                     mean_loss = sum(validation_losses)/len(validation_losses)
                 
@@ -483,7 +482,9 @@ class Transformer():
             categories = categories.to(self.device)
 
             # Masked forward pass
-            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)[0, :, 0]
+            out, _, _ = self.parallel_forward(data, seq_lens=seq_lens)
+
+            out = out[0, :, 0]
 
             # Apply sigmoid function and round
             sigmoided_output = torch.sigmoid(out)
@@ -565,7 +566,7 @@ class Transformer():
 
     class ObscureFeature(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
-            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.cache_filename = 'pretrained_model'
 
