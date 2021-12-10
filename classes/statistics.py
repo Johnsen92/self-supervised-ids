@@ -401,6 +401,11 @@ class Stats():
             e.class_stats.set_stats_dir(stats_dir)
         self.make_stats_dir()
 
+    def set_category_mapping(self, mapping):
+        self.mapping = mapping
+        self.class_stats.mapping = mapping
+        self.class_stats.reverse_mapping = { val: key for key, val in mapping.items() }
+
     def plot_stats(self):
         pass
 

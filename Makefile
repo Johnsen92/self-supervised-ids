@@ -42,11 +42,6 @@ RESULT_DIR:=./results/rn500/
 
 PARAMETER_FILE:=./runs.csv
 
-clean:
-	rm ${CACHE_DIR}/*
-	rm ${PYCACHE_DIR}/*
-	rm ${JSON_DIR}/*
-
 lstm:
 	python3 main_lstm.py -f ${DATASET}
 
@@ -86,6 +81,11 @@ lstm_single_category:
 	for index in 0 1 2 3 4 5 6 7 9 10 11 13 ; do \
     	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} -i $$index ; \
 	done
+
+clean:
+	rm ${CACHE_DIR}/*
+	rm ${PYCACHE_DIR}/*
+	rm ${JSON_DIR}/*
 
 debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT

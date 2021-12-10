@@ -62,12 +62,11 @@ def main(args):
 
     # Load dataset and normalize data, or load from cache
     cache_filename = f'dataset_normalized_{data_filename}'
-    if not general_cache.exists(cache_filename, no_prefix=True):
-        dataset = Flows(data_pickle=args.data_file, cache=general_cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
-        #dataset = FlowsSubset(dataset_all, dataset_all.mapping, min_flow_length=args.min_sequence_length)
-        general_cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
-    else:
+    if general_cache.exists(cache_filename, no_prefix=True) and not args.no_cache:
         dataset = general_cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    else:
+        dataset = Flows(data_pickle=args.data_file, cache=general_cache, max_length=args.max_sequence_length, remove_changeable=args.remove_changeable)
+        general_cache.save(cache_filename, dataset, no_prefix=True, msg='Storing normalized dataset')
 
     # Get category mapping from dataset 
     category_mapping = dataset.mapping

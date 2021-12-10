@@ -1,0 +1,28 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}ccccccc@{}}
+        \toprule
+         & 2.2.1 & 2.2.2 & 2.2.3 & 2.2.4 & 2.2.5 & 2.2.6 \\
+        \midrule
+        Epochs Supervised &  200 &  200 &  200 &  200 &  200 &  200 \\
+        Proxy task &  NONE &  PREDICT &  OBSCURE &  AUTO &  ID &  COMPOSITE \\
+        Training percentage &  1.00 \% &  1.00 \% &  1.00 \% &  1.00 \% &  1.00 \% &  1.00 \% \\
+        Specialized subset &   &   &   &   &   &   \\
+         \\
+        Training metrics &  &  &  &  &  &  \\
+        Best epoch &  191 &  185 &  199 &  173 &  177 &  171 \\
+        Time to best epoch &  1h 14m &  1h 19m &  1h 30m &  1h 14m &  1h 15m &  2h 25m \\
+         \\
+        Performance metrics &  &  &  &  &  &  \\
+        Accuracy &  99.385 \% &  99.563 \% &  99.310 \% &  99.378 \% &  99.479 \% &  99.521 \% \\
+        Detection rate &  98.408 \% &  98.781 \% &  98.386 \% &  98.192 \% &  98.617 \% &  98.686 \% \\
+        Precision &  99.153 \% &  99.486 \% &  98.876 \% &  99.339 \% &  99.319 \% &  99.416 \% \\
+        Specificity &  99.716 \% &  99.827 \% &  99.622 \% &  99.779 \% &  99.771 \% &  99.804 \% \\
+        F1-Measure &  98.779 \% &  99.132 \% &  98.631 \% &  98.762 \% &  98.967 \% &  99.050 \% \\
+        False alarm rate &  0.847 \% &  0.514 \% &  1.124 \% &  0.661 \% &  0.681 \% &  0.584 \% \\
+        Missed alarm rate &  1.592 \% &  1.219 \% &  1.614 \% &  1.808 \% &  1.383 \% &  1.314 \% \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Experiments 2.2.1-6 with transformer model finetuned with 1\% of dataset CIC-IDS2017.}
+    \label{table:results:lstm:stats_flows_1}
+\end{table}

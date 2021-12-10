@@ -1,0 +1,17 @@
+Epochs Supervised, 600
+Proxy task, COMPOSITE
+Training percentage, 10.00 %
+Specialized subset, 10_flows15
+
+Training metrics,
+Best epoch, 47
+Time to best epoch, 0h 8m
+
+Performance metrics,
+Accuracy, 97.586 %
+Detection rate, 60.904 %
+Precision, 67.698 %
+Specificity, 98.933 %
+F1-Measure, 64.122 %
+False alarm rate, 32.302 %
+Missed alarm rate, 39.096 %

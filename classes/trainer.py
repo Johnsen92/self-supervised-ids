@@ -146,6 +146,7 @@ class Trainer(object):
                         stats_dir = self.stats.stats_dir
                         self.stats = self.cache.load('stats', msg='Loading statistics object')
                         self.stats.set_stats_dir(stats_dir)
+                        self.stats.set_category_mapping(self.training_data.dataset.mapping)
                         self.stats.make_stats_dir()
                         print(f"Best epoch: {self.stats.best_epoch.epoch}, Time: {self.stats.training_time_to_best_epoch[0]}h {self.stats.training_time_to_best_epoch[1]}m")
                     elif self.cache.exists('best_epoch'):

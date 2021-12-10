@@ -1,0 +1,28 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}ccccc@{}}
+        \toprule
+         & 3.1.1 & 3.1.2 & 3.1.3 & 3.1.4 \\
+        \midrule
+        Epochs Supervised &  50 &  50 &  50 &  50 \\
+        Proxy task &  NONE &  MASK &  OBSCURE &  AUTO \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &   &   &   &   \\
+         \\
+        Training metrics &  &  &  &  \\
+        Best epoch &  47 &  49 &  47 &  48 \\
+        Time to best epoch &  1h 15m &  1h 18m &  1h 15m &  1h 14m \\
+         \\
+        Performance metrics &  &  &  &  \\
+        Accuracy &  99.448 \% &  99.411 \% &  98.743 \% &  99.313 \% \\
+        Detection rate &  98.576 \% &  98.584 \% &  97.905 \% &  98.427 \% \\
+        Precision &  99.236 \% &  99.079 \% &  97.146 \% &  98.851 \% \\
+        Specificity &  99.743 \% &  99.690 \% &  99.027 \% &  99.613 \% \\
+        F1-Measure &  98.905 \% &  98.831 \% &  97.524 \% &  98.639 \% \\
+        False alarm rate &  0.764 \% &  0.921 \% &  2.854 \% &  1.149 \% \\
+        Missed alarm rate &  1.424 \% &  1.416 \% &  2.095 \% &  1.573 \% \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Experiments 3.1.1-6 with transformer encoder model finetuned with 10\% of dataset CIC-IDS2017.}
+    \label{table:results:lstm:stats_flows10}
+\end{table}
