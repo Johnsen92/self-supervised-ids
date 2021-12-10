@@ -14,11 +14,11 @@ PREAMBLE = r"""\documentclass[11pt, a4paper]{article}
 
 HEADER = r"""\begin{{table}}[htb]
 {indent}\centering
-{indent}\begin{{tabular}}{{@{{}}{align}@{{}}}}
+{indent}\scalebox{{{scalefactor}}}{{\begin{{tabular}}{{@{{}}{align}@{{}}}}
 {indent}{indent}\toprule"""
 
 FOOTER = r"""{indent}{indent}\bottomrule
-{indent}\end{{tabular}}{caption}{label}
+{indent}\end{{tabular}}}}{caption}{label}
 \end{{table}}"""
 
 LABEL = '\n{indent}\\label{{{label}}}'
@@ -67,6 +67,7 @@ class Tably:
         self.no_indent = args.no_indent
         self.outfile = args.outfile
         self.separate_outfiles = args.separate_outfiles
+        self.scale_factor = args.scale_factor
         self.skip = args.skip
         self.preamble = args.preamble
         self.sep = get_sep(args.sep)
@@ -158,6 +159,7 @@ class Tably:
             header = HEADER.format(
             align=format_alignment(self.align, len(columns)),
             indent=indent,
+            scalefactor=self.scale_factor
             )
             footer = FOOTER.format(indent=indent,
             label=add_label(self.label, indent),
@@ -351,6 +353,12 @@ def arg_parser():
         help='If selected, makes a whole .tex document (including the preamble) '
              'ready to be built as .pdf. Useful when trying to make a quick report. '
              'Default: False'
+    )
+    parser.add_argument(
+        '-x', '--scale_factor',
+        type=float,
+        default=1.0,
+        help='Puts scale wrapper around table with factor provided'
     )
     parser.add_argument(
         '-s', '--sep',

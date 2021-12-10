@@ -532,7 +532,7 @@ class Transformer():
 
     class AutoEncode(Trainer):
         def __init__(self, model, training_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, test_data=None):
-            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=True)
+            super().__init__(model, training_data, None, test_data, device, criterion, optimizer, epochs, val_epochs, stats, cache, json, writer, title, mixed_precision=False)
             # Strings to be used for file and console outputs
             self.cache_filename = 'pretrained_model'
 
@@ -557,10 +557,6 @@ class Transformer():
 
             # Calculate loss
             loss = self.criterion(out[mask], data[mask])
-
-            if torch.sum(torch.isnan(loss.cpu())).item() > 0:
-                with open('test.txt','w') as file:
-                    file.write('Loss NAN')
 
             return loss
 

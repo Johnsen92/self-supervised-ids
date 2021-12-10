@@ -10,7 +10,7 @@ PDP_DIR:=${DATA_DIR}/pdp/
 PYCACHE_DIR:=./classes/__pycache__
 # ---------- RUN CONFIGURATION ----------
 DATASET:=./data/flows.pickle
-RANDOM_SEED:=500
+RANDOM_SEED:=501
 BATCH_SIZE:=128
 TRAINING_EPOCHS:=5
 VALIDATION_EPOCHS:=-1
@@ -102,33 +102,8 @@ lstm_neurons:
 	done
 	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${NEURON_PARAMETERS}
 
-lstm_pdp_debug:
-	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PDP_PARAMETERS} -d
-
-pdp:
-#	python3 plot_pdp.py -f ${PDP_FILE} -D ./data/pdp/ -i 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp0_xyNONE_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' 'lstm_flows_hs512_nl3_bs128_ep300_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
-	python3 plot_pdp.py -f ${PDP_FILE} -D ${PDP_DIR} -i \
-	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp0_xyNONE_subset|10_flows' \
-	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyAUTO_subset|10_flows' \
-	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyBIAUTO_subset|10_flows' \
-	'lstm_flows_rn557_hs512_nl3_bs512_ep600_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
-
-neurons:
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i \
-	'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep0_lr001_tp100_sp0_xyNONE_subset|10_flows' \
-	'lstm_flows_rn601_hs512_nl3_bs128_tep601_sep10_lr001_tp100_sp800_xyID_subset|10_flows' \
-	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyMASK_subset|10_flows' \
-	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyOBSCURE_subset|10_flows' \
-	'lstm_flows_rn601_hs512_nl3_bs128_tep600_sep10_lr001_tp100_sp800_xyPREDICT_subset|10_flows'
-
 tmp:
-#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${PRETRAINING_PARAMETERS} ${SUBSET_PARAMETERS} -y PREDICT -d --no_cache
-#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${SUBSET_PARAMETERS} ${PRETRAINING_PARAMETERS} -y ID --no_cache
-#	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} ${NEURON_PARAMETERS} --no_cache --debug
-	python3 main_trans.py -f ${DATASET} ${TRAINING_PARAMETERS} ${NEURON_PARAMETERS} --no_cache --debug
-	
-tmp_neurons:
-	python3 plot_neurons.py -f ${NEURON_FILE} -D ${NEURON_DIR} -i lstm_flows_rn501_hs512_nl3_bs128_lr001_tep5_tp100_sp100_sep10_xyOBSCURE -O ${RESULT_DIR}/neurons/ -p pre
+	python3 main_trans.py -f ./data/flows.pickle -e 1 -v 100 -p 0 -s 0
 
 
 # --- RESULTS ---
