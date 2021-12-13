@@ -355,7 +355,7 @@ for k, group_entries in table_groups.items():
     generate_tables(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
 
-group_scale_factor = { k: 4.0/max(float(len(v)),4.0) for k,v in table_groups.items() }
+group_scale_factor = { k: 12.0/max(float(len(v))+8.0,12.0) for k,v in table_groups.items() }
 
 # Generate Latex Tables
 path = os.walk(table_dir)

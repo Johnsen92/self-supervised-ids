@@ -426,8 +426,8 @@ class Stats():
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         print('Save statistics...', end='')
         with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
-            f.write(f'Epochs Supervised, {self.n_epochs}\n')
             f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')
+            f.write(f'Epochs Supervised, {self.n_epochs}\n')
             f.write(f'Training percentage, {(self.train_percent / 10.0):.2f} %\n')
             f.write(f'Specialized subset, {self.subset}\n')
             f.write(f'\nTraining metrics,\n')     
