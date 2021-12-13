@@ -1,0 +1,18 @@
+,2.1.1,2.2.1,2.3.1
+Epochs Supervised, 50, 200, 600
+Proxy task, NONE, NONE, NONE
+Training percentage, 10.00 %, 1.00 %, 10.00 %
+Specialized subset, , , CIC17_10
+
+Training metrics,,,
+Best epoch, 49, 167, 563
+Time to best epoch, 1h 47m, 1h 12m, 0h 56m
+
+Performance metrics,,,
+Accuracy, 99.657 %, 99.308 %, 95.810 %
+Detection rate, 99.017 %, 98.494 %, 91.589 %
+Precision, 99.623 %, 98.765 %, 91.817 %
+Specificity, 99.873 %, 99.583 %, 97.239 %
+F1-Measure, 99.319 %, 98.629 %, 91.703 %
+False alarm rate, 0.377 %, 1.235 %, 8.183 %
+Missed alarm rate, 0.983 %, 1.506 %, 8.411 %

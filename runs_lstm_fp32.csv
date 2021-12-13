@@ -1,0 +1,8 @@
+Experiment #,Group,Model,Dataset,Proxy Task,Benign Category,Random Seed,Batch Size,Training %,Training Epochs,Validation Epochs,Subset File,Pretraining %,Pretraining Epochs,PDP File,Neurons File
+Experiment #,Group,Model,-f,-y,-c,--random_seed,-b,-p,-e,-V,-G,-s,-E,-P,-N
+2.1.1,flows_10|flows_supervised,lstm,./data/flows.pickle,NONE,10,600,128,100,50,-1,,0,0,,
+2.2.1,flows_1|flows_supervised,lstm,./data/flows.pickle,NONE,10,600,128,10,200,-1,,0,0,,
+2.3.1,flows_subset|flows_supervised,lstm,./data/flows.pickle,NONE,10,600,128,100,600,-1,./subsets/10_flows.json,0,0,,
+2.4.1,flows15_10|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,600,128,100,50,-1,,0,0,,
+2.5.1,flows15_1|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,600,128,10,200,-1,,0,0,,
+2.6.1,flows15_subset|flows15_supervised,lstm,./data/flows15.pickle,NONE,6,600,128,100,600,-1,./subsets/10_flows15.json,0,0,,

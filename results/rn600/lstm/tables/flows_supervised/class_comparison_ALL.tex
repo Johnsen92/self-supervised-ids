@@ -1,0 +1,31 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}ccccc@{}}
+        \toprule
+         &  & 2.1.1 & 2.2.1 & 2.3.1 \\
+        \midrule
+        Class &  Alias &  Accuracy &  Accuracy &  Accuracy \\
+        Botnet ARES &  0 &  100.000\% &  96.053\% &  100.000\% \\
+        FTP-Patator &  1 &  57.692\% &  0.000\% &  100.000\% \\
+        SSH-Patator &  2 &  99.606\% &  98.039\% &  100.000\% \\
+        DDoS LOIT &  3 &  100.000\% &  100.000\% &  87.074\% \\
+        DoS GoldenEye &  4 &  99.865\% &  99.865\% &  90.676\% \\
+        DoS Hulk &  5 &  99.991\% &  99.953\% &  94.665\% \\
+        DoS Slowhttptest &  6 &  100.000\% &  99.762\% &  96.667\% \\
+        DoS slowloris &  7 &  100.000\% &  94.588\% &  85.455\% \\
+        Heartbleed &  8 &  100.000\% &  100.000\% &  100.000\% \\
+        Infiltration &  9 &  94.225\% &  91.580\% &  82.082\% \\
+        Benign &  10 &  99.873\% &  99.583\% &  97.239\% \\
+        PortScan - Firewall off &  11 &  99.350\% &  99.288\% &  94.278\% \\
+        PortScan - Firewall on &  12 &  89.189\% &  48.649\% &  86.111\% \\
+        SQL Injection &  13 &  100.000\% &  0.000\% &  100.000\% \\
+        XSS &  14 &  84.848\% &  47.059\% &  64.706\% \\
+         \\
+        Benign &  10 &  99.873\% &  99.583\% &  97.239\% \\
+        Attack &  !10 &  99.017\% &  98.494\% &  91.589\% \\
+        Overall &  ALL &  99.657\% &  99.308\% &  95.810\% \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Per category analysis of experiments 1.1.1-4 with \gls{lstm} model trained in a purely supervised fashion on parts of dataset CIC-IDS2017.}
+    \label{table:results:lstm:class_flows_supervised}
+\end{table}
