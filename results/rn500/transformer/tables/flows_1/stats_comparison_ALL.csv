@@ -1,6 +1,6 @@
 ,3.2.1,3.2.2,3.2.3,3.2.4
-Epochs Supervised, 200, 200, 200, 200
 Proxy task, NONE, MASK, OBSCURE, AUTO
+Epochs Supervised, 200, 200, 200, 200
 Training percentage, 1.00 %, 1.00 %, 1.00 %, 1.00 %
 Specialized subset, , , , 
 

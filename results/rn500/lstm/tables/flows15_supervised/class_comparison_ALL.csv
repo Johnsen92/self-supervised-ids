@@ -1,5 +1,5 @@
 ,,1.2.1,2.4.1,2.5.1,2.6.1
-Class, Alias, Accuracy, Accuracy, Accuracy, Accuracy
+Class, #, NONE, NONE, NONE, NONE
 Analysis, 0, 26.415%, 28.846%, 43.396%, 80.392%
 Backdoors, 1, 97.436%, 90.000%, 80.000%, 85.000%
 DoS, 2, 93.862%, 84.733%, 78.261%, 81.679%

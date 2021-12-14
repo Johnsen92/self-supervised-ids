@@ -1,0 +1,15 @@
+Class, #, Occurance, Right, PREDICT
+Analysis, 0, 53, 43, 81.132%
+Backdoors, 1, 40, 32, 80.000%
+DoS, 2, 393, 299, 76.081%
+Exploits, 3, 2907, 2469, 84.933%
+Fuzzers, 4, 2075, 783, 37.735%
+Generic, 5, 429, 349, 81.352%
+Normal, 6, 197541, 195665, 99.050%
+Reconnaissance, 7, 1189, 466, 39.193%
+Shellcode, 8, 154, 87, 56.494%
+Worms, 9, 19, 18, 94.737%
+
+Benign, 6, 197541, 195665, 99.050%
+Attack, !6, 7259, 4546, 62.626%
+Overall, ALL, 204800, 200211, 97.759%

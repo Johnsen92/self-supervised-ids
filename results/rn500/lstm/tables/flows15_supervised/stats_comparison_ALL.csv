@@ -1,6 +1,6 @@
 ,1.2.1,2.4.1,2.5.1,2.6.1
-Epochs Supervised, 50, 50, 200, 600
 Proxy task, NONE, NONE, NONE, NONE
+Epochs Supervised, 50, 50, 200, 600
 Training percentage, 90.00 %, 10.00 %, 1.00 %, 10.00 %
 Specialized subset, , , , UNSW15_10
 

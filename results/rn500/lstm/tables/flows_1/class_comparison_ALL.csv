@@ -1,5 +1,5 @@
 ,,2.2.1,2.2.2,2.2.3,2.2.4,2.2.5,2.2.6
-Class, Alias, Accuracy, Accuracy, Accuracy, Accuracy, Accuracy, Accuracy
+Class, #, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
 Botnet ARES, 0, 98.667%, 97.333%, 98.649%, 98.684%, 96.053%, 94.737%
 FTP-Patator, 1, 30.769%, 44.000%, 0.000%, 45.833%, 40.000%, 44.000%
 SSH-Patator, 2, 93.254%, 98.431%, 99.605%, 91.732%, 100.000%, 98.425%

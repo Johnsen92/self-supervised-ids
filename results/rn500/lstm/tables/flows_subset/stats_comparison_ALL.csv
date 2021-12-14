@@ -1,6 +1,6 @@
 ,2.3.1,2.3.2,2.3.3,2.3.4,2.3.5,2.3.6
-Epochs Supervised, 600, 600, 600, 600, 600, 600
 Proxy task, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
+Epochs Supervised, 600, 600, 600, 600, 600, 600
 Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %
 Specialized subset, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10
 

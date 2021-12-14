@@ -355,6 +355,7 @@ for k, group_entries in table_groups.items():
     generate_tables(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
 
+# Calculate scale factors for latex tables
 group_scale_factor = { k: 12.0/max(float(len(v))+8.0,12.0) for k,v in table_groups.items() }
 
 # Generate Latex Tables
@@ -372,30 +373,29 @@ for root, dir, files in path:
         group = f'{group_prefix}_{group_name}'
 
         group_label, group_caption = get_group_description(group, args.group_description)
-        print(group_scale_factor[group_name])
         os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -x {group_scale_factor[group_name]} -l "{group_label}" -c "{group_caption}"')
 
 plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)
 make_dir(plots_dir)
 
-# # Generate Neuron Activation Plots
-# neuron_dir = f'{plots_dir}/neuron/'
-# make_dir(neuron_dir)
-# if len(neuron_ids) > 0:
-#     for id, config in neuron_ids:
-#         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
+# Generate Neuron Activation Plots
+neuron_dir = f'{plots_dir}/neuron/'
+make_dir(neuron_dir)
+if len(neuron_ids) > 0:
+    for id, config in neuron_ids:
+        plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
 
-# # Generate Partial Dependency Plots
-# pdp_dir = f'{plots_dir}/pdp/'
-# make_dir(pdp_dir)
-# for group, pdp_ids in pdp_groups.items():
-#     if len(pdp_ids) == 0:
-#         continue
-#     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
-#     ids = [id for id, _ in pdp_ids]
-#     config = [config for _, config in pdp_ids][0]
-#     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+# Generate Partial Dependency Plots
+pdp_dir = f'{plots_dir}/pdp/'
+make_dir(pdp_dir)
+for group, pdp_ids in pdp_groups.items():
+    if len(pdp_ids) == 0:
+        continue
+    assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
+    ids = [id for id, _ in pdp_ids]
+    config = [config for _, config in pdp_ids][0]
+    plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
 
 
 

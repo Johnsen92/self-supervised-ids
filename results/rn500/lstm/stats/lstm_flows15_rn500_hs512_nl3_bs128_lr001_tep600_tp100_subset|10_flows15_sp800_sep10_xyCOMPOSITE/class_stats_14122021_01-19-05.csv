@@ -1,0 +1,15 @@
+Class, #, Occurance, Right, COMPOSITE
+Analysis, 0, 51, 38, 74.510%
+Backdoors, 1, 39, 28, 71.795%
+DoS, 2, 394, 273, 69.289%
+Exploits, 3, 2912, 2264, 77.747%
+Fuzzers, 4, 2068, 795, 38.443%
+Generic, 5, 427, 303, 70.960%
+Normal, 6, 197546, 195438, 98.933%
+Reconnaissance, 7, 1189, 631, 53.070%
+Shellcode, 8, 155, 70, 45.161%
+Worms, 9, 19, 16, 84.211%
+
+Benign, 6, 197546, 195438, 98.933%
+Attack, !6, 7254, 4418, 60.904%
+Overall, ALL, 204800, 199856, 97.586%

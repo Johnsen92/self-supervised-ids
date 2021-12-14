@@ -306,12 +306,12 @@ def main(args):
     finetuner.train()
 
     # Partial dependency data
-    if args.proxy_task == utils.ProxyTask.NONE and not args.pdp_config is None:
+    if not args.pdp_config is None:
         finetuner.pdp(id, args.pdp_config, batch_first=False)
 
     # Neuron activation data
     if not args.neuron_config is None:
-        finetuner.neuron_activation(id, args.neuron_config, postfix='Supervised', batch_first=False)
+        finetuner.neuron_activation(id, args.neuron_config, title='Supervised', batch_first=False)
 
     # Remove temp directories
     general_cache.clean()

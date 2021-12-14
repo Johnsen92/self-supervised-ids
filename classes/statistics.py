@@ -171,10 +171,10 @@ class ClassStats():
             if results[index]:
                 self.right[c_val] += 1
 
-    def save_stats(self):
+    def save_stats(self, proxy_task):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'class_stats_' + now + '.csv', 'w') as f:
-            f.write('Class, Alias, Occurance, Right, Accuracy\n')
+            f.write(f'Class, #, Occurance, Right, {proxy_task}\n')
             for k,v in self.mapping.items():
                 f.write(f'{k}, {v}, {self.number[v]}, {self.right[v]}, {self.accuracy_per_category[v]*100.0:.3f}%\n')
             f.write('\n')
@@ -443,7 +443,7 @@ class Stats():
             f.write(f'Missed alarm rate, {self.missed_alarm_rate*100.0:.3f} %\n')
         print('done.')
         if not self.class_stats == None:
-            self.class_stats.save_stats()
+            self.class_stats.save_stats(self.proxy_task)
 
     def save_stats_complete(self):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')

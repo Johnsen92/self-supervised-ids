@@ -432,6 +432,7 @@ class Trainer(object):
             for (input_data, seq_lens), _, _ in loader:
                 _, neurons, _ = self.parallel_forward(input_data, seq_lens=seq_lens, in_batch_first=batch_first, out_batch_first=out_batch_first)
                 neurons_adjusted = (neurons if batch_first else neurons.permute(1,0,2)).detach().cpu()
+                print(neurons_adjusted.size())
 
                 # neurons is (Batch Index, Sequence Index, Feature Index)
                 for batch_index, seq_len in enumerate(seq_lens):

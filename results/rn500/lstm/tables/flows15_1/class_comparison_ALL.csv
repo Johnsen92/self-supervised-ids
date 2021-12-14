@@ -1,5 +1,5 @@
 ,,2.5.1,2.5.2,2.5.3,2.5.4,2.5.5,2.5.6
-Class, Alias, Accuracy, Accuracy, Accuracy, Accuracy, Accuracy, Accuracy
+Class, #, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
 Analysis, 0, 43.396%, 72.222%, 64.151%, 51.852%, 65.385%, 55.556%
 Backdoors, 1, 80.000%, 76.923%, 72.500%, 72.500%, 75.000%, 65.000%
 DoS, 2, 78.261%, 82.952%, 78.426%, 79.442%, 82.995%, 75.448%

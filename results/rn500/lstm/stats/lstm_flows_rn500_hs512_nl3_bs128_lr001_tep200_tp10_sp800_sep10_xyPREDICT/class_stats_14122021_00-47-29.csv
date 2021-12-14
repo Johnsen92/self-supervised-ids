@@ -1,0 +1,20 @@
+Class, #, Occurance, Right, PREDICT
+Botnet ARES, 0, 75, 73, 97.333%
+FTP-Patator, 1, 25, 11, 44.000%
+SSH-Patator, 2, 255, 251, 98.431%
+DDoS LOIT, 3, 9348, 9346, 99.979%
+DoS GoldenEye, 4, 740, 739, 99.865%
+DoS Hulk, 5, 23207, 23182, 99.892%
+DoS Slowhttptest, 6, 417, 416, 99.760%
+DoS slowloris, 7, 389, 389, 100.000%
+Heartbleed, 8, 0, 0, 100.000%
+Infiltration, 9, 7582, 7044, 92.904%
+Benign, 10, 171393, 171097, 99.827%
+PortScan - Firewall off, 11, 15837, 15756, 99.489%
+PortScan - Firewall on, 12, 38, 25, 65.789%
+SQL Injection, 13, 2, 0, 0.000%
+XSS, 14, 68, 44, 64.706%
+
+Benign, 10, 171393, 171097, 99.827%
+Attack, !10, 57983, 57276, 98.781%
+Overall, ALL, 229376, 228373, 99.563%
