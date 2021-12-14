@@ -191,8 +191,8 @@ full_transformer:
 	$(foreach INDEX,${NUMBER_PARAMETER_ROWS}, $(call TRANSFORMER_BODY,${INDEX}))
 
 full:
-#	python3 results.py -f ./runs_lstm.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}
-	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS} -G groups_transformer.csv
+	python3 results.py -f ./runs_lstm.csv -m lstm -S ${RESULT_DIR} -p NONE ${LSTM_PROXY_TASKS}
+#	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS} -G groups_transformer.csv
 
 full2:
 	python3 results.py -f ./runs_lstm_fp32.csv -m lstm -S ./results/rn600/ -p NONE ${LSTM_PROXY_TASKS}

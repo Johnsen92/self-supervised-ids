@@ -819,7 +819,7 @@ class PDPlot():
         ax.set_xlabel(f'{feature_name} - {self.reverse_mapping[category]}')
         ax.set_ylabel('Partial dependence')    
         plt.tight_layout()
-        file_name = self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}_{feature_index}'
+        file_name = (self.plot_dir + f'{feature_name}_{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}_{feature_index}').replace(" ","_")
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
 

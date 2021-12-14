@@ -379,23 +379,23 @@ plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)
 make_dir(plots_dir)
 
-# # Generate Neuron Activation Plots
-# neuron_dir = f'{plots_dir}/neuron/'
-# make_dir(neuron_dir)
-# if len(neuron_ids) > 0:
-#     for id, config in neuron_ids:
-#         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
+# Generate Neuron Activation Plots
+neuron_dir = f'{plots_dir}/neuron/'
+make_dir(neuron_dir)
+if len(neuron_ids) > 0:
+    for id, config in neuron_ids:
+        plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
 
-# # Generate Partial Dependency Plots
-# pdp_dir = f'{plots_dir}/pdp/'
-# make_dir(pdp_dir)
-# for group, pdp_ids in pdp_groups.items():
-#     if len(pdp_ids) == 0:
-#         continue
-#     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
-#     ids = [id for id, _ in pdp_ids]
-#     config = [config for _, config in pdp_ids][0]
-#     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+# Generate Partial Dependency Plots
+pdp_dir = f'{plots_dir}/pdp/'
+make_dir(pdp_dir)
+for group, pdp_ids in pdp_groups.items():
+    if len(pdp_ids) == 0:
+        continue
+    assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
+    ids = [id for id, _ in pdp_ids]
+    config = [config for _, config in pdp_ids][0]
+    plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
 
 
 
