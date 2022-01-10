@@ -4,7 +4,7 @@ stats,flows_1,table:results:transformer:stats_flows_1,Experiments 3.2.1-6 with t
 stats,flows_subset,table:results:transformer:stats_flows_subset,Experiments 3.3.1-6 with transformer encoder model finetuned with subset CIC17\_10 of dataset CIC-IDS2017.
 stats,flows_supervised,table:results:transformer:stats_flows_supervised,Experiments 1.3.1-4 with transformer encoder model trained in a purely supervised fashion on dataset CIC-IDS2017.
 stats,flows15_10,table:results:transformer:stats_flows15_10,Experiments 3.4.1-6 with transformer encoder model finetuned with 10\% of dataset UNSW-NB15.
-stats,flows15_1,table:results:transformer:stats_flows15_10,Experiments 3.5.1-6 with transformer encoder model finetuned with 1\% of dataset UNSW-NB15.
+stats,flows15_1,table:results:transformer:stats_flows15_1,Experiments 3.5.1-6 with transformer encoder model finetuned with 1\% of dataset UNSW-NB15.
 stats,flows15_subset,table:results:transformer:stats_flows15_subset,Experiments 3.6.1-6 with transformer encoder model finetuned with subset UNSW15\_10 of dataset UNSW-NB15.
 stats,flows15_supervised,table:results:transformer:stats_flows15_supervised,Experiments 1.4.1-4 with transformer encoder model trained in a purely supervised fashion on dataset UNSW-NB15.
 class,flows_10,table:results:transformer:class_flows10,Per category accuracy analysis of experiments 3.1.1-6 with transformer encoder model finetuned with 10\% of dataset CIC-IDS2017.
@@ -12,6 +12,6 @@ class,flows_1,table:results:transformer:class_flows_1,Per category accuracy anal
 class,flows_subset,table:results:transformer:class_flows_subset,Per category accuracy analysis of experiments 3.3.1-6 with transformer encoder model finetuned with subset CIC17\_10 of dataset CIC-IDS2017.
 class,flows_supervised,table:results:transformer:class_flows_supervised,Per category accuracy analysis of experiments 1.3.1-4 with transformer encoder model trained in a purely supervised fashion on parts of dataset CIC-IDS2017.
 class,flows15_10,table:results:transformer:class_flows15_10,Per category accuracy analysis of experiments 3.4.1-6 with transformer encoder model finetuned with 10\% of dataset UNSW-NB15.
-class,flows15_1,table:results:transformer:class_flows15_10,Per category accuracy analysis of experiments 3.5.1-6 with transformer encoder model finetuned with 1\% of dataset UNSW-NB15.
+class,flows15_1,table:results:transformer:class_flows15_1,Per category accuracy analysis of experiments 3.5.1-6 with transformer encoder model finetuned with 1\% of dataset UNSW-NB15.
 class,flows15_subset,table:results:transformer:class_flows15_subset,Per category accuracy analysis of experiments 3.6.1-6 with transformer encoder model finetuned with subset CIC17\_10 of dataset UNSW-NB15.
 class,flows15_supervised,table:results:transformer:class_flows15_supervised,Per category accuracy analysis of experiments 1.4.1-4 with transformer encoder model trained in a purely supervised fashion on dataset UNSW-NB15.
