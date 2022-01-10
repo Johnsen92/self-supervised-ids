@@ -1,42 +1,28 @@
 \begin{table}[htb]
     \centering
-    \begin{tabular}{@{}cccc@{}}
+    \scalebox{1.0}{\begin{tabular}{@{}ccccc@{}}
         \toprule
-         &  NONE &  MASK &  OBSCURE \\
+         & 3.4.1 & 3.4.2 & 3.4.3 & 3.4.4 \\
         \midrule
-        Hyperparameters &  &  &  \\
-        Epochs Supervised &  50 &  50 &  50 \\
-        Epochs Pretraining &  50 &  10 &  10 \\
-        Batch size &  1024 &  1024 &  1024 \\
-        Proxy task &  NONE &  MASK &  OBSCURE \\
-        Pretraining percentage &  0.00 \% &  80.00 \% &  80.00 \% \\
-        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
-        Validation percentage &  10.00 \% &  10.00 \% &  10.00 \% \\
-        Specialized subset &   &   &   \\
-        Learning rate &  0.001 &  0.001 &  0.001 \\
-        Random Seed &  500 &  500 &  500 \\
+        Proxy task &  NONE &  MASK &  OBSCURE &  AUTO \\
+        Epochs Supervised &  50 &  50 &  50 &  50 \\
+        Training percentage &  10.00 \% &  10.00 \% &  10.00 \% &  10.00 \% \\
+        Specialized subset &   &   &   &   \\
          \\
-        Modelparameters &  &  &  \\
-        \# Layers &  10 &  10 &  10 \\
-        \# Heads &  3 &  3 &  3 \\
-        Forward expansion &  2 &  2 &  2 \\
-        Dropout &  0.0 &  0.0 &  0.0 \\
+        Training metrics &  &  &  &  \\
+        Best epoch &  47 &  1 &  48 &  49 \\
+        Time to best epoch &  1h 6m &  0h 2m &  1h 9m &  1h 7m \\
          \\
-        Training metrics &  &  &  \\
-        Best epoch &  47 &  1 &  48 \\
-        Time to best epoch &  1h 6m &  0h 2m &  1h 9m \\
-         \\
-        Performance metrics &  &  &  \\
-        Accuracy &  98.545 \% &  96.728 \% &  98.184 \% \\
-        False alarm rate &  24.921 \% &  41.444 \% &  33.663 \% \\
-        Missed alarm rate &  11.889 \% &  74.049 \% &  1.103 \% \\
-        Detection rate &  88.111 \% &  25.951 \% &  98.897 \% \\
-        Precision &  75.079 \% &  58.556 \% &  66.337 \% \\
-        Specificity &  98.928 \% &  99.326 \% &  98.157 \% \\
-        Recall &  88.111 \% &  25.951 \% &  98.897 \% \\
-        F1-Measure &  81.075 \% &  35.964 \% &  79.409 \% \\
+        Performance metrics &  &  &  &  \\
+        Accuracy &  98.545 \% &  96.728 \% &  98.184 \% &  98.527 \% \\
+        Detection rate &  88.111 \% &  25.951 \% &  98.897 \% &  81.500 \% \\
+        Precision &  75.079 \% &  58.556 \% &  66.337 \% &  77.864 \% \\
+        Specificity &  98.928 \% &  99.326 \% &  98.157 \% &  99.151 \% \\
+        F1-Measure &  81.075 \% &  35.964 \% &  79.409 \% &  79.641 \% \\
+        False alarm rate &  24.921 \% &  41.444 \% &  33.663 \% &  22.136 \% \\
+        Missed alarm rate &  11.889 \% &  74.049 \% &  1.103 \% &  18.500 \% \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}}
     \caption{Experiments 3.4.1-6 with transformer encoder model finetuned with 10\% of dataset UNSW-NB15.}
     \label{table:results:lstm:stats_flows15_10}
 \end{table}

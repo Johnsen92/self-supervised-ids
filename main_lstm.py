@@ -281,7 +281,7 @@ def main(args):
             print(f'Proxy task can not be {args.proxy_task} for self supervised training')
         pretrainer.train()
         if not args.neuron_config is None:
-            pretrainer.neuron_activation(id, args.neuron_config, postfix='pre', title='Pretraining')
+            pretrainer.neuron_activation(id, args.neuron_config, postfix='pre', title='Pretraining', out_batch_first=True)
 
     # Init criterion
     training_criterion = nn.BCEWithLogitsLoss(reduction="mean")
@@ -316,7 +316,7 @@ def main(args):
 
     # Neuron activation data
     if not args.neuron_config is None:
-        finetuner.neuron_activation(id, args.neuron_config, title='Supervised')
+        finetuner.neuron_activation(id, args.neuron_config, title='Supervised', out_batch_first=True)
 
     # Evaluate model
     #if not args.debug:

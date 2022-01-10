@@ -1,0 +1,15 @@
+Class, #, Occurance, Right, MASK
+Analysis, 0, 53, 0, 0.000%
+Backdoors, 1, 39, 0, 0.000%
+DoS, 2, 394, 0, 0.000%
+Exploits, 3, 2891, 0, 0.000%
+Fuzzers, 4, 2063, 0, 0.000%
+Generic, 5, 426, 0, 0.000%
+Normal, 6, 197573, 197573, 100.000%
+Reconnaissance, 7, 1188, 0, 0.000%
+Shellcode, 8, 154, 0, 0.000%
+Worms, 9, 19, 0, 0.000%
+
+Benign, 6, 197573, 197573, 100.000%
+Attack, !6, 7227, 0, 0.000%
+Overall, ALL, 204800, 197573, 96.471%

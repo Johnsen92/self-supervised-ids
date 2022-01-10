@@ -17,11 +17,14 @@ from datetime import datetime
 import shutil
 import copy
 import traceback
+import matplotlib.pyplot as plt
 
 class Mode(Enum):
     ALL = 0,
     STATS = 1,
     CLASS = 2,
+    TRAINING = 3,
+    VALIDATION = 4
 
     def __str__(self):
         return self.name
@@ -203,6 +206,19 @@ def sort_files(file_list, order=['NONE', 'PREDICT', 'OBSCURE', 'MASK', 'AUTO', '
                 files_sorted.append(f)
     return files_sorted
 
+def plot_graphs(input_files, output_file, headers):
+    # plot lines
+    plt.figure(figsize=(12, 6.75))
+    for file in input_files:
+        proxy_task = get_label_from_path(file)
+        with open(file, 'r') as f:
+            x, y = zip(*[(int(row[0])+1, float(row[1])) for row in csv.reader(f, delimiter=',') if len(row) == 2])
+            plt.plot(list(x), list(y), label = f'{headers[file]} ({proxy_task})')
+    plt.legend()
+    #plt.ylim(0, max(y_second))
+    plt.savefig(output_file, bbox_inches = 'tight', pad_inches = 0.1)
+    plt.clf()
+
 def generate_tables(entries, mode, data_dir, out_dir, order=None):
     regex = {}
 
@@ -250,6 +266,42 @@ def string_replace(file, string_replace_list):
     for v,k in string_replace_list.items():
         os.system(f"sed -i 's/\<{v}\>/{k}/g' {file}")
 
+def generate_graphs(entries, mode, data_dir, out_dir, order=None):
+    regex = {}
+    if mode == Mode.TRAINING or mode == Mode.ALL: 
+        regex[Mode.TRAINING] = r"^training\_losses"
+    if mode == Mode.VALIDATION or mode == Mode.ALL:
+        regex[Mode.VALIDATION] = r"validation\_losses"
+
+    data = {}
+    experiments = {}
+    for k, rx in regex.items():
+        data[k] = []
+        path = os.walk(data_dir)
+        for root, dir, files in path:
+            for file in files:
+                id = root.split('/')[-1]
+                if id in [id for id, _ in entries] and not re.search(rx, file) is None:
+                    path = os.path.join(root, file)
+                    experiments[path] = [exp for i, exp in entries if i == id][0]
+                    data[k].append(path)
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_files = []
+
+    for graph, file_list in data.items():
+        files_sorted = sort_files(file_list, order)
+        if graph == Mode.TRAINING:
+            out_file = f'{out_dir}/training_loss.png' 
+        elif graph == Mode.VALIDATION:
+            out_file = f'{out_dir}/validation_loss.png'
+        plot_graphs(files_sorted, out_file, experiments)
+        out_files.append(out_file)
+
+    out_files_str = ''
+    for o_f in out_files:
+        out_files_str += o_f + ' '
+    
 parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
 parser.add_argument('-f', '--parameter_file', help='File with table of parameters', required=True)
 parser.add_argument('-m', '--model', help='Only return lines of the chosen model', required=True)
@@ -375,27 +427,40 @@ for root, dir, files in path:
         group_label, group_caption = get_group_description(group, args.group_description)
         os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -x {group_scale_factor[group_name]} -l "{group_label}" -c "{group_caption}"')
 
+
+# Remove and make plots dir
 plots_dir = f'{base_dir}/plots/'
 rm_dir(plots_dir)
 make_dir(plots_dir)
 
-# Generate Neuron Activation Plots
-neuron_dir = f'{plots_dir}/neuron/'
-make_dir(neuron_dir)
-if len(neuron_ids) > 0:
-    for id, config in neuron_ids:
-        plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
-
-# Generate Partial Dependency Plots
-pdp_dir = f'{plots_dir}/pdp/'
-make_dir(pdp_dir)
-for group, pdp_ids in pdp_groups.items():
-    if len(pdp_ids) == 0:
+# Generate loss progression graphs
+graphs_dir = f'{plots_dir}/losses/'
+make_dir(graphs_dir)
+for k, group_entries in table_groups.items():
+    if len(group_entries) <= 1:
         continue
-    assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
-    ids = [id for id, _ in pdp_ids]
-    config = [config for _, config in pdp_ids][0]
-    plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+    group_dir = f'{graphs_dir}/{k}'
+    print(f'Generating graphs for group {k}...', end='')
+    generate_graphs(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
+    print('done.')
+
+# # Generate Neuron Activation Plots
+# neuron_dir = f'{plots_dir}/neuron/'
+# make_dir(neuron_dir)
+# if len(neuron_ids) > 0:
+#     for id, config in neuron_ids:
+#         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
+
+# # Generate Partial Dependency Plots
+# pdp_dir = f'{plots_dir}/pdp/'
+# make_dir(pdp_dir)
+# for group, pdp_ids in pdp_groups.items():
+#     if len(pdp_ids) == 0:
+#         continue
+#     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
+#     ids = [id for id, _ in pdp_ids]
+#     config = [config for _, config in pdp_ids][0]
+#     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
 
 
 

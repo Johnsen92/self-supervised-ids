@@ -1,0 +1,18 @@
+,2.3.1,2.3.2,2.3.3,2.3.4,2.3.5,2.3.6
+Proxy task, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
+Epochs Supervised, 600, 600, 600, 600, 600, 600
+Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %
+Specialized subset, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10
+
+Training metrics,,,,,,
+Best epoch, 521, 293, 563, 47, 17, 41
+Time to best epoch, 0h 52m, 0h 29m, 0h 58m, 0h 4m, 0h 1m, 0h 6m
+
+Performance metrics,,,,,,
+Accuracy, 95.844 %, 94.155 %, 93.651 %, 94.907 %, 95.595 %, 94.232 %
+Detection rate, 92.840 %, 82.682 %, 92.634 %, 84.762 %, 91.048 %, 82.699 %
+Precision, 90.918 %, 93.442 %, 83.928 %, 94.527 %, 91.488 %, 93.741 %
+Specificity, 96.861 %, 98.037 %, 93.995 %, 98.339 %, 97.133 %, 98.133 %
+F1-Measure, 91.869 %, 87.733 %, 88.066 %, 89.378 %, 91.267 %, 87.874 %
+False alarm rate, 9.082 %, 6.558 %, 16.072 %, 5.473 %, 8.512 %, 6.259 %
+Missed alarm rate, 7.160 %, 17.318 %, 7.366 %, 15.238 %, 8.952 %, 17.301 %

@@ -82,11 +82,6 @@ lstm_single_category:
     	python3 main_lstm.py -f ${DATASET} ${TRAINING_PARAMETERS} -i $$index ; \
 	done
 
-clean:
-	rm ${CACHE_DIR}/*
-	rm ${PYCACHE_DIR}/*
-	rm ${JSON_DIR}/*
-
 debug:
 	python3 main_lstm.py -f ${DATASET} -p 1 -e 1 -V 10 --random_seed 556 -y PREDICT
 
@@ -195,4 +190,5 @@ full:
 #	python3 results.py -f ./runs_transformer.csv -m transformer -S ${RESULT_DIR} -p NONE ${TRANSFORMER_PROXY_TASKS} -G groups_transformer.csv
 
 full2:
-	python3 results.py -f ./runs_lstm_fp32.csv -m lstm -S ./results/rn600/ -p NONE ${LSTM_PROXY_TASKS}
+	python3 results.py -f ./runs_lstm_pdp.csv -m lstm -S ./results/rn500_2/ -p NONE ${LSTM_PROXY_TASKS}
+	python3 results.py -f ./runs_transformer_pdp.csv -m transformer -S ./results/rn500_2/ -p NONE ${TRANSFORMER_PROXY_TASKS} -G groups_transformer.csv

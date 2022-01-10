@@ -1,0 +1,20 @@
+Class, #, Occurance, Right, ID
+Botnet:ARES, 0, 74, 21, 28.378%
+Brute Force:FTP-Patator, 1, 26, 23, 88.462%
+Brute Force:SSH-Patator, 2, 254, 252, 99.213%
+DDoS:LOIT, 3, 9363, 9324, 99.583%
+DoS / DDoS:DoS GoldenEye, 4, 740, 659, 89.054%
+DoS / DDoS:DoS Hulk, 5, 23203, 23007, 99.155%
+DoS / DDoS:DoS Slowhttptest, 6, 420, 386, 91.905%
+DoS / DDoS:DoS slowloris, 7, 387, 386, 99.742%
+DoS / DDoS:Heartbleed, 8, 0, 0, 100.000%
+Infiltration:Dropbox download - (Portscan + Nmap) from victim, 9, 7578, 4483, 59.158%
+Normal, 10, 171381, 166468, 97.133%
+PortScan:PortScan - Firewall off, 11, 15847, 14233, 89.815%
+PortScan:PortScan - Firewall on, 12, 36, 28, 77.778%
+Web Attack:Sql Injection, 13, 1, 0, 0.000%
+Web Attack:XSS, 14, 66, 1, 1.515%
+
+Benign, 10, 171381, 166468, 97.133%
+Attack, !10, 57995, 52803, 91.048%
+Overall, ALL, 229376, 219271, 95.595%

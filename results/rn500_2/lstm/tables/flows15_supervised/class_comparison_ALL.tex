@@ -1,0 +1,26 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}cccccc@{}}
+        \toprule
+         &  & 1.2.1 & 2.4.1 & 2.5.1 & 2.6.1 \\
+        \midrule
+        Class &  \# &  NONE &  NONE &  NONE &  NONE \\
+        Analysis &  0 &  26.415\% &  28.846\% &  43.396\% &  75.472\% \\
+        Backdoors &  1 &  97.436\% &  90.000\% &  80.000\% &  80.000\% \\
+        DoS &  2 &  93.862\% &  84.733\% &  78.261\% &  76.142\% \\
+        Exploits &  3 &  95.878\% &  93.625\% &  87.431\% &  81.125\% \\
+        Fuzzers &  4 &  50.459\% &  51.254\% &  59.632\% &  36.750\% \\
+        Generic &  5 &  98.131\% &  93.897\% &  80.189\% &  77.700\% \\
+        Normal &  6 &  99.517\% &  99.313\% &  99.019\% &  99.098\% \\
+        Reconnaissance &  7 &  98.825\% &  96.888\% &  92.017\% &  32.632\% \\
+        Shellcode &  8 &  96.104\% &  74.510\% &  82.237\% &  44.156\% \\
+        Worms &  9 &  94.737\% &  94.737\% &  78.947\% &  42.105\% \\
+         \\
+        Benign &  6 &  99.517\% &  99.313\% &  99.019\% &  99.098\% \\
+        Attack &  !6 &  82.936\% &  80.684\% &  78.846\% &  59.080\% \\
+        Overall &  ALL &  98.930\% &  98.654\% &  98.305\% &  97.684\% \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Per category accuracy analysis of experiments 1.2.1-4 with \gls{lstm} model trained in a purely supervised fashion on dataset UNSW-NB15.}
+    \label{table:results:lstm:class_flows15_supervised}
+\end{table}
