@@ -1,0 +1,17 @@
+Proxy task, OBSCURE
+Epochs Supervised, 600
+Training percentage, 10.00 %
+Specialized subset, 10_flows15
+
+Training metrics,
+Best epoch, 449
+Time to best epoch, 0h 40m
+
+Performance metrics,
+Accuracy, 97.639 %
+Detection rate, 64.033 %
+Precision, 67.511 %
+Specificity, 98.871 %
+F1-Measure, 65.726 %
+False alarm rate, 32.489 %
+Missed alarm rate, 35.967 %

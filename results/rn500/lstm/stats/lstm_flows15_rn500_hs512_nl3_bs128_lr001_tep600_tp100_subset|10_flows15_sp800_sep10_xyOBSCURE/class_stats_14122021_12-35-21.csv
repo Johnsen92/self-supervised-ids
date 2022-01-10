@@ -1,0 +1,15 @@
+Class, #, Occurance, Right, OBSCURE
+Analysis, 0, 53, 44, 83.019%
+Backdoors, 1, 40, 26, 65.000%
+DoS, 2, 394, 287, 72.843%
+Exploits, 3, 2893, 2401, 82.993%
+Fuzzers, 4, 2074, 944, 45.516%
+Generic, 5, 427, 308, 72.131%
+Normal, 6, 197560, 195329, 98.871%
+Reconnaissance, 7, 1187, 525, 44.229%
+Shellcode, 8, 153, 87, 56.863%
+Worms, 9, 19, 14, 73.684%
+
+Benign, 6, 197560, 195329, 98.871%
+Attack, !6, 7240, 4636, 64.033%
+Overall, ALL, 204800, 199965, 97.639%

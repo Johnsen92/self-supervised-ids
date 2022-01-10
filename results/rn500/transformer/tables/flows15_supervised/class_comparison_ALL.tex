@@ -1,0 +1,26 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}cccccc@{}}
+        \toprule
+         &  & 1.4.1 & 3.4.1 & 3.5.1 & 3.6.1 \\
+        \midrule
+        Class &  \# &  NONE &  NONE &  NONE &  NONE \\
+        Analysis &  0 &  22.642\% &  25.000\% &  69.811\% &  75.000\% \\
+        Backdoors &  1 &  87.500\% &  100.000\% &  76.923\% &  72.500\% \\
+        DoS &  2 &  87.595\% &  87.468\% &  85.751\% &  67.595\% \\
+        Exploits &  3 &  93.370\% &  93.899\% &  90.283\% &  66.793\% \\
+        Fuzzers &  4 &  46.258\% &  73.537\% &  67.714\% &  43.258\% \\
+        Generic &  5 &  93.224\% &  96.028\% &  90.187\% &  67.849\% \\
+        Normal &  6 &  99.457\% &  98.928\% &  98.845\% &  99.106\% \\
+        Reconnaissance &  7 &  94.510\% &  97.561\% &  94.458\% &  55.228\% \\
+        Shellcode &  8 &  96.129\% &  98.710\% &  96.711\% &  89.032\% \\
+        Worms &  9 &  94.737\% &  94.737\% &  100.000\% &  89.474\% \\
+         \\
+        Benign &  6 &  99.457\% &  98.928\% &  98.845\% &  99.106\% \\
+        Attack &  !6 &  79.300\% &  88.111\% &  84.212\% &  58.910\% \\
+        Overall &  ALL &  98.743\% &  98.545\% &  98.328\% &  97.684\% \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Per category accuracy analysis of experiments 1.4.1-4 with transformer encoder model trained in a purely supervised fashion on dataset UNSW-NB15.}
+    \label{table:results:transformer:class_flows15_supervised}
+\end{table}

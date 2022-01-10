@@ -1,0 +1,18 @@
+,3.6.1,3.6.2,3.6.3,3.6.4
+Proxy task, NONE, MASK, OBSCURE, AUTO
+Epochs Supervised, 600, 600, 600, 600
+Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %
+Specialized subset, UNSW15_10, UNSW15_10, UNSW15_10, UNSW15_10
+
+Training metrics,,,,
+Best epoch, 563, 371, 515, 83
+Time to best epoch, 0h 52m, 0h 35m, 0h 49m, 0h 7m
+
+Performance metrics,,,,
+Accuracy, 97.684 %, 96.471 %, 97.749 %, 97.970 %
+Detection rate, 58.910 %, 0.000 %, 62.149 %, 87.443 %
+Precision, 70.721 %, 100.000 %, 70.628 %, 66.114 %
+Specificity, 99.106 %, 100.000 %, 99.053 %, 98.356 %
+F1-Measure, 64.277 %, 0.000 %, 66.118 %, 75.297 %
+False alarm rate, 29.279 %, 0.000 %, 29.372 %, 33.886 %
+Missed alarm rate, 41.090 %, 100.000 %, 37.851 %, 12.557 %
