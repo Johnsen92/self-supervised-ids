@@ -6,7 +6,7 @@ Specialized subset, CIC17_10, CIC17_10, CIC17_10, CIC17_10
 
 Training metrics,,,,
 Best epoch, 125, 191, 251, 281
-Time to best epoch, 0h 10m, 0h 17m, 0h 23m, 0h 26m
+Time to best epoch, 0h 11m, 0h 17m, 0h 23m, 0h 26m
 
 Performance metrics,,,,
 Accuracy, 93.154 %, 92.099 %, 92.814 %, 93.091 %

@@ -172,6 +172,9 @@ class ClassStats():
                 self.right[c_val] += 1
 
     def save_stats(self, proxy_task):
+        print(self.mapping)
+        print(self.mapping)
+        print(self.mapping)
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
         with open(self.stats_dir + 'class_stats_' + now + '.csv', 'w') as f:
             f.write(f'Class, #, Occurance, Right, {proxy_task}\n')
