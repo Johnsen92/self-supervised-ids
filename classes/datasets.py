@@ -5,6 +5,8 @@ import numpy as np
 import json
 import os.path
 from sklearn.model_selection import train_test_split
+from scipy.stats import norm
+from cached_property import cached_property
 
 def overwrite_manipulable_entries(seq, filler=-1):
     forward_direction = seq[0,5]
@@ -207,27 +209,30 @@ class FlowsSubset(Subset):
     def means(self):
         return self.dataset.means
 
-    @property
+    @cached_property
     def x_catted(self):
         x_normalized, _, _ = zip(*self)
         x = [(item*self.stds + self.means) for item in x_normalized]
         x_cat = np.concatenate(x, axis=0)
         return x_cat
 
-    @property
+    @cached_property
     def subset_means(self):
         return np.mean(self.x_catted, axis=0)
 
-    @property
+    @cached_property
     def subset_variance(self):
         return self.subset_std * self.subset_std
 
-    @property
+    @cached_property
     def subset_std(self):
-        return np.std(self.x_catted, axis=0)
+        return abs(np.std(self.x_catted, axis=0))
 
-    def z_test(self, subset):
-        pass
+    def z_test(self, reference):
+        #pooledSE = np.sqrt(self.subset_variance/len(self) + subset.subset_variance/len(subset))
+        z = (self.subset_means - reference.subset_means)/np.sqrt(self.subset_variance/len(self))
+        p = 2*(1 - norm.cdf(abs(z)))
+        return z, p
 
     @property
     def data_pickle(self):

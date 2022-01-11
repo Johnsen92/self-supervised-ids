@@ -5,12 +5,12 @@ import os
 import json
 import pickle
 import argparse
+from classes.utils import Cache
 from classes.datasets import Flows, FlowsSubset
 from classes.statistics import PDPlot, NeuronPlot
 from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask
 from main_lstm import main as train_lstm
 from main_trans import main as train_trans
-from tqdm import tqdm
 import errno
 import re
 from enum import Enum
@@ -19,6 +19,8 @@ import shutil
 import copy
 import traceback
 import matplotlib.pyplot as plt
+import torch
+import numpy as np
 
 class Mode(Enum):
     ALL = 0,
@@ -313,6 +315,7 @@ parser.add_argument('-P', '--pdp_data_dir', default='./data/pdp/', help='Folder 
 parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-G', '--group_description', default='./groups_lstm.csv', help='CSV file containing caption and labels for groups occuring in run config')
 parser.add_argument('-R', '--string_replace', default='./result_string_replace.csv', help='CSV file containing a list of strings to replace in output files')
+parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
 args = parser.parse_args(sys.argv[1:])
 
 CSV_EXPERIMENT_INDEX = 0
@@ -401,16 +404,44 @@ for i, row in enumerate(rows):
 
 
 # Generate data analysis tables of datasets
+headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
+data_analysis_dir = f'{args.stats_dir}/dataset/'
+make_dir(data_analysis_dir)
 datasets = list(set(datasets))
+cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
 for ds in datasets:
-    dataset = Flows(ds)
-    for cat_label, cat_num in dataset.mapping.items():
-        subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
-        print(subset.subset_variance)
-        print(subset.subset_variance)
-        print(subset.subset_variance)
-        print(subset.subset_variance)
+    dataset_name = os.path.basename(ds)[:-7]
+    features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
+    assert os.path.isfile(features_file), f'{features_file} not found...'
+    with open(features_file, 'r') as f:
+        features = json.load(f)
 
+    data_analysis_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
+    make_dir(data_analysis_dataset_dir)
+
+    # Load dataset and normalize data, or load from cache
+    cache_filename = f'dataset_normalized_{dataset_name}'
+    if cache.exists(cache_filename, no_prefix=True):
+        dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    else:
+        dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
+    dataset = FlowsSubset(dataset, dataset.mapping)
+    dataset_variance = dataset.subset_variance
+    dataset_std = dataset.subset_std
+    dataset_means = dataset.subset_means
+    for cat_label, cat_num in dataset.mapping.items():
+        category_analysis_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}.csv'
+        #if not os.path.isfile(category_analysis_file):
+        subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+        z, p = subset.z_test(dataset)
+        table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
+        with open(category_analysis_file, 'w+') as f:
+            writer = csv.writer(f, delimiter=',')
+            writer.writerow(headers)
+            for i, row in enumerate(table_values):
+                writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
+
+sys.exit(0)
 
 # Generate CSV Tables
 table_dir = f'{base_dir}/tables/'
