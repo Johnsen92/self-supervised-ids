@@ -1,16 +1,10 @@
 import torch
-import pandas as pd
 from torch.utils.data import Dataset, Subset
-from torch.utils.data.sampler import Sampler, RandomSampler
-from sklearn.preprocessing import StandardScaler
 import pickle
 import numpy as np
 import json
 import os.path
-import re
 from sklearn.model_selection import train_test_split
-from torch._utils import _accumulate
-from enum import Enum
 
 def overwrite_manipulable_entries(seq, filler=-1):
     forward_direction = seq[0,5]
@@ -72,18 +66,18 @@ class Flows(Dataset):
         print('done')
         # Normalize data between -1 and 1
         cache_filename = f'normalization_data_{self.data_filename}'
-        if not self.cache == None and not self.cache.exists(cache_filename, no_prefix=True):
+        if self.cache is None or (not self.cache is None and not self.cache.exists(cache_filename, no_prefix=True)):
             print('Calculating normalization data...', end='')
             catted_x = np.concatenate(X, axis=0)
             means = np.mean(catted_x, axis=0)
             stds = np.std(catted_x, axis=0)
             stds[stds==0.0] = 1.0
             print('done')
-            
-            # Store for future use
-            cache.save(cache_filename, (means, stds), msg='Storing normalization data', no_prefix=True)
-        else:
+
+        if not self.cache is None and self.cache.exists(cache_filename, no_prefix=True):
             (means, stds) = cache.load(cache_filename, msg='Loading normalization data', no_prefix=True)
+        elif not self.cache is None:
+            cache.save(cache_filename, (means, stds), msg='Storing normalization data', no_prefix=True) 
 
         assert means.shape[0] == X[0].shape[-1], f'means.shape: {means.shape}, x.shape: {X[0].shape}'
         assert stds.shape[0] == X[0].shape[-1], f'stds.shape: {stds.shape}, x.shape: {X[0].shape}'
@@ -98,7 +92,6 @@ class Flows(Dataset):
         self.categories = [item[:, -2:-1] for item in all_data]
         self.categories_mapping = categories_mapping
         self.mapping = mapping
-        
 
     @property
     def n_samples(self):
@@ -215,6 +208,28 @@ class FlowsSubset(Subset):
         return self.dataset.means
 
     @property
+    def x_catted(self):
+        x_normalized, _, _ = zip(*self)
+        x = [(item*self.stds + self.means) for item in x_normalized]
+        x_cat = np.concatenate(x, axis=0)
+        return x_cat
+
+    @property
+    def subset_means(self):
+        return np.mean(self.x_catted, axis=0)
+
+    @property
+    def subset_variance(self):
+        return self.subset_std * self.subset_std
+
+    @property
+    def subset_std(self):
+        return np.std(self.x_catted, axis=0)
+
+    def z_test(self, subset):
+        pass
+
+    @property
     def data_pickle(self):
         return self.dataset.data_pickle
 
@@ -305,8 +320,6 @@ class FlowsSubset(Subset):
         # Set all categories that appear in the ditch list to 0 (or don't appear in the list if the list contains -1)
         for c in subset_ditch:
             self.subset_num[c] = 0
-
-        #assert sum([v for _, v in self.subset_num.items()]) > 0
 
         # Gather samples
         for idx, (seq, _, cat) in [(i, flows_dataset[i]) for i in self.indices]:

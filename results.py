@@ -5,6 +5,7 @@ import os
 import json
 import pickle
 import argparse
+from classes.datasets import Flows, FlowsSubset
 from classes.statistics import PDPlot, NeuronPlot
 from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask
 from main_lstm import main as train_lstm
@@ -338,6 +339,7 @@ neuron_ids = []
 ids = []
 param_file_csv = open(args.parameter_file, newline='')
 rows = [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')]
+datasets = []
 for i, row in enumerate(rows):
     if i == 1:
         parameters = row[3:]
@@ -351,7 +353,7 @@ for i, row in enumerate(rows):
         elif row[CSV_MODEL_INDEX] == 'transformer':
             model_parser = TransformerArgumentParser(parameter_list)
             train = train_trans
-        dataroot_basename = os.path.basename(row[1])[:-7]
+        #dataroot_basename = os.path.basename(row[1])[:-7]
         base_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}'
         stats_dir = f'{base_dir}/stats/'
         log_dir = f'{base_dir}/runs/'
@@ -369,6 +371,7 @@ for i, row in enumerate(rows):
         id = train(model_args_id_only)
         experiment = row[CSV_EXPERIMENT_INDEX]
         ids.append(id)
+        datasets.append(model_args.data_file)
         if not model_args.neuron_config is None:
             neuron_ids.append((id, model_args.neuron_config))
         for group in row[CSV_GROUP_INDEX].split('|'): 
@@ -395,6 +398,19 @@ for i, row in enumerate(rows):
                 f.write(traceback.format_exc())
                 f.write(f'Error in run {id}')
             print(f'An error occured during run {id}')
+
+
+# Generate data analysis tables of datasets
+datasets = list(set(datasets))
+for ds in datasets:
+    dataset = Flows(ds)
+    for cat_label, cat_num in dataset.mapping.items():
+        subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+        print(subset.subset_variance)
+        print(subset.subset_variance)
+        print(subset.subset_variance)
+        print(subset.subset_variance)
+
 
 # Generate CSV Tables
 table_dir = f'{base_dir}/tables/'
@@ -443,6 +459,7 @@ for k, group_entries in table_groups.items():
     print(f'Generating graphs for group {k}...', end='')
     generate_graphs(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
     print('done.')
+
 
 # # Generate Neuron Activation Plots
 # neuron_dir = f'{plots_dir}/neuron/'
