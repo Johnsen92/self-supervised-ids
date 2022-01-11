@@ -5,14 +5,14 @@ Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %
 Specialized subset, CIC17_10, CIC17_10, CIC17_10, CIC17_10
 
 Training metrics,,,,
-Best epoch, 125, 191, 251, 281
-Time to best epoch, 0h 11m, 0h 17m, 0h 23m, 0h 26m
+Best epoch, 125, 191, 419, 281
+Time to best epoch, 0h 11m, 0h 18m, 0h 39m, 0h 26m
 
 Performance metrics,,,,
-Accuracy, 93.154 %, 92.099 %, 92.814 %, 93.091 %
-Detection rate, 82.865 %, 84.338 %, 81.151 %, 81.070 %
-Precision, 89.271 %, 84.401 %, 89.435 %, 90.629 %
-Specificity, 96.633 %, 94.725 %, 96.758 %, 97.161 %
-F1-Measure, 85.949 %, 84.370 %, 85.092 %, 85.583 %
-False alarm rate, 10.729 %, 15.599 %, 10.565 %, 9.371 %
-Missed alarm rate, 17.135 %, 15.662 %, 18.849 %, 18.930 %
+Accuracy, 93.154 %, 92.099 %, 93.832 %, 92.398 %
+Detection rate, 82.865 %, 84.338 %, 84.675 %, 82.987 %
+Precision, 89.271 %, 84.401 %, 90.310 %, 86.396 %
+Specificity, 96.633 %, 94.725 %, 96.928 %, 95.581 %
+F1-Measure, 85.949 %, 84.370 %, 87.402 %, 84.657 %
+False alarm rate, 10.729 %, 15.599 %, 9.690 %, 13.604 %
+Missed alarm rate, 17.135 %, 15.662 %, 15.325 %, 17.013 %

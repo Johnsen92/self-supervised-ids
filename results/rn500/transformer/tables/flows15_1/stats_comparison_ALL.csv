@@ -6,7 +6,7 @@ Specialized subset, , , ,
 
 Training metrics,,,,
 Best epoch, 191, 129, 197, 197
-Time to best epoch, 1h 1m, 0h 41m, 1h 2m, 1h 2m
+Time to best epoch, 1h 0m, 0h 41m, 1h 2m, 1h 3m
 
 Performance metrics,,,,
 Accuracy, 98.328 %, 98.165 %, 98.256 %, 98.331 %
