@@ -11,6 +11,7 @@ from classes.statistics import PDPlot, NeuronPlot
 from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask
 from main_lstm import main as train_lstm
 from main_trans import main as train_trans
+from main_dt import main as train_dt
 import errno
 import re
 from enum import Enum
@@ -356,7 +357,6 @@ for i, row in enumerate(rows):
         elif row[CSV_MODEL_INDEX] == 'transformer':
             model_parser = TransformerArgumentParser(parameter_list)
             train = train_trans
-        #dataroot_basename = os.path.basename(row[1])[:-7]
         base_dir = f'{args.stats_dir}/{row[CSV_MODEL_INDEX]}'
         stats_dir = f'{base_dir}/stats/'
         log_dir = f'{base_dir}/runs/'
@@ -434,52 +434,56 @@ for root, dir, files in path:
         os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -x {group_scale_factor[group_name]} -l "{group_label}" -c "{group_caption}"')
 
 
-# # Generate data analysis tables of datasets
-# headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
-# data_analysis_dir = f'{args.stats_dir}/dataset/'
-# make_dir(data_analysis_dir)
-# datasets = list(set(datasets))
-# cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
-# for ds in datasets:
-#     dataset_name = os.path.basename(ds)[:-7]
-#     features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
-#     assert os.path.isfile(features_file), f'{features_file} not found...'
-#     with open(features_file, 'r') as f:
-#         features = json.load(f)
+# Generate data analysis tables of datasets
+headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
+data_analysis_dir = f'{args.stats_dir}/dataset/'
+make_dir(data_analysis_dir)
+datasets = list(set(datasets))
+cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
+for ds in datasets:
+    dataset_name = os.path.basename(ds)[:-7]
+    features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
+    assert os.path.isfile(features_file), f'{features_file} not found...'
+    with open(features_file, 'r') as f:
+        features = json.load(f)
 
-#     data_analysis_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
-#     make_dir(data_analysis_dataset_dir)
+    data_analysis_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
+    make_dir(data_analysis_dataset_dir)
 
-#     # Load dataset and normalize data, or load from cache
-#     cache_filename = f'dataset_normalized_{dataset_name}'
-#     if cache.exists(cache_filename, no_prefix=True):
-#         dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
-#     else:
-#         dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
-#     dataset = FlowsSubset(dataset, dataset.mapping)
-#     dataset_variance = dataset.subset_variance
-#     dataset_std = dataset.subset_std
-#     dataset_means = dataset.subset_means
-#     for cat_label, cat_num in dataset.mapping.items():
-#         category_analysis_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}.csv'
-#         category_data_dump_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}_20.txt'
-#         #if not os.path.isfile(category_analysis_file):
-#         subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+    # Calculate statistical data
+    cache_filename = f'dataset_normalized_{dataset_name}'
+    if cache.exists(cache_filename, no_prefix=True):
+        dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    else:
+        dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
+    dataset = FlowsSubset(dataset, dataset.mapping)
+    dataset_variance = dataset.subset_variance
+    dataset_std = dataset.subset_std
+    dataset_means = dataset.subset_means
+    for cat_label, cat_num in dataset.mapping.items():
+        # Calculate statistical data
+        statistical_analysis_file = f'{data_analysis_dataset_dir}/st_{cat_num}_{cat_label}.csv'
+        if not os.path.isfile(statistical_analysis_file):
+            subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+            z, p = subset.z_test(dataset)
+            table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
+            with open(statistical_analysis_file, 'w+') as f:
+                writer = csv.writer(f, delimiter=',')
+                writer.writerow(headers)
+                for i, row in enumerate(table_values):
+                    writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
 
-#         # Dump flows
-#         with open(category_data_dump_file, 'w+') as f:
-#             for i in range(min(10, len(subset))):
-#                 x = subset.x_raw[i]
-#                 f.write(np.array2string(x.detach().numpy(), precision=2))
-
-#         # Calculate statistical data
-#         z, p = subset.z_test(dataset)
-#         table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
-#         with open(category_analysis_file, 'w+') as f:
-#             writer = csv.writer(f, delimiter=',')
-#             writer.writerow(headers)
-#             for i, row in enumerate(table_values):
-#                 writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
+        # Calculate decision tree
+        dt_file_name = f'dt_{cat_num}_{cat_label}.txt'
+        dt_file = f'{data_analysis_dataset_dir}/{dt_file_name}'
+        if not os.path.isfile(dt_file):
+            # Generate decision trees
+            parameter_list = []
+            add_parameter(parameter_list, '-f', ds)
+            add_parameter(parameter_list, '-t', cat_num)
+            add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
+            add_parameter(parameter_list, '-o', dt_file)
+            train_dt(parameter_list)
 
 # # Remove and make plots dir
 # plots_dir = f'{base_dir}/plots/'

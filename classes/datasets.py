@@ -217,10 +217,17 @@ class FlowsSubset(Subset):
 
     @cached_property
     def x_catted(self):
-        x_normalized, _, _ = zip(*self)
-        x = [(item*self.stds + self.means) for item in x_normalized]
-        x_cat = np.concatenate(x, axis=0)
-        return x_cat
+        return np.concatenate(self.x_raw, axis=0)
+
+    @cached_property
+    def y_catted(self):
+        _, y, _ = zip(*self)
+        return np.concatenate(y, axis=0)
+
+    @cached_property
+    def c_catted(self):
+        _, _, c = zip(*self)
+        return np.concatenate(c, axis=0)
 
     @cached_property
     def subset_means(self):

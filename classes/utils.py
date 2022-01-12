@@ -96,6 +96,39 @@ class ModelArgumentParser(ArgumentParser):
                     raise
         return args
 
+class DTArgumentParser(ArgumentParser):
+    def __init__(self, description):
+        super(DTArgumentParser, self).__init__(description = description)
+        self.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
+        self.add_argument('-d', '--debug', action='store_true', help='Debug flag')
+        self.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
+        self.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
+        # ---------------------- Model parameters ----------------------
+        self.add_argument('-m', '--max_depth', default=10, type=int, help='Maximum depth of decision tree')
+        # ---------------------- Training config -----------------------
+        self.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
+        self.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
+        self.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
+        self.add_argument('-t', '--target_category', default=-1, help='Decision tree tries to differentiate between benign category and this category. If -1, use all categories')
+        self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
+        self.add_argument('--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
+        # ---------------------- Stats & Cache -------------------------
+        self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
+        self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+        self.add_argument('-o', '--output_file', default='', help='Output file name')
+        # ---------------------- Pytorch & Numpy -----------------------
+        self.add_argument('--n_threads', default=2, type=int, help='Number of threads used by PyTorch')
+        self.add_argument('--n_worker_threads', default=4, type=int, help='Number of worker threads to load dataset')
+
+    def parse_args(self, args=None, namespace=None):
+        args = super(DTArgumentParser, self).parse_args(args, namespace)
+        assert args.train_percent + args.val_percent <= 1000
+        if args.random_seed == 0:
+            args.random_seed = random.randint(1, pow(2,16)-1)
+        else:
+            args.random_seed = args.random_seed
+        return args
+
 class LSTMArgumentParser(ModelArgumentParser):
     def __init__(self, description):
         super(LSTMArgumentParser, self).__init__(description = description)
