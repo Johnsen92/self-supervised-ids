@@ -35,7 +35,7 @@ def main(args):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # ID and unique ID (with timestamp) for this run
-    id = f'dt_{data_filename}_rn{random_seed}_md{args.max_depth}'
+    id = f'dt_{data_filename}_rn{random_seed}_md{args.max_depth}_tc{args.target_category if args.target_category != -1 else "ALL"}'
     uid = f'{timestamp}_{id}'
 
     if args.id_only:
