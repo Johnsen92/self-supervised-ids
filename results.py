@@ -402,54 +402,6 @@ for i, row in enumerate(rows):
                 f.write(f'Error in run {id}')
             print(f'An error occured during run {id}')
 
-
-# Generate data analysis tables of datasets
-headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
-data_analysis_dir = f'{args.stats_dir}/dataset/'
-make_dir(data_analysis_dir)
-datasets = list(set(datasets))
-cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
-for ds in datasets:
-    dataset_name = os.path.basename(ds)[:-7]
-    features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
-    assert os.path.isfile(features_file), f'{features_file} not found...'
-    with open(features_file, 'r') as f:
-        features = json.load(f)
-
-    data_analysis_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
-    make_dir(data_analysis_dataset_dir)
-
-    # Load dataset and normalize data, or load from cache
-    cache_filename = f'dataset_normalized_{dataset_name}'
-    if cache.exists(cache_filename, no_prefix=True):
-        dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
-    else:
-        dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
-    dataset = FlowsSubset(dataset, dataset.mapping)
-    dataset_variance = dataset.subset_variance
-    dataset_std = dataset.subset_std
-    dataset_means = dataset.subset_means
-    for cat_label, cat_num in dataset.mapping.items():
-        category_analysis_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}.csv'
-        category_data_dump_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}_20.txt'
-        #if not os.path.isfile(category_analysis_file):
-        subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
-
-        # Dump flows
-        with open(category_data_dump_file, 'w+') as f:
-            for i in range(min(10, len(subset))):
-                x = subset.x_raw[i]
-                f.write(np.array2string(x.detach().numpy(), precision=2))
-
-        # Calculate statistical data
-        z, p = subset.z_test(dataset)
-        table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
-        with open(category_analysis_file, 'w+') as f:
-            writer = csv.writer(f, delimiter=',')
-            writer.writerow(headers)
-            for i, row in enumerate(table_values):
-                writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
-
 # Generate CSV Tables
 table_dir = f'{base_dir}/tables/'
 rm_dir(table_dir)
@@ -482,40 +434,87 @@ for root, dir, files in path:
         os.system(f'python3 ./script/tably.py {csv_file} -o {csv_file[:-4]}.tex -x {group_scale_factor[group_name]} -l "{group_label}" -c "{group_caption}"')
 
 
-# Remove and make plots dir
-plots_dir = f'{base_dir}/plots/'
-rm_dir(plots_dir)
-make_dir(plots_dir)
+# # Generate data analysis tables of datasets
+# headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
+# data_analysis_dir = f'{args.stats_dir}/dataset/'
+# make_dir(data_analysis_dir)
+# datasets = list(set(datasets))
+# cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
+# for ds in datasets:
+#     dataset_name = os.path.basename(ds)[:-7]
+#     features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
+#     assert os.path.isfile(features_file), f'{features_file} not found...'
+#     with open(features_file, 'r') as f:
+#         features = json.load(f)
 
-# Generate loss progression graphs
-graphs_dir = f'{plots_dir}/losses/'
-make_dir(graphs_dir)
-for k, group_entries in table_groups.items():
-    if len(group_entries) <= 1:
-        continue
-    group_dir = f'{graphs_dir}/{k}'
-    print(f'Generating graphs for group {k}...', end='')
-    generate_graphs(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
-    print('done.')
+#     data_analysis_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
+#     make_dir(data_analysis_dataset_dir)
+
+#     # Load dataset and normalize data, or load from cache
+#     cache_filename = f'dataset_normalized_{dataset_name}'
+#     if cache.exists(cache_filename, no_prefix=True):
+#         dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+#     else:
+#         dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
+#     dataset = FlowsSubset(dataset, dataset.mapping)
+#     dataset_variance = dataset.subset_variance
+#     dataset_std = dataset.subset_std
+#     dataset_means = dataset.subset_means
+#     for cat_label, cat_num in dataset.mapping.items():
+#         category_analysis_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}.csv'
+#         category_data_dump_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}_20.txt'
+#         #if not os.path.isfile(category_analysis_file):
+#         subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+
+#         # Dump flows
+#         with open(category_data_dump_file, 'w+') as f:
+#             for i in range(min(10, len(subset))):
+#                 x = subset.x_raw[i]
+#                 f.write(np.array2string(x.detach().numpy(), precision=2))
+
+#         # Calculate statistical data
+#         z, p = subset.z_test(dataset)
+#         table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
+#         with open(category_analysis_file, 'w+') as f:
+#             writer = csv.writer(f, delimiter=',')
+#             writer.writerow(headers)
+#             for i, row in enumerate(table_values):
+#                 writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
+
+# # Remove and make plots dir
+# plots_dir = f'{base_dir}/plots/'
+# rm_dir(plots_dir)
+# make_dir(plots_dir)
+
+# # Generate loss progression graphs
+# graphs_dir = f'{plots_dir}/losses/'
+# make_dir(graphs_dir)
+# for k, group_entries in table_groups.items():
+#     if len(group_entries) <= 1:
+#         continue
+#     group_dir = f'{graphs_dir}/{k}'
+#     print(f'Generating graphs for group {k}...', end='')
+#     generate_graphs(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
+#     print('done.')
 
 
-# Generate Neuron Activation Plots
-neuron_dir = f'{plots_dir}/neuron/'
-make_dir(neuron_dir)
-if len(neuron_ids) > 0:
-    for id, config in neuron_ids:
-        plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
+# # Generate Neuron Activation Plots
+# neuron_dir = f'{plots_dir}/neuron/'
+# make_dir(neuron_dir)
+# if len(neuron_ids) > 0:
+#     for id, config in neuron_ids:
+#         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
 
-# Generate Partial Dependency Plots
-pdp_dir = f'{plots_dir}/pdp/'
-make_dir(pdp_dir)
-for group, pdp_ids in pdp_groups.items():
-    if len(pdp_ids) == 0:
-        continue
-    assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
-    ids = [id for id, _ in pdp_ids]
-    config = [config for _, config in pdp_ids][0]
-    plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+# # Generate Partial Dependency Plots
+# pdp_dir = f'{plots_dir}/pdp/'
+# make_dir(pdp_dir)
+# for group, pdp_ids in pdp_groups.items():
+#     if len(pdp_ids) == 0:
+#         continue
+#     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
+#     ids = [id for id, _ in pdp_ids]
+#     config = [config for _, config in pdp_ids][0]
+#     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
 
 
 
