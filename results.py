@@ -431,8 +431,17 @@ for ds in datasets:
     dataset_means = dataset.subset_means
     for cat_label, cat_num in dataset.mapping.items():
         category_analysis_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}.csv'
+        category_data_dump_file = f'{data_analysis_dataset_dir}/{cat_num}_{cat_label}_20.txt'
         #if not os.path.isfile(category_analysis_file):
         subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, cat_num])
+
+        # Dump flows
+        with open(category_data_dump_file, 'w+') as f:
+            for i in range(min(10, len(subset))):
+                x = subset.x_raw[i]
+                f.write(np.array2string(x.detach().numpy(), precision=2))
+
+        # Calculate statistical data
         z, p = subset.z_test(dataset)
         table_values = np.round(np.stack((dataset_means, subset.subset_means, dataset_std, subset.subset_std, z, p), axis=-1), 2)
         with open(category_analysis_file, 'w+') as f:
@@ -440,8 +449,6 @@ for ds in datasets:
             writer.writerow(headers)
             for i, row in enumerate(table_values):
                 writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
-
-sys.exit(0)
 
 # Generate CSV Tables
 table_dir = f'{base_dir}/tables/'
@@ -492,23 +499,23 @@ for k, group_entries in table_groups.items():
     print('done.')
 
 
-# # Generate Neuron Activation Plots
-# neuron_dir = f'{plots_dir}/neuron/'
-# make_dir(neuron_dir)
-# if len(neuron_ids) > 0:
-#     for id, config in neuron_ids:
-#         plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
+# Generate Neuron Activation Plots
+neuron_dir = f'{plots_dir}/neuron/'
+make_dir(neuron_dir)
+if len(neuron_ids) > 0:
+    for id, config in neuron_ids:
+        plot_neurons([id], args.neuron_data_dir, neuron_dir, config, 'pre')
 
-# # Generate Partial Dependency Plots
-# pdp_dir = f'{plots_dir}/pdp/'
-# make_dir(pdp_dir)
-# for group, pdp_ids in pdp_groups.items():
-#     if len(pdp_ids) == 0:
-#         continue
-#     assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
-#     ids = [id for id, _ in pdp_ids]
-#     config = [config for _, config in pdp_ids][0]
-#     plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
+# Generate Partial Dependency Plots
+pdp_dir = f'{plots_dir}/pdp/'
+make_dir(pdp_dir)
+for group, pdp_ids in pdp_groups.items():
+    if len(pdp_ids) == 0:
+        continue
+    assert len(set([config for _, config in pdp_ids])) == 1, 'Different PDP configs used for PDP data...'
+    ids = [id for id, _ in pdp_ids]
+    config = [config for _, config in pdp_ids][0]
+    plot_pdp(ids, args.pdp_data_dir, pdp_dir, config)
 
 
 

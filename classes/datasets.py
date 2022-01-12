@@ -210,6 +210,12 @@ class FlowsSubset(Subset):
         return self.dataset.means
 
     @cached_property
+    def x_raw(self):
+        x_normalized, _, _ = zip(*self)
+        x = [(item*self.stds + self.means) for item in x_normalized]
+        return x
+
+    @cached_property
     def x_catted(self):
         x_normalized, _, _ = zip(*self)
         x = [(item*self.stds + self.means) for item in x_normalized]
