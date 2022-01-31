@@ -8,7 +8,7 @@ import argparse
 from classes.utils import Cache
 from classes.datasets import Flows, FlowsSubset
 from classes.statistics import PDPlot, NeuronPlot
-from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask
+from classes.utils import TransformerArgumentParser, LSTMArgumentParser, ProxyTask, DTArgumentParser
 from main_lstm import main as train_lstm
 from main_trans import main as train_trans
 from main_dt import main as train_dt
@@ -317,6 +317,7 @@ parser.add_argument('-d', '--debug', action='store_true', help='Debug flag')
 parser.add_argument('-G', '--group_description', default='./groups_lstm.csv', help='CSV file containing caption and labels for groups occuring in run config')
 parser.add_argument('-R', '--string_replace', default='./result_string_replace.csv', help='CSV file containing a list of strings to replace in output files')
 parser.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
+parser.add_argument('--no_cache', action='store_true', help='Cache folder')
 args = parser.parse_args(sys.argv[1:])
 
 CSV_EXPERIMENT_INDEX = 0
@@ -374,7 +375,7 @@ for i, row in enumerate(rows):
         id = train(model_args_id_only)
         experiment = row[CSV_EXPERIMENT_INDEX]
         ids.append(id)
-        datasets.append(model_args.data_file)
+        datasets.append((model_args.data_file, model_args.benign_category))
         if not model_args.neuron_config is None:
             neuron_ids.append((id, model_args.neuron_config))
         for group in row[CSV_GROUP_INDEX].split('|'): 
@@ -440,7 +441,7 @@ data_analysis_dir = f'{args.stats_dir}/dataset/'
 make_dir(data_analysis_dir)
 datasets = list(set(datasets))
 cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
-for ds in datasets:
+for ds, benign_category in datasets:
     dataset_name = os.path.basename(ds)[:-7]
     features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
     assert os.path.isfile(features_file), f'{features_file} not found...'
@@ -460,6 +461,7 @@ for ds in datasets:
     dataset_variance = dataset.subset_variance
     dataset_std = dataset.subset_std
     dataset_means = dataset.subset_means
+    dt_stats_summary = {}
     for cat_label, cat_num in dataset.mapping.items():
         # Calculate statistical data
         statistical_analysis_file = f'{data_analysis_dataset_dir}/st_{cat_num}_{cat_label}.csv'
@@ -472,18 +474,41 @@ for ds in datasets:
                 writer.writerow(headers)
                 for i, row in enumerate(table_values):
                     writer.writerow([features[str(i)]] + [str(i)] + row.tolist())
+        else:
+            print(f'Skipping statistical analysis for dataset {dataset_name}, category {cat_label}...')
 
         # Calculate decision tree
-        dt_file_name = f'dt_{cat_num}_{cat_label}.txt'
+        MAX_DEPTH = 5
+        dt_file_name = f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt'
         dt_file = f'{data_analysis_dataset_dir}/{dt_file_name}'
-        if not os.path.isfile(dt_file):
-            # Generate decision trees
-            parameter_list = []
-            add_parameter(parameter_list, '-f', ds)
-            add_parameter(parameter_list, '-t', cat_num)
-            add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
-            add_parameter(parameter_list, '-o', dt_file)
-            train_dt(parameter_list)
+        cache_name = f'dt_stats_ds{dataset_name}_ct{cat_num}_md{MAX_DEPTH}'
+        if cat_num != int(benign_category):
+            if not os.path.isfile(dt_file):
+                # Generate decision trees
+                parameter_list = []
+                add_parameter(parameter_list, '-m', str(MAX_DEPTH))
+                add_parameter(parameter_list, '-f', ds)
+                add_parameter(parameter_list, '-t', str(cat_num))
+                add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
+                add_parameter(parameter_list, '-o', dt_file_name)
+                add_parameter(parameter_list, '--random_seed', str(500))
+                add_parameter(parameter_list, '-c', str(benign_category))
+                dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
+                dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
+                cache.save(cache_name, dt_stats_summary[(cat_label, cat_num)], msg='Saving decision tree stats...')
+            else:
+                print(f'Skipping DT generation for dataset {dataset_name}, category {cat_label}...')
+                dt_stats_summary[(cat_label, cat_num)] = cache.load(cache_name, msg='Loading decision tree stats...')
+    dt_summary_file = f'{data_analysis_dataset_dir}/dt_md{MAX_DEPTH}_summary.csv'
+    with open(dt_summary_file, 'w+') as f:
+        writer = csv.writer(f, delimiter=',')
+        first = True
+        for (cat_label, cat_num), stats in dt_stats_summary.items():
+            if first:
+                writer.writerow(['Category', '#'] + [k for k, _ in stats.items()])
+                first = False
+            writer.writerow([cat_label, cat_num] + [v for _, v in stats.items()])
+
 
 # # Remove and make plots dir
 # plots_dir = f'{base_dir}/plots/'

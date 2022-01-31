@@ -1,7 +1,7 @@
 prefix,group,label,caption
-stats,flows_10,table:results:lstm:stats_flows_10,Experiments 2.1.1-6 with transformer model finetuned with 10\% of dataset CIC-IDS2017.
-stats,flows_1,table:results:lstm:stats_flows_1,Experiments 2.2.1-6 with transformer model finetuned with 1\% of dataset CIC-IDS2017.
-stats,flows_subset,table:results:lstm:stats_flows_subset,Experiments 2.3.1-6 with transformer model finetuned with subset CIC17\_10 of dataset CIC-IDS2017.
+stats,flows_10,table:results:lstm:stats_flows_10,Experiments 2.1.1-6 with \gls{lstm} model finetuned with 10\% of dataset CIC-IDS2017.
+stats,flows_1,table:results:lstm:stats_flows_1,Experiments 2.2.1-6 with \gls{lstm} model finetuned with 1\% of dataset CIC-IDS2017.
+stats,flows_subset,table:results:lstm:stats_flows_subset,Experiments 2.3.1-6 with \gls{lstm} model finetuned with subset CIC17\_10 of dataset CIC-IDS2017.
 stats,flows_supervised,table:results:lstm:stats_flows_supervised,Experiments 1.1.1-4 with \gls{lstm} model trained in a purely supervised fashion on dataset CIC-IDS2017.
 stats,flows15_10,table:results:lstm:stats_flows15_10,Experiments 2.4.1-6 with \gls{lstm} model finetuned with 10\% of dataset UNSW-NB15.
 stats,flows15_1,table:results:lstm:stats_flows15_1,Experiments 2.5.1-6 with \gls{lstm} model finetuned with 1\% of dataset UNSW-NB15.

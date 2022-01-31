@@ -1,0 +1,29 @@
+max. depth: 5, fitting time: 194.21s, accuracy: 95.112%, 90.698% benign samples, 9.302% attack samples
+|--- Destination port <= 80.50
+|   |--- Destination port <= 79.50
+|   |   |--- class: 0.0
+|   |--- Destination port >  79.50
+|   |   |--- Interarrival time <= 14.95
+|   |   |   |--- Packet Length <= 51.50
+|   |   |   |   |--- ACK Flag <= 0.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- ACK Flag >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Packet Length >  51.50
+|   |   |   |   |--- Packet Length <= 452.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- Packet Length >  452.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |--- Interarrival time >  14.95
+|   |   |   |--- Packet Length <= 1499.50
+|   |   |   |   |--- ACK Flag <= 0.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- ACK Flag >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Packet Length >  1499.50
+|   |   |   |   |--- PSH Flag <= 0.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- PSH Flag >  0.50
+|   |   |   |   |   |--- class: 0.0
+|--- Destination port >  80.50
+|   |--- class: 0.0

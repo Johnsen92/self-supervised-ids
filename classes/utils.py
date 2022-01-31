@@ -104,12 +104,12 @@ class DTArgumentParser(ArgumentParser):
         self.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
         self.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
         # ---------------------- Model parameters ----------------------
-        self.add_argument('-m', '--max_depth', default=10, type=int, help='Maximum depth of decision tree')
+        self.add_argument('-m', '--max_depth', default=6, type=int, help='Maximum depth of decision tree')
         # ---------------------- Training config -----------------------
         self.add_argument('-p', '--train_percent', default=900, type=int, help='Training per-mill of data')
         self.add_argument('-v', '--val_percent', default=100, type=int, help='Validation per-mill of data')
         self.add_argument('-c', '--benign_category', default=10, type=int, help='Normal/Benign category in class/category mapping')
-        self.add_argument('-t', '--target_category', default=-1, help='Decision tree tries to differentiate between benign category and this category. If -1, use all categories')
+        self.add_argument('-t', '--target_category', default=-1, type=int, help='Decision tree tries to differentiate between benign category and this category. If -1, use all categories')
         self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
         self.add_argument('--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
         # ---------------------- Stats & Cache -------------------------

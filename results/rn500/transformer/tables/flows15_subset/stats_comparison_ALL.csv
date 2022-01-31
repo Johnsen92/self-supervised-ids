@@ -6,7 +6,7 @@ Specialized subset, UNSW15_10, UNSW15_10, UNSW15_10, UNSW15_10
 
 Training metrics,,,,
 Best epoch, 563, 155, 161, 137
-Time to best epoch, 0h 52m, 0h 14m, 0h 15m, 0h 12m
+Time to best epoch, 0h 52m, 0h 13m, 0h 15m, 0h 12m
 
 Performance metrics,,,,
 Accuracy, 97.684 %, 96.471 %, 97.456 %, 97.979 %

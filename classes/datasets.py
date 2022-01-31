@@ -211,13 +211,19 @@ class FlowsSubset(Subset):
 
     @cached_property
     def x_raw(self):
-        x_normalized, _, _ = zip(*self)
-        x = [(item*self.stds + self.means) for item in x_normalized]
+        if len(self) > 0:
+            x_normalized, _, _ = zip(*self)
+            x = [(item*self.stds + self.means) for item in x_normalized]
+        else:
+            x = []
         return x
 
     @cached_property
     def x_catted(self):
-        return np.concatenate(self.x_raw, axis=0)
+        if len(self.x_raw) == 0:
+            return []
+        else:
+            return np.concatenate(self.x_raw, axis=0)
 
     @cached_property
     def y_catted(self):
@@ -228,6 +234,10 @@ class FlowsSubset(Subset):
     def c_catted(self):
         _, _, c = zip(*self)
         return np.concatenate(c, axis=0)
+
+    @cached_property
+    def n_packets(self):
+        return len(self.x_catted)
 
     @cached_property
     def subset_means(self):
@@ -263,14 +273,19 @@ class FlowsSubset(Subset):
         X_idx_rest = np.arange(self.n_samples)
         y_rest = np.squeeze(np.array([c[0] for c in self.categories], dtype=np.intc))
         splits = []
-        for i, size in enumerate(split_sizes):
-            X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
-            splits.append(FlowsSubset(self, self.mapping, X_idx_split, verbose=False))
-            # If the whole dataset is used, we have to stop splitting one iteration early, otherwise one split would produce an empty-set which upsets sklearn
-            if i == len(split_sizes)-2 and sum(split_sizes) == self.n_samples:
-                splits.append(FlowsSubset(self, self.mapping, X_idx_rest, verbose=False))
-                break
-        assert sum([len(s) for s in splits]) == sum(split_sizes) 
+        if len(split_sizes) == 2:
+            X_idx_split1, X_idx_split2, _, _ = train_test_split(X_idx_rest, y_rest, train_size=split_sizes[0], stratify=(y_rest if stratify else None))
+            splits.append(FlowsSubset(self, self.mapping, X_idx_split1, verbose=False))
+            splits.append(FlowsSubset(self, self.mapping, X_idx_split2, verbose=False))
+        else:
+            for i, size in enumerate(split_sizes):
+                X_idx_split, X_idx_rest, _, y_rest = train_test_split(X_idx_rest, y_rest, train_size=size, stratify=(y_rest if stratify else None))
+                splits.append(FlowsSubset(self, self.mapping, X_idx_split, verbose=False))
+                # If the whole dataset is used, we have to stop splitting one iteration early, otherwise one split would produce an empty-set which upsets sklearn
+                if i == len(split_sizes)-2 and sum(split_sizes) == self.n_samples:
+                    splits.append(FlowsSubset(self, self.mapping, X_idx_rest, verbose=False))
+                    break
+        assert abs(sum([len(s) for s in splits]) - sum(split_sizes)) <= 1
         return tuple(splits)
 
     def __init__(self, flows_dataset, mapping, indices=[], dist={}, ditch=[], mult={}, config_file=None, key='TRAIN', config_index=-1, verbose=True, min_flow_length=0):

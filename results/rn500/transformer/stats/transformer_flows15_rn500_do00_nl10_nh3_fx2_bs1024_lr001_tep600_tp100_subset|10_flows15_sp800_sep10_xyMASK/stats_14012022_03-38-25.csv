@@ -1,0 +1,17 @@
+Proxy task, MASK
+Epochs Supervised, 600
+Training percentage, 10.00 %
+Specialized subset, 10_flows15
+
+Training metrics,
+Best epoch, 155
+Time to best epoch, 0h 13m
+
+Performance metrics,
+Accuracy, 96.471 %
+Detection rate, 0.000 %
+Precision, 100.000 %
+Specificity, 100.000 %
+F1-Measure, 0.000 %
+False alarm rate, 0.000 %
+Missed alarm rate, 100.000 %

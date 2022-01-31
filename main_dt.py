@@ -48,16 +48,16 @@ def main(args):
     extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + id + '/'
 
     # Load dataset and normalize data, or load from cache
-    cache_filename = f'subset_dt_{data_filename}_{args.target_category}'
+    cache_filename = f'dataset_normalized_{data_filename}'
     if general_cache.exists(cache_filename, no_prefix=True) and not args.no_cache:
-        subset = general_cache.load(cache_filename, no_prefix=True, msg='Loading decision tree dataset')
+        dataset = general_cache.load(cache_filename, no_prefix=True, msg='Loading decision tree dataset')
     else:
         dataset = Flows(data_pickle=args.data_file, cache=general_cache, max_length=args.max_sequence_length)
-        if args.target_category == -1:
-            subset = FlowsSubset(dataset, dataset.mapping)
-        else:
-            subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, args.benign_category, args.target_category])
-        general_cache.save(cache_filename, subset, no_prefix=True, msg='Storing decision tree dataset')
+    
+    if args.target_category == -1:
+        subset = FlowsSubset(dataset, dataset.mapping)
+    else:
+        subset = FlowsSubset(dataset, dataset.mapping, ditch=[-1, args.benign_category, args.target_category])
 
     # Number of samples
     n_samples = len(subset)
@@ -73,36 +73,54 @@ def main(args):
     # Split dataset into pretraining, training and validation set
     train_data, val_data = subset.split([training_size, validation_size], stratify=True)
 
-    #scores = []
-    #for depth in range(15):
+    stats = {}
 
     # Init model
     dtc = DecisionTreeClassifier(random_state=0, max_depth=args.max_depth)
 
     # Fit data
-    print('Fitting decision tree...', end='')
+    print(f'Fitting decision tree with max. depth {args.max_depth}...', end='')
     start = timer()
     decision_tree = dtc.fit(train_data.x_catted, train_data.y_catted)
     end = timer()
-    score = decision_tree.score(val_data.x_catted, val_data.y_catted)
-    print(f'took {end - start} seconds with an accuracy score of {(score*100.0):.2f}%.')
-
+    val_score = decision_tree.score(val_data.x_catted, val_data.y_catted)
+    train_score = decision_tree.score(train_data.x_catted, train_data.y_catted)
+    print(f'took {end - start} seconds with a validation accuracy score of {(val_score*100.0):.2f}%.')
     r = export_text(decision_tree, feature_names=[v for v in features.values()])
 
     if args.output_file == '':
         out_f = f'{args.stats_dir}/{uid}.txt'
     else:
-        out_f = f'{args.stats}/{args.output_file}'
+        out_f = f'{args.stats_dir}/{args.output_file}'
 
+    benign_samples = subset.subset_count[args.benign_category]
+    attack_samples = subset.subset_count[args.target_category]
+    total_samples = benign_samples + attack_samples
+
+    # Calculate stats
+    stats['max_depth'] = args.max_depth
+    stats['depth'] = decision_tree.get_depth()
+    stats['fitting_time s'] = round(end - start, 2)
+    stats['val. accuracy %'] = round(val_score*100.0, 4)
+    stats['train. accuracy %'] = round(train_score*100.0, 4)
+    #stats['samples_benign'] = benign_samples
+    #stats['samples_attack'] = attack_samples
+    stats['packets_benign'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.benign_category]).n_packets
+    stats['packets_attack'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.target_category]).n_packets
+    stats['packets_total'] = stats['packets_benign'] + stats['packets_attack']
+    stats['benign_rate %'] = round(float(stats['packets_benign'])/float(stats['packets_total'])*100.0, 4)
+    stats['attack_rate %'] = round(float(stats['packets_attack'])/float(stats['packets_total'])*100.0, 4)
+    stats['above_guessing'] = stats['val. accuracy %'] > stats['benign_rate %']
+
+    # Write to output file
     with open(out_f, 'w+') as f:
+        f.write(f'max. depth: {args.max_depth}, fitting time: {(end - start):.2f}s, accuracy: {stats["val. accuracy %"]:.3f}%, {stats["benign_rate %"]:.3f}% benign samples, {stats["attack_rate %"]:.3f}% attack samples\n')
         f.write(r)
 
     # Remove temp directories
     general_cache.clean()
-
     print(f'Run with ID \"{id}\" has ended successfully')
-
-    return score
+    return stats
 
 if __name__=="__main__":
     # Init argument parser
