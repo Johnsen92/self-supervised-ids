@@ -1,4 +1,4 @@
-max. depth: 5, fitting time: 191.47s, accuracy: 99.904%, 99.812% benign samples, 0.188% attack samples
+max. depth: 5, fitting time: 185.06s, accuracy: 99.904%, 99.812% benign samples, 0.188% attack samples
 |--- SYN Flag <= 0.50
 |   |--- Interarrival time <= 12788.12
 |   |   |--- Source port <= 39778.50

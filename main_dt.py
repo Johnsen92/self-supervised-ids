@@ -6,9 +6,10 @@ import torch
 import os.path
 from datetime import datetime
 import numpy as np
+from matplotlib import pyplot as plt
 import random
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.tree import export_text
+from sklearn.tree import export_text, plot_tree
 from timeit import default_timer as timer
 import json
 
@@ -74,6 +75,7 @@ def main(args):
     train_data, val_data = subset.split([training_size, validation_size], stratify=True)
 
     stats = {}
+    feature_names = [v for v in features.values()]
 
     # Init model
     dtc = DecisionTreeClassifier(random_state=0, max_depth=args.max_depth)
@@ -86,12 +88,14 @@ def main(args):
     val_score = decision_tree.score(val_data.x_catted, val_data.y_catted)
     train_score = decision_tree.score(train_data.x_catted, train_data.y_catted)
     print(f'took {end - start} seconds with a validation accuracy score of {(val_score*100.0):.2f}%.')
-    r = export_text(decision_tree, feature_names=[v for v in features.values()])
+    r = export_text(decision_tree, feature_names=feature_names)
 
     if args.output_file == '':
         out_f = f'{args.stats_dir}/{uid}.txt'
+        out_f_plot = f'{args.stats_dir}/{uid}.png'
     else:
         out_f = f'{args.stats_dir}/{args.output_file}'
+        out_f_plot = out_f[:-4] + '.png'
 
     benign_samples = subset.subset_count[args.benign_category]
     attack_samples = subset.subset_count[args.target_category]
@@ -103,8 +107,6 @@ def main(args):
     stats['fitting_time s'] = round(end - start, 2)
     stats['val. accuracy %'] = round(val_score*100.0, 4)
     stats['train. accuracy %'] = round(train_score*100.0, 4)
-    #stats['samples_benign'] = benign_samples
-    #stats['samples_attack'] = attack_samples
     stats['packets_benign'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.benign_category]).n_packets
     stats['packets_attack'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.target_category]).n_packets
     stats['packets_total'] = stats['packets_benign'] + stats['packets_attack']
@@ -116,6 +118,15 @@ def main(args):
     with open(out_f, 'w+') as f:
         f.write(f'max. depth: {args.max_depth}, fitting time: {(end - start):.2f}s, accuracy: {stats["val. accuracy %"]:.3f}%, {stats["benign_rate %"]:.3f}% benign samples, {stats["attack_rate %"]:.3f}% attack samples\n')
         f.write(r)
+
+    # If plot flag is set, plot decision tree
+    if args.plot:
+        fig = plt.figure(figsize=(args.x, args.y))
+        _ = plot_tree(dtc, 
+                        feature_names=feature_names,  
+                        class_names=['attack', 'benign'],
+                        filled=True)
+        fig.savefig(out_f_plot)
 
     # Remove temp directories
     general_cache.clean()

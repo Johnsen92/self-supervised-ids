@@ -493,6 +493,7 @@ for ds, benign_category in datasets:
                 add_parameter(parameter_list, '-o', dt_file_name)
                 add_parameter(parameter_list, '--random_seed', str(500))
                 add_parameter(parameter_list, '-c', str(benign_category))
+                add_parameter(parameter_list, '--plot')
                 dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
                 dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
                 cache.save(cache_name, dt_stats_summary[(cat_label, cat_num)], msg='Saving decision tree stats...')

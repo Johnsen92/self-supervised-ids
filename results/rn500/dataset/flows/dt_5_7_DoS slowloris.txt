@@ -1,4 +1,4 @@
-max. depth: 5, fitting time: 187.45s, accuracy: 99.886%, 99.781% benign samples, 0.219% attack samples
+max. depth: 5, fitting time: 181.58s, accuracy: 99.886%, 99.781% benign samples, 0.219% attack samples
 |--- Interarrival time <= 12815.46
 |   |--- Interarrival time <= 196.03
 |   |   |--- Destination port <= 80.50

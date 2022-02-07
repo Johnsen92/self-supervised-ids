@@ -115,6 +115,9 @@ class DTArgumentParser(ArgumentParser):
         # ---------------------- Stats & Cache -------------------------
         self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
         self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
+        self.add_argument('--plot', action='store_true', help='If set, plots the decision tree')
+        self.add_argument('-x', type=int, default=100, help='X dimension of plot')
+        self.add_argument('-y', type=int, default=80, help='Y dimension of plot')
         self.add_argument('-o', '--output_file', default='', help='Output file name')
         # ---------------------- Pytorch & Numpy -----------------------
         self.add_argument('--n_threads', default=2, type=int, help='Number of threads used by PyTorch')

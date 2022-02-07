@@ -1,4 +1,4 @@
-max. depth: 5, fitting time: 166.95s, accuracy: 100.000%, 100.000% benign samples, 0.000% attack samples
+max. depth: 5, fitting time: 163.09s, accuracy: 100.000%, 100.000% benign samples, 0.000% attack samples
 |--- Destination port <= 443.50
 |   |--- class: 0.0
 |--- Destination port >  443.50

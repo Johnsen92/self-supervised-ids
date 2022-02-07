@@ -1,4 +1,4 @@
-max. depth: 5, fitting time: 189.79s, accuracy: 96.598%, 94.267% benign samples, 5.733% attack samples
+max. depth: 5, fitting time: 181.90s, accuracy: 96.598%, 94.267% benign samples, 5.733% attack samples
 |--- Destination port <= 80.50
 |   |--- Packet Length <= 40.50
 |   |   |--- Source port <= 14097.00
