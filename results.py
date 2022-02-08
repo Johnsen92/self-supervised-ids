@@ -479,7 +479,7 @@ for ds, benign_category in datasets:
 
         # Calculate decision tree
         MAX_DEPTH = 5
-        dt_file_name = f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt'
+        dt_file_name = (f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt')
         dt_file = f'{data_analysis_dataset_dir}/{dt_file_name}'
         cache_name = f'dt_stats_ds{dataset_name}_ct{cat_num}_md{MAX_DEPTH}'
         if cat_num != int(benign_category):
@@ -490,7 +490,7 @@ for ds, benign_category in datasets:
                 add_parameter(parameter_list, '-f', ds)
                 add_parameter(parameter_list, '-t', str(cat_num))
                 add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
-                add_parameter(parameter_list, '-o', dt_file_name)
+                add_parameter(parameter_list, '-o', dt_file_name.replace(' ','_'))
                 add_parameter(parameter_list, '--random_seed', str(500))
                 add_parameter(parameter_list, '-c', str(benign_category))
                 add_parameter(parameter_list, '--plot')

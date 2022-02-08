@@ -124,7 +124,7 @@ def main(args):
         fig = plt.figure(figsize=(args.x, args.y))
         _ = plot_tree(dtc, 
                         feature_names=feature_names,  
-                        class_names=['attack', 'benign'],
+                        class_names=['benign', 'attack'],
                         filled=True)
         fig.savefig(out_f_plot)
 
