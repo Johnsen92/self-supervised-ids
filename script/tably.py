@@ -12,7 +12,7 @@ PREAMBLE = r"""\documentclass[11pt, a4paper]{article}
 \usepackage{booktabs}
 \begin{document}"""
 
-HEADER = r"""\begin{{table}}[htb]
+HEADER = r"""\begin{{table}}[!htbp]
 {indent}\centering
 {indent}\scalebox{{{scalefactor}}}{{\begin{{tabular}}{{@{{}}{align}@{{}}}}
 {indent}{indent}\toprule"""
