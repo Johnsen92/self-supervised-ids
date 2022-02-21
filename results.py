@@ -481,26 +481,22 @@ for ds, benign_category in datasets:
         MAX_DEPTH = 5
         dt_file_name = (f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt')
         dt_file = f'{data_analysis_dataset_dir}/{dt_file_name}'
-        cache_name = f'dt_stats_ds{dataset_name}_ct{cat_num}_md{MAX_DEPTH}'
         if cat_num != int(benign_category):
-            if not os.path.isfile(dt_file):
-                # Generate decision trees
-                parameter_list = []
-                add_parameter(parameter_list, '-m', str(MAX_DEPTH))
-                add_parameter(parameter_list, '-f', ds)
-                add_parameter(parameter_list, '-t', str(cat_num))
-                add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
-                add_parameter(parameter_list, '-o', dt_file_name.replace(' ','_'))
-                add_parameter(parameter_list, '--random_seed', str(500))
-                add_parameter(parameter_list, '-c', str(benign_category))
-                add_parameter(parameter_list, '--plot')
-                dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
-                dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
-                cache.save(cache_name, dt_stats_summary[(cat_label, cat_num)], msg='Saving decision tree stats...')
-            else:
-                print(f'Skipping DT generation for dataset {dataset_name}, category {cat_label}...')
-                dt_stats_summary[(cat_label, cat_num)] = cache.load(cache_name, msg='Loading decision tree stats...')
+            # Generate decision trees
+            parameter_list = []
+            add_parameter(parameter_list, '-m', str(MAX_DEPTH))
+            add_parameter(parameter_list, '-f', ds)
+            add_parameter(parameter_list, '-t', str(cat_num))
+            add_parameter(parameter_list, '-S', data_analysis_dataset_dir)
+            add_parameter(parameter_list, '-o', dt_file_name.replace(' ','_'))
+            add_parameter(parameter_list, '--random_seed', str(500))
+            add_parameter(parameter_list, '-c', str(benign_category))
+            add_parameter(parameter_list, '--plot')
+            dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
+            dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
+            
     dt_summary_file = f'{data_analysis_dataset_dir}/dt_md{MAX_DEPTH}_summary.csv'
+    
     with open(dt_summary_file, 'w+') as f:
         writer = csv.writer(f, delimiter=',')
         first = True
@@ -509,6 +505,11 @@ for ds, benign_category in datasets:
                 writer.writerow(['Category', '#'] + [k for k, _ in stats.items()])
                 first = False
             writer.writerow([cat_label, cat_num] + [v for _, v in stats.items()])
+
+    dt_summary_tex_file = f'{dt_summary_file[:-4]}.tex'
+    if os.path.exists(dt_summary_tex_file):
+        os.remove(dt_summary_tex_file)
+    os.system(f'python3 ./script/tably.py {dt_summary_file} -o {dt_summary_tex_file} -l "table:results:dtc:{dataset_name}" -c "Results of the DTC discerning between benign packets and packets of a certain attack type of dataset {dataset_name}"')
 
 
 # # Remove and make plots dir

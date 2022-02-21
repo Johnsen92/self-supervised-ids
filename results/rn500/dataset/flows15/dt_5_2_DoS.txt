@@ -1,0 +1,89 @@
+max. depth: 5, fitting time: 304.62s, accuracy: 99.901%, 99.895% benign samples, 0.105% attack samples
+|--- Packet Length <= 51.50
+|   |--- Destination port <= 110.50
+|   |   |--- Destination port <= 22.50
+|   |   |   |--- Destination port <= 15.50
+|   |   |   |   |--- class: 1.0
+|   |   |   |--- Destination port >  15.50
+|   |   |   |   |--- Source port <= 32919.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Source port >  32919.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |--- Destination port >  22.50
+|   |   |   |--- Destination port <= 74.00
+|   |   |   |   |--- Interarrival time <= 58.37
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- Interarrival time >  58.37
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |--- Destination port >  74.00
+|   |   |   |   |--- Source port <= 64125.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Source port >  64125.50
+|   |   |   |   |   |--- class: 0.0
+|   |--- Destination port >  110.50
+|   |   |--- Destination port <= 384.00
+|   |   |   |--- Destination port <= 163.50
+|   |   |   |   |--- Destination port <= 137.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Destination port >  137.00
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |--- Destination port >  163.50
+|   |   |   |   |--- class: 0.0
+|   |   |--- Destination port >  384.00
+|   |   |   |--- Destination port <= 444.00
+|   |   |   |   |--- Source port <= 55821.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |   |--- Source port >  55821.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Destination port >  444.00
+|   |   |   |   |--- Destination port <= 3332.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Destination port >  3332.00
+|   |   |   |   |   |--- class: 0.0
+|--- Packet Length >  51.50
+|   |--- Interarrival time <= 45.08
+|   |   |--- Packet Length <= 1415.50
+|   |   |   |--- Interarrival time <= 13.16
+|   |   |   |   |--- Interarrival time <= 0.02
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Interarrival time >  0.02
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Interarrival time >  13.16
+|   |   |   |   |--- PSH Flag <= 0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- PSH Flag >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |--- Packet Length >  1415.50
+|   |   |   |--- Interarrival time <= 0.73
+|   |   |   |   |--- PSH Flag <= 0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- PSH Flag >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Interarrival time >  0.73
+|   |   |   |   |--- Direction <= 0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Direction >  0.50
+|   |   |   |   |   |--- class: 0.0
+|   |--- Interarrival time >  45.08
+|   |   |--- PSH Flag <= 0.50
+|   |   |   |--- Packet Length <= 52.50
+|   |   |   |   |--- Destination port <= 5901.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Destination port >  5901.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |--- Packet Length >  52.50
+|   |   |   |   |--- Packet Length <= 1496.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Packet Length >  1496.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |--- PSH Flag >  0.50
+|   |   |   |--- Packet Length <= 56.50
+|   |   |   |   |--- Destination port <= 23.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Destination port >  23.00
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |--- Packet Length >  56.50
+|   |   |   |   |--- Direction <= 0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Direction >  0.50
+|   |   |   |   |   |--- class: 0.0

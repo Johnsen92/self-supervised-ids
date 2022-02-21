@@ -1,0 +1,20 @@
+max. depth: 5, fitting time: 165.84s, accuracy: 99.990%, 99.976% benign samples, 0.024% attack samples
+|--- Destination port <= 21.50
+|   |--- Source port <= 52459.00
+|   |   |--- Source port <= 52110.00
+|   |   |   |--- class: 0.0
+|   |   |--- Source port >  52110.00
+|   |   |   |--- Interarrival time <= 0.44
+|   |   |   |   |--- RST Flag <= 0.50
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- RST Flag >  0.50
+|   |   |   |   |   |--- class: 1.0
+|   |   |   |--- Interarrival time >  0.44
+|   |   |   |   |--- Packet Length <= 49.00
+|   |   |   |   |   |--- class: 0.0
+|   |   |   |   |--- Packet Length >  49.00
+|   |   |   |   |   |--- class: 1.0
+|   |--- Source port >  52459.00
+|   |   |--- class: 0.0
+|--- Destination port >  21.50
+|   |--- class: 0.0

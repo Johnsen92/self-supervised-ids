@@ -1,0 +1,20 @@
+\begin{table}[htb]
+    \centering
+    \scalebox{1.0}{\begin{tabular}{@{}ccccccccccccc@{}}
+        \toprule
+        Category & \# & max\_depth & depth & fitting\_time s & val. accuracy \% & train. accuracy \% & packets\_benign & packets\_attack & packets\_total & benign\_rate \% & attack\_rate \% & above\_guessing \\
+        \midrule
+        Analysis & 0 & 5 & 5 & 304.18 & 99.9933 & 99.9932 & 6126001 & 410 & 6126411 & 99.9933 & 0.0067 & False \\
+        Backdoors & 1 & 5 & 5 & 303.74 & 99.9942 & 99.9949 & 6121408 & 365 & 6121773 & 99.994 & 0.006 & True \\
+        DoS & 2 & 5 & 5 & 304.62 & 99.9013 & 99.8971 & 6131480 & 6423 & 6137903 & 99.8954 & 0.1046 & True \\
+        Exploits & 3 & 5 & 5 & 314.37 & 99.3061 & 99.2947 & 6128759 & 59448 & 6188207 & 99.0393 & 0.9607 & True \\
+        Fuzzers & 4 & 5 & 5 & 305.56 & 99.7286 & 99.7259 & 6132964 & 19750 & 6152714 & 99.679 & 0.321 & True \\
+        Generic & 5 & 5 & 5 & 295.59 & 99.8845 & 99.8843 & 6128427 & 7911 & 6136338 & 99.8711 & 0.1289 & True \\
+        Reconnaissance & 7 & 5 & 5 & 304.39 & 99.952 & 99.9531 & 6128576 & 6433 & 6135009 & 99.8951 & 0.1049 & True \\
+        Shellcode & 8 & 5 & 5 & 308.13 & 99.9941 & 99.9938 & 6128576 & 644 & 6129220 & 99.9895 & 0.0105 & True \\
+        Worms & 9 & 5 & 5 & 303.91 & 99.9961 & 99.9936 & 6128576 & 236 & 6128812 & 99.9961 & 0.0039 & False \\
+        \bottomrule
+    \end{tabular}}
+    \caption{Results of the DTC discerning between benign packets and packets of a certain attack type of dataset flows15}
+    \label{table:results:dtc:flows15}
+\end{table}
