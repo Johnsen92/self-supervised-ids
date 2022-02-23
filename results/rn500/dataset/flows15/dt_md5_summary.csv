@@ -1,10 +1,10 @@
 Category,#,dth,fit. [s],val. acc.,tr. acc.,benign %,attack %,> guess
-Analysis,0
-Backdoors,1
-DoS,2
-Exploits,3
-Fuzzers,4
-Generic,5
-Reconnaissance,7
-Shellcode,8
-Worms,9
+Analysis,0,5,304.18,99.9933,99.9932,99.9933,0.0067,False
+Backdoors,1,5,303.74,99.9942,99.9949,99.994,0.006,True
+DoS,2,5,304.62,99.9013,99.8971,99.8954,0.1046,True
+Exploits,3,5,314.37,99.3061,99.2947,99.0393,0.9607,True
+Fuzzers,4,5,305.56,99.7286,99.7259,99.679,0.321,True
+Generic,5,5,295.59,99.8845,99.8843,99.8711,0.1289,True
+Reconnaissance,7,5,304.39,99.952,99.9531,99.8951,0.1049,True
+Shellcode,8,5,308.13,99.9941,99.9938,99.9895,0.0105,True
+Worms,9,5,303.91,99.9961,99.9936,99.9961,0.0039,False

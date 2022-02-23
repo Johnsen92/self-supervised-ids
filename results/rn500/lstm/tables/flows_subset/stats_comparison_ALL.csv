@@ -2,7 +2,7 @@
 Proxy task, NONE, PREDICT, OBSCURE, AUTO, ID, COMPOSITE
 Epochs Supervised, 600, 600, 600, 600, 600, 600
 Training percentage, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %, 10.00 %
-Specialized subset, 10_flows, 10_flows, 10_flows, 10_flows, 10_flows, 10_flows
+Specialized subset, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10, CIC17_10
 
 Training metrics,,,,,,
 Best epoch, 593, 407, 407, 35, 257, 41

@@ -514,7 +514,7 @@ for ds, benign_category in datasets:
             if first:
                 writer.writerow(['Category', '#'] + [_DT_LABELS[k] for k, _ in stats.items() if k in _DT_LABELS.keys()])
                 first = False
-            writer.writerow([cat_label, cat_num] + [v for _, v in stats.items() if k in _DT_LABELS.keys()])
+            writer.writerow([cat_label, cat_num] + [v for k, v in stats.items() if k in _DT_LABELS.keys()])
 
     dt_summary_tex_file = f'{dt_summary_file[:-4]}.tex'
     if os.path.exists(dt_summary_tex_file):
