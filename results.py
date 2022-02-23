@@ -23,6 +23,17 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 
+_DT_LABELS = {
+    "max_depth" : "m. depth",
+    "depth" : "depth",
+    "fitting_time s" : "fit. [s]",
+    "val. accuracy %" : "val. acc.",
+    "train. accuracy %" : "tr. acc.",
+    "benign_rate %" : "% benign",
+    "attack_rate %" : "% attack",
+    "above_guessing" : "> guess"
+}
+
 class Mode(Enum):
     ALL = 0,
     STATS = 1,
@@ -502,7 +513,7 @@ for ds, benign_category in datasets:
         first = True
         for (cat_label, cat_num), stats in dt_stats_summary.items():
             if first:
-                writer.writerow(['Category', '#'] + [k for k, _ in stats.items()])
+                writer.writerow(['Category', '#'] + [_DT_LABELS[k] for k, _ in stats.items() if k in _DT_LABELS.keys()])
                 first = False
             writer.writerow([cat_label, cat_num] + [v for _, v in stats.items()])
 

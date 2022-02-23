@@ -1,4 +1,4 @@
-Category,#,max_depth,depth,fitting_time s,val. accuracy %,train. accuracy %,packets_benign,packets_attack,packets_total,benign_rate %,attack_rate %,above_guessing
+Category,#,m. depth,depth,fit. [s],val. acc.,tr. acc.,% benign,% attack,> guess
 Analysis,0,5,5,304.18,99.9933,99.9932,6126001,410,6126411,99.9933,0.0067,False
 Backdoors,1,5,5,303.74,99.9942,99.9949,6121408,365,6121773,99.994,0.006,True
 DoS,2,5,5,304.62,99.9013,99.8971,6131480,6423,6137903,99.8954,0.1046,True

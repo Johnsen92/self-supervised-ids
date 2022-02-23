@@ -1,4 +1,4 @@
-Category,#,max_depth,depth,fitting_time s,val. accuracy %,train. accuracy %,packets_benign,packets_attack,packets_total,benign_rate %,attack_rate %,above_guessing
+Category,#,m. depth,depth,fit. [s],val. acc.,tr. acc.,% benign,% attack,> guess
 Botnet ARES,0,5,5,163.93,99.9865,99.9865,2080783,1134,2081917,99.9455,0.0545,True
 FTP-Patator,1,5,5,165.84,99.99,99.9901,2078383,494,2078877,99.9762,0.0238,True
 SSH-Patator,2,5,5,166.52,99.7815,99.7939,2082736,14080,2096816,99.3285,0.6715,True
