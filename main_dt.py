@@ -45,9 +45,6 @@ def main(args):
     # Init cache
     general_cache = utils.Cache(cache_dir=args.cache_dir, key_prefix=id, disabled=args.no_cache, label='LSTM Cache')
 
-    # Extended stats directory for this run
-    extended_stats_dir = (args.stats_dir if args.stats_dir[-1] == '/' else args.stats_dir + '/') + id + '/'
-
     tree_cache_file = 'tree_tuple'
 
     if general_cache.exists(tree_cache_file):
@@ -101,7 +98,7 @@ def main(args):
         stats['val. accuracy %'] = round(val_score*100.0, 4)
         stats['train. accuracy %'] = round(train_score*100.0, 4)
         stats['packets_benign'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.benign_category]).n_packets
-        stats['packets_attack'] = FlowsSubset(val_data, dataset.mapping, ditch=[-1, args.target_category]).n_packets
+        stats['packets_attack'] = FlowsSubset(val_data, dataset.mapping, ditch=([-1, args.target_category] if args.target_category != -1 else [args.benign_category])).n_packets
         stats['packets_total'] = stats['packets_benign'] + stats['packets_attack']
         stats['benign_rate %'] = round(float(stats['packets_benign'])/float(stats['packets_total'])*100.0, 4)
         stats['attack_rate %'] = round(float(stats['packets_attack'])/float(stats['packets_total'])*100.0, 4)
@@ -110,18 +107,24 @@ def main(args):
         general_cache.save(tree_cache_file, (decision_tree, dtc, stats, feature_names), msg='Storing tree tuple')
 
 
+    # Save DT
     r = export_text(decision_tree, feature_names=feature_names)
     if args.output_file == '':
-        out_f = f'{args.stats_dir}/{uid}.txt'
-        out_f_plot = f'{args.stats_dir}/{uid}.png'
+        out_f = f'{args.trees_dir}/{uid}.txt'
+        out_f_plot = f'{args.plots_dir}/{uid}.png'
     else:
-        out_f = f'{args.stats_dir}/{args.output_file}'
-        out_f_plot = out_f[:-4] + '.png'
+        out_f = f'{args.trees_dir}/{args.output_file}'
+        out_f_plot = f'{args.plots_dir}/{args.output_file[:-4]}' + '.png'
 
     # Write to output file
     with open(out_f, 'w+') as f:
         f.write(f'max. depth: {args.max_depth}, fitting time: {stats["fitting_time s"]:.2f}s, accuracy: {stats["val. accuracy %"]:.3f}%, {stats["benign_rate %"]:.3f}% benign samples, {stats["attack_rate %"]:.3f}% attack samples\n')
         f.write(r)
+
+    # Save stats
+    stats_file = f'{args.stats_dir}/{uid}_stats.txt'
+    with open(stats_file, 'w+') as f:
+        f.write(str(stats))
 
     # If plot flag is set, plot decision tree
     if args.plot:

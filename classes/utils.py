@@ -102,7 +102,9 @@ class DTArgumentParser(ArgumentParser):
         self.add_argument('-f', '--data_file', help='Pickle file containing the training data', required=True)
         self.add_argument('-d', '--debug', action='store_true', help='Debug flag')
         self.add_argument('-C', '--cache_dir', default='./cache/', help='Cache folder')
-        self.add_argument('-S', '--stats_dir', default='./stats/', help='Statistics folder')
+        self.add_argument('-S', '--stats_dir', default='./stats/', help='Output folder for statistics')
+        self.add_argument('-T', '--trees_dir', default='./trees/', help='Output folder for trees in text')
+        self.add_argument('-P', '--plots_dir', default='./plots/', help='Output folder for tree plots')
         # ---------------------- Model parameters ----------------------
         self.add_argument('-m', '--max_depth', default=6, type=int, help='Maximum depth of decision tree')
         # ---------------------- Training config -----------------------
