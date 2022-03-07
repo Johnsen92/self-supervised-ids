@@ -451,6 +451,9 @@ for root, dir, files in path:
 
 # --------------------------------------------------------------------------------------------------
 
+def generate_dataset_analysis():
+    
+
 # Generate data analysis tables of datasets
 headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
 data_analysis_dir = f'{args.stats_dir}/dataset/'
@@ -461,6 +464,7 @@ datasets = list(set(datasets))
 cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
 for ds, benign_category in datasets:
     dataset_name = os.path.basename(ds)[:-7]
+    dataset_mapping_name = f'{dataset_name}_mapping'
     features_file = f'{os.path.split(ds)[0]}/{dataset_name}_features.json'
     assert os.path.isfile(features_file), f'{features_file} not found...'
     with open(features_file, 'r') as f:
@@ -470,12 +474,15 @@ for ds, benign_category in datasets:
     make_dir(data_analysis_dataset_dir)
 
     # Load datatset
-    # cache_filename = f'dataset_normalized_{dataset_name}'
-    # if cache.exists(cache_filename, no_prefix=True):
-    #     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
-    # else:
-    #     dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
-    # dataset = FlowsSubset(dataset, dataset.mapping)
+    cache_filename = f'dataset_normalized_{dataset_name}'
+    if cache.exists(cache_filename, no_prefix=True):
+        dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    else:
+        dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
+    dataset = FlowsSubset(dataset, dataset.mapping)
+
+    if not cache.exists(dataset_mapping_name):
+        cache.save(dataset_mapping_name, dataset.mapping, no_prefix=True)
 
     # # Calculate statistical data
     # dataset_variance = dataset.subset_variance
@@ -497,6 +504,8 @@ for ds, benign_category in datasets:
     #         print(f'Skipping statistical analysis for dataset {dataset_name}, category {cat_label}...')
 
     # Calculate decision tree
+    if cache.exists(dataset_mapping_name):
+        dataset_mapping = cache.load(dataset_mapping_name, no_prefix=True)
     dtc_dataset_dir = f'{dtc_dir}/{dataset_name}'
     make_dir(dtc_dataset_dir)
     dtc_stats_dir = f'{dtc_dataset_dir}/stats'
@@ -512,7 +521,7 @@ for ds, benign_category in datasets:
     dt_summary_name = f'dt_{dataset_name}_md{MAX_DEPTH}_summary'
     dt_summary_file = f'{dtc_tables_dir}/{dt_summary_name}.csv'
     if not cache.exists(dt_summary_name, no_prefix=True):
-        for cat_label, cat_num in dataset.mapping.items():
+        for cat_label, cat_num in dataset_mapping:
             dt_file_name = (f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt')
             dt_file = f'{dtc_dataset_dir}/{dt_file_name}'
             if cat_num != int(benign_category):
