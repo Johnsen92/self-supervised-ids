@@ -1,7 +1,8 @@
 import sys
 from torch.utils.data import random_split, DataLoader
-from classes import utils
-from classes.datasets import Flows, FlowsSubset
+from classes import utils, datasets, statistics
+from classes.statistics import Stats, Epoch
+from classes.datasets import Flows, FlowsSubset, Packets
 import torch
 import os.path
 from datetime import datetime
@@ -48,7 +49,7 @@ def main(args):
     tree_cache_file = 'tree_tuple'
 
     if general_cache.exists(tree_cache_file):
-        decision_tree, dtc, stats, feature_names = general_cache.load(tree_cache_file)
+        decision_tree, dtc, stats, run_stats, feature_names = general_cache.load(tree_cache_file)
     else:
         # Load dataset and normalize data, or load from cache
         cache_filename = f'dataset_normalized_{data_filename}'
@@ -76,10 +77,33 @@ def main(args):
         # Split dataset into pretraining, training and validation set
         train_data, val_data = subset.split([training_size, validation_size], stratify=True)
 
+        # Gather model parameters for statistic
+        model_parameters = {
+            'Max depth' : args.max_depth
+        }
+
+        # Initialize statistics
+        run_stats = Stats(
+            stats_dir = args.stats_dir,
+            benign = args.benign_category,
+            category_mapping = dataset.mapping,
+            proxy_task = 'NONE',
+            pretrain_percent = 0,
+            train_percent = args.train_percent,
+            val_percent = args.val_percent,
+            n_epochs = 0,
+            n_epochs_pretraining = 0,
+            batch_size = 0,
+            learning_rate = 0,
+            model_parameters = model_parameters,
+            random_seed = random_seed,
+            subset = ''
+        )
+        
         stats = {}
         feature_names = [v for v in features.values()]
 
-        # Init model
+        # # Init model
         dtc = DecisionTreeClassifier(random_state=0, max_depth=args.max_depth)
 
         # Fit data
@@ -87,9 +111,30 @@ def main(args):
         start = timer()
         decision_tree = dtc.fit(train_data.x_catted, train_data.y_catted)
         end = timer()
+
         val_score = decision_tree.score(val_data.x_catted, val_data.y_catted)
         train_score = decision_tree.score(train_data.x_catted, train_data.y_catted)
         print(f'took {end - start} seconds with a validation accuracy score of {(val_score*100.0):.2f}%.')
+
+        run_stats.new_epoch(
+            epoch=0, 
+            training_time=statistics.formatTime(int(end - start)), 
+            training_loss=0
+        )
+
+        # Validation data loader
+        raw_packet_dataset = Packets(val_data.x_catted, val_data.y_catted, val_data.c_catted)
+        val_loader = DataLoader(dataset=raw_packet_dataset, batch_size=args.val_batch_size, shuffle=True, num_workers=args.n_worker_threads, drop_last=False)
+
+        # Validate dtc
+        print(f'Validating DTC with ID {id}...', end='')
+        for data, targets, categories in val_loader:
+            predicted = torch.from_numpy(dtc.predict(data))
+            
+
+            # Evaluate results
+            run_stats.last_epoch.add_batch(predicted, targets.view(-1), categories.view(-1))
+        print(f'done')
 
         # Calculate stats
         stats['max_depth'] = args.max_depth
@@ -104,7 +149,7 @@ def main(args):
         stats['attack_rate %'] = round(float(stats['packets_attack'])/float(stats['packets_total'])*100.0, 4)
         stats['above_guessing'] = stats['val. accuracy %'] > stats['benign_rate %']
 
-        general_cache.save(tree_cache_file, (decision_tree, dtc, stats, feature_names), msg='Storing tree tuple')
+        general_cache.save(tree_cache_file, (decision_tree, dtc, stats, run_stats, feature_names), msg='Storing tree tuple')
 
 
     # Save DT
@@ -122,9 +167,13 @@ def main(args):
         f.write(r)
 
     # Save stats
-    stats_file = f'{args.stats_dir}/{uid}_stats.txt'
+    stats_file = f'{args.stats_dir}/{id}_stats.txt'
     with open(stats_file, 'w+') as f:
         f.write(str(stats))
+
+    # # Save run stats
+    run_stats_file = f'{id}_run_stats.csv'
+    run_stats.save_stats(file_name=run_stats_file)
 
     # If plot flag is set, plot decision tree
     if args.plot:

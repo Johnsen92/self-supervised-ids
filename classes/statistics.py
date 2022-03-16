@@ -171,9 +171,10 @@ class ClassStats():
             if results[index]:
                 self.right[c_val] += 1
 
-    def save_stats(self, proxy_task):
+    def save_stats(self, proxy_task, file_name=''):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        with open(self.stats_dir + 'class_stats_' + now + '.csv', 'w') as f:
+        stats_file_name = file_name if file_name else f'class_stats_{now}.csv'
+        with open(os.path.join(self.stats_dir, stats_file_name), 'w') as f:
             f.write(f'Class, #, Occurance, Right, {proxy_task}\n')
             for k,v in self.mapping.items():
                 f.write(f'{k}, {v}, {self.number[v]}, {self.right[v]}, {self.accuracy_per_category[v]*100.0:.3f}%\n')
@@ -422,10 +423,11 @@ class Stats():
                 f.write(f'{epoch}, {loss:.6f}\n')
         print('done.')
 
-    def save_stats(self):
+    def save_stats(self, file_name=''):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
+        stats_file_name = file_name if file_name else f'stats_{now}.csv'
         print('Save statistics...', end='')
-        with open(self.stats_dir + 'stats_' + now + '.csv', 'w') as f:
+        with open(os.path.join(self.stats_dir, stats_file_name), 'w') as f:
             f.write(f'Proxy task, {self.proxy_task if self.pretrain_percent > 0 else "NONE"}\n')
             f.write(f'Epochs Supervised, {self.n_epochs}\n')
             f.write(f'Training percentage, {(self.train_percent / 10.0):.2f} %\n')
@@ -443,7 +445,7 @@ class Stats():
             f.write(f'Missed alarm rate, {self.missed_alarm_rate*100.0:.3f} %\n')
         print('done.')
         if not self.class_stats == None:
-            self.class_stats.save_stats(self.proxy_task)
+            self.class_stats.save_stats(self.proxy_task, file_name)
 
     def save_stats_complete(self):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
@@ -483,17 +485,6 @@ class Stats():
 
     def plot_losses(self):
         pass
-        # assert not self.losses == None
-        # x = np.array(range(len(self.losses)), dtype=float)
-        # x = np.round(x/len(self.losses)*100,3)
-        # y = np.array(self.losses, dtype=float)
-        # fig, ax = plt.subplots()
-        # ax.plot(x, y)
-        # ax.set(xlabel='% of Training', ylabel='Loss', title='Loss progression')
-        # ax.grid()
-        # now = datetime.now().strftime('%d%m%Y_%H-%M-%S')
-        # fig.savefig(self.stats_dir + 'loss_' + now + '.png')
-        #plt.show()
 
     def add_epoch(self, epoch):
         self.epochs.append(epoch)

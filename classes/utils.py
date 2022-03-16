@@ -115,6 +115,7 @@ class DTArgumentParser(ArgumentParser):
         self.add_argument('--random_seed', default=0, type=int, help='Seed for random initialization of NP, Torch and Python randomizers')
         self.add_argument('--max_sequence_length', default=100, type=int, help='Longer data sequences will be pruned to this length')
         # ---------------------- Stats & Cache -------------------------
+        self.add_argument('--val_batch_size', type=int, default=4096, help='Batch size used for validation data loader')
         self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
         self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
         self.add_argument('--plot', action='store_true', help='If set, plots the decision tree')

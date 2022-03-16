@@ -146,6 +146,10 @@ def plot_pdp(ids, input_dir, output_dir, config_file):
     pdp = PDPlot(config, mapping, pd_data_list, plot_dir=output_dir, base_name=dataroot_filename)
     pdp.plot_all()
 
+def remake_dir(dir):
+    rm_dir(dir)
+    make_dir(dir)
+
 def make_dir(dir):
     if not os.path.exists(dir):
         try:
@@ -449,10 +453,8 @@ for root, dir, files in path:
 
 
 
-# --------------------------------------------------------------------------------------------------
 
-def generate_dataset_analysis():
-    
+# --------------------------------------------------------------------------------------------------
 
 # Generate data analysis tables of datasets
 headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
@@ -474,15 +476,15 @@ for ds, benign_category in datasets:
     make_dir(data_analysis_dataset_dir)
 
     # Load datatset
-    cache_filename = f'dataset_normalized_{dataset_name}'
-    if cache.exists(cache_filename, no_prefix=True):
-        dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
-    else:
-        dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
-    dataset = FlowsSubset(dataset, dataset.mapping)
+    # cache_filename = f'dataset_normalized_{dataset_name}'
+    # if cache.exists(cache_filename, no_prefix=True):
+    #     dataset = cache.load(cache_filename, no_prefix=True, msg='Loading normalized dataset')
+    # else:
+    #     dataset = Flows(data_pickle=args.data_file, cache=cache, max_length=args.max_sequence_length)
+    # dataset = FlowsSubset(dataset, dataset.mapping)
 
-    if not cache.exists(dataset_mapping_name):
-        cache.save(dataset_mapping_name, dataset.mapping, no_prefix=True)
+    # if not cache.exists(dataset_mapping_name):
+    #     cache.save(dataset_mapping_name, dataset.mapping, no_prefix=True)
 
     # # Calculate statistical data
     # dataset_variance = dataset.subset_variance
@@ -504,44 +506,46 @@ for ds, benign_category in datasets:
     #         print(f'Skipping statistical analysis for dataset {dataset_name}, category {cat_label}...')
 
     # Calculate decision tree
-    if cache.exists(dataset_mapping_name):
+    if cache.exists(dataset_mapping_name, no_prefix=True):
         dataset_mapping = cache.load(dataset_mapping_name, no_prefix=True)
+    else:
+        raise Exception(f'Dataset mapping \'{dataset_mapping}\' must exist in cache')
     dtc_dataset_dir = f'{dtc_dir}/{dataset_name}'
     make_dir(dtc_dataset_dir)
     dtc_stats_dir = f'{dtc_dataset_dir}/stats'
     dtc_plots_dir = f'{dtc_dataset_dir}/plots'
     dtc_tables_dir = f'{dtc_dataset_dir}/tables'
     dtc_trees_dir = f'{dtc_dataset_dir}/trees'
-    make_dir(dtc_stats_dir)
-    make_dir(dtc_plots_dir)
-    make_dir(dtc_tables_dir)
-    make_dir(dtc_trees_dir)
+    remake_dir(dtc_stats_dir)
+    remake_dir(dtc_plots_dir)
+    remake_dir(dtc_tables_dir)
+    remake_dir(dtc_trees_dir)
     dt_stats_summary = {}
-    MAX_DEPTH = 5
+    MAX_DEPTH = 20
     dt_summary_name = f'dt_{dataset_name}_md{MAX_DEPTH}_summary'
     dt_summary_file = f'{dtc_tables_dir}/{dt_summary_name}.csv'
-    if not cache.exists(dt_summary_name, no_prefix=True):
-        for cat_label, cat_num in dataset_mapping:
-            dt_file_name = (f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt')
-            dt_file = f'{dtc_dataset_dir}/{dt_file_name}'
-            if cat_num != int(benign_category):
-                # Generate decision trees
-                parameter_list = []
-                add_parameter(parameter_list, '-m', str(MAX_DEPTH))
-                add_parameter(parameter_list, '-f', ds)
-                add_parameter(parameter_list, '-t', str(cat_num))
-                add_parameter(parameter_list, '-S', dtc_stats_dir)
-                add_parameter(parameter_list, '-T', dtc_trees_dir)
-                add_parameter(parameter_list, '-P', dtc_plots_dir)
-                add_parameter(parameter_list, '-o', dt_file_name.replace(' ','_'))
-                add_parameter(parameter_list, '--random_seed', str(500))
-                add_parameter(parameter_list, '-c', str(benign_category))
-                add_parameter(parameter_list, '--plot')
-                dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
-                dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
-        cache.save(dt_summary_name, dt_stats_summary, no_prefix=True) 
-    else:
-        dt_stats_summary = cache.load(dt_summary_name, no_prefix=True)
+    #if not cache.exists(dt_summary_name, no_prefix=True):
+    for cat_label, cat_num in dataset_mapping.items():
+        dt_file_name = (f'dt_{MAX_DEPTH}_{cat_num}_{cat_label}.txt')
+        dt_file = f'{dtc_dataset_dir}/{dt_file_name}'
+        if cat_num != int(benign_category):
+            # Generate decision trees
+            parameter_list = []
+            add_parameter(parameter_list, '-m', str(MAX_DEPTH))
+            add_parameter(parameter_list, '-f', ds)
+            add_parameter(parameter_list, '-t', str(cat_num))
+            add_parameter(parameter_list, '-S', dtc_stats_dir)
+            add_parameter(parameter_list, '-T', dtc_trees_dir)
+            add_parameter(parameter_list, '-P', dtc_plots_dir)
+            add_parameter(parameter_list, '-o', dt_file_name.replace(' ','_'))
+            add_parameter(parameter_list, '--random_seed', str(500))
+            add_parameter(parameter_list, '-c', str(benign_category))
+            add_parameter(parameter_list, '--plot')
+            dt_arg_parser = DTArgumentParser('Decision Tree Argument Parser').parse_args(parameter_list)
+            dt_stats_summary[(cat_label, cat_num)] = train_dt(dt_arg_parser)
+        #cache.save(dt_summary_name, dt_stats_summary, no_prefix=True) 
+    #else:
+        #dt_stats_summary = cache.load(dt_summary_name, no_prefix=True)
 
     with open(dt_summary_file, 'w+') as f:
         writer = csv.writer(f, delimiter=',')

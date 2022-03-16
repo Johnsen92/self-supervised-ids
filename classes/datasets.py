@@ -369,4 +369,14 @@ class FlowsSubset(Subset):
     def __str__(self):
         return FlowsSubset.string(self._dist, self._ditch, self._mult)
 
-    
+class Packets(Dataset):
+    def __init__(self, x, y, category):
+        self.x = x
+        self.y = y
+        self.category = category
+
+    def __getitem__(self, i):
+        return self.x[i], self.y[i], self.category[i]
+
+    def __len__(self):
+        return len(self.y)
