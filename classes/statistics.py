@@ -445,7 +445,7 @@ class Stats():
             f.write(f'Missed alarm rate, {self.missed_alarm_rate*100.0:.3f} %\n')
         print('done.')
         if not self.class_stats == None:
-            self.class_stats.save_stats(self.proxy_task, file_name)
+            self.class_stats.save_stats(self.proxy_task, f'{file_name[:-4]}_class.csv')
 
     def save_stats_complete(self):
         now = datetime.now().strftime('%d%m%Y_%H-%M-%S')

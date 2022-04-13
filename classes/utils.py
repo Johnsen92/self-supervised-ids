@@ -9,14 +9,18 @@ import numpy as np
 import shutil
 from  argparse import ArgumentParser
 import random
+import time
 
 def make_dir(path):
-    if not os.path.exists(os.path.dirname(path)):
+    if not os.path.exists(path):
         try:
-            os.makedirs(os.path.dirname(path))
+            os.makedirs(path)
         except OSError as exc: # Guard against race condition
             if exc.errno != errno.EEXIST:
                 raise
+
+def rm_dir(dir):
+    shutil.rmtree(dir, ignore_errors=True)
 
 def numpy_sigmoid(x):
     return 1/(1+np.exp(-x))
@@ -119,6 +123,7 @@ class DTArgumentParser(ArgumentParser):
         self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
         self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
         self.add_argument('--plot', action='store_true', help='If set, plots the decision tree')
+        self.add_argument('--depth_analysis', action='store_true', help='If set, fit the tree with depths 1-max depth and save a summary to stats')
         self.add_argument('-x', type=int, default=25, help='X dimension of plot')
         self.add_argument('-y', type=int, default=20, help='Y dimension of plot')
         self.add_argument('-o', '--output_file', default='', help='Output file name')
