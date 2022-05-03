@@ -306,16 +306,15 @@ def gen_graphs(entries, mode, data_dir, out_dir, order=None):
     for o_f in out_files:
         out_files_str += o_f + ' '
 
-def gen_tables(base_dir, model, table_groups, ids, group_description):
+def gen_tables(table_dir, model, table_groups, ids, group_description, replace):
     # Generate CSV Tables
-    table_dir = f'{base_dir}/tables/'
     rm_dir(table_dir)
     for k, group_entries in table_groups.items():
         if len(group_entries) <= 1:
             continue
         group_dir = f'{table_dir}/{k}'
         print(f'Generating tables for model {model} group {k}...', end='')
-        gen_table(group_entries, Mode.ALL, stats_dir, group_dir, order=ids)
+        gen_table(group_entries, Mode.ALL, table_dir, group_dir, order=ids)
         print('done.')
 
     # Calculate scale factors for latex tables
@@ -326,7 +325,7 @@ def gen_tables(base_dir, model, table_groups, ids, group_description):
     for root, dir, files in path:
         for file in files:
             csv_file = os.path.join(root, file)
-            string_replace(csv_file, string_replace_list)
+            string_replace(csv_file, replace)
             if 'class_comparison' in file:
                 group_prefix = 'class'
             elif 'stats_comparison' in file:
@@ -343,8 +342,6 @@ def gen_dataset_stats_analysis(datasets):
     headers = ['Feature', '#', 'mean ds', 'mean cat', 'std ds', 'std cat', 'z', 'p']
     data_analysis_dir = f'{args.stats_dir}/dataset/'
     make_dir(data_analysis_dir)
-    dtc_dir = f'{args.stats_dir}/dtc'
-    make_dir(dtc_dir)
     datasets = list(set(datasets))
     cache = Cache(cache_dir=args.cache_dir, label='Results Cache')
     for ds, benign_category in datasets:
@@ -485,7 +482,7 @@ def gen_dataset_dtc_analysis(datasets):
         os.system(f'python3 ./script/tably.py {dt_summary_file} -o {dt_summary_tex_file} -l "table:results:dtc:{dataset_name}" -c "Results of the DTC discerning between benign packets and packets of a certain attack type of dataset {dataset_name}"')
         rm_dir(dtc_dataset_temp_dir)
 
-def gen_loss_plots(plots_dir, table_groups, ):
+def gen_loss_plots(plots_dir, table_groups):
     # Generate loss progression graphs
     graphs_dir = f'{plots_dir}/losses/'
     make_dir(graphs_dir)
@@ -518,7 +515,8 @@ def gen_pdp_plots(plots_dir, pdp_groups, pdp_data_dir):
         config = [config for _, config in pdp_ids][0]
         plot_pdp(ids, pdp_data_dir, pdp_dir, config)
 
-parser = argparse.ArgumentParser(description='Self-seupervised machine learning IDS')
+
+parser = argparse.ArgumentParser(description='Results script for self-seupervised machine learning IDS')
 parser.add_argument('-t', '--transformer_experiment_file', help='File with table of transformer experiments', required=True)
 parser.add_argument('-l', '--lstm_experiment_file', help='File with table of lstm experiments', required=True)
 parser.add_argument('-d', '--dtc_experiment_file', help='File with table of dtc experiments')
@@ -548,6 +546,13 @@ with open(args.string_replace, newline='') as string_replace_file_csv:
 
 
 for model, parameter_file in experiments:
+    base_dir = f'{args.stats_dir}/{model}'
+    stats_dir = f'{base_dir}/stats/'
+    log_dir = f'{base_dir}/runs/'
+    plots_dir = f'{base_dir}/plots/'
+    errorlog_dir = f'{args.stats_dir}/logs/'
+    trees_dir = f'{base_dir}/trees/'
+    table_dir = f'{base_dir}/tables/'
     table_groups[model] = {}
     i = 0
     while True:
@@ -564,6 +569,7 @@ for model, parameter_file in experiments:
     param_file_csv = open(parameter_file, newline='')
     rows = [row for row in csv.reader(param_file_csv, delimiter=',', quotechar='"')]
     datasets = []
+    make_dir(errorlog_dir)
     for i, row in enumerate(rows):
         if i == 1:
             parameters = row[3:]
@@ -580,17 +586,10 @@ for model, parameter_file in experiments:
             elif model == 'dt':
                 model_parser = DTArgumentParser(parameter_list)
                 train = train_dt
-            base_dir = f'{args.stats_dir}/{model}'
-            stats_dir = f'{base_dir}/stats/'
-            log_dir = f'{base_dir}/runs/'
-            errorlog_dir = f'{args.stats_dir}/logs/'
-            make_dir(errorlog_dir)
             add_parameter(parameter_list, '-S', stats_dir)
             if model != 'dt':
                 add_parameter(parameter_list, '-L', log_dir)
             else:
-                trees_dir = f'{base_dir}/trees/'
-                plots_dir = f'{base_dir}/plots/'
                 add_parameter(parameter_list, '-T', trees_dir)
                 add_parameter(parameter_list, '-P', plots_dir)
             if args.debug:
@@ -631,7 +630,13 @@ for model, parameter_file in experiments:
                     f.write(f'Error in run {id}')
                 print(f'An error occured during run {id}')
 
-    gen_tables(base_dir, model, table_groups[model], ids[model], f'groups_{model}.csv')
+            gen_tables(table_dir, model, table_groups[model], ids[model], f'groups_{model}.csv', string_replace_list)
+            if model != 'dt':
+                gen_loss_plots(plots_dir, table_groups[model])
+
+            # if model == 'LSTM':
+            #     gen_neuron_plots(args.plots_dir, neuron_ids, args.neuron_data_dir)
+            #     gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
 
 datasets = list(set(datasets))
 
@@ -646,11 +651,6 @@ gen_dataset_stats_analysis(datasets)
 # rm_dir(plots_dir)
 # make_dir(plots_dir)
 
-gen_loss_plots()
-
-gen_neuron_plots(args.plots_dir, neuron_ids, args.neuron_data_dir)
-
-gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
 
 
 

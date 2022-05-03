@@ -180,8 +180,8 @@ def main(args):
         # Save DT
         r = export_text(decision_tree, feature_names=feature_names)
         if args.output_file == '':
-            out_f = f'{args.trees_dir}/{uid}.txt'
-            out_f_plot = f'{args.plots_dir}/{uid}.png'
+            out_f = f'{args.trees_dir}/{id}.txt'
+            out_f_plot = f'{args.plots_dir}/{id}.png'
         else:
             out_f = f'{args.trees_dir}/{args.output_file}'
             out_f_plot = f'{args.plots_dir}/{args.output_file[:-4]}' + '.png'
