@@ -24,8 +24,7 @@ def plot_tree_graphviz(dtc, feature_names, class_names, file):
         filled=True, rounded=True,  
         special_characters=True)
     graph = graphviz.Source(dot_data, format='png')
-    print(file)
-    graph.render(filename=file)
+    graph.render(filename=file[:-4])
 
 
 def main(args):
@@ -213,13 +212,13 @@ def main(args):
 
         # If plot flag is set, plot decision tree
         if args.plot:
-            # plot_tree(dtc, feature_names, ['benign', 'attack'], out_f_plot)
-            fig = plt.figure(figsize=(args.x, args.y))
-            _ = plot_tree(dtc, 
-                            feature_names=feature_names,  
-                            class_names=['benign', 'attack'],
-                            filled=True)
-            fig.savefig(out_f_plot)
+            plot_tree_graphviz(dtc, feature_names, ['benign', 'attack'], out_f_plot)
+            # fig = plt.figure(figsize=(args.x, args.y))
+            # _ = plot_tree(dtc, 
+            #                 feature_names=feature_names,  
+            #                 class_names=['benign', 'attack'],
+            #                 filled=True)
+            # fig.savefig(out_f_plot)
 
     # Remove temp directories
     general_cache.clean()
