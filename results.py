@@ -232,13 +232,12 @@ def string_replace(file, string_replace_list):
     for v,k in string_replace_list.items():
         os.system(f"sed -i 's/\<{v}\>/{k}/g' {file}")
 
-def gen_table(entries, mode, data_dir, out_dir, order=None):
+def gen_table(entries, mode, data_dir, out_dir, model, order=None):
     regex = {}
-
     if mode == Mode.STATS or mode == Mode.ALL: 
         regex[Mode.STATS] = r"^stats_"
     if mode == Mode.CLASS or mode == Mode.ALL:
-        regex[Mode.CLASS] = r"class\_stats"
+        regex[Mode.CLASS] = r"(class\_stats)|(stats\_class)"
 
     data = {}
     experiments = {}
@@ -247,7 +246,14 @@ def gen_table(entries, mode, data_dir, out_dir, order=None):
         path = os.walk(data_dir)
         for root, dir, files in path:
             for file in files:
-                id = root.split('/')[-1]
+                if model == 'dt':
+                    match = re.match('(\w+_tc[a-zA-Z0-9]+)_\w+\.csv', file)
+                    if not match:
+                        continue
+                    else:
+                        id = match[1]
+                else:
+                    id = root.split('/')[-1]
                 if id in [id for id, _ in entries] and not re.search(rx, file) is None:
                     path = os.path.join(root, file)
                     experiments[path] = [exp for i, exp in entries if i == id][0]
@@ -306,7 +312,7 @@ def gen_graphs(entries, mode, data_dir, out_dir, order=None):
     for o_f in out_files:
         out_files_str += o_f + ' '
 
-def gen_tables(table_dir, model, table_groups, ids, group_description, replace):
+def gen_tables(table_dir, stats_dir, model, table_groups, ids, group_description, replace):
     # Generate CSV Tables
     rm_dir(table_dir)
     for k, group_entries in table_groups.items():
@@ -314,7 +320,7 @@ def gen_tables(table_dir, model, table_groups, ids, group_description, replace):
             continue
         group_dir = f'{table_dir}/{k}'
         print(f'Generating tables for model {model} group {k}...', end='')
-        gen_table(group_entries, Mode.ALL, table_dir, group_dir, order=ids)
+        gen_table(group_entries, Mode.ALL, stats_dir, group_dir, model, order=ids)
         print('done.')
 
     # Calculate scale factors for latex tables
@@ -437,15 +443,13 @@ def gen_dataset_dtc_analysis(datasets):
         else:
             raise Exception(f'Dataset mapping \'{dataset_mapping}\' must exist in cache')
         dtc_dataset_dir = f'{data_analysis_dir}/{dataset_name}'
-        dtc_dataset_temp_dir = f'{dtc_dataset_dir}/tmp'
         make_dir(dtc_dataset_dir)
-        make_dir(dtc_dataset_temp_dir)
-        dtc_stats_dir = f'{dtc_dataset_temp_dir}/stats'
-        dtc_plots_dir = f'{dtc_dataset_temp_dir}/plots'
-        dtc_tables_dir = f'{dtc_dataset_temp_dir}/tables'
-        dtc_trees_dir = f'{dtc_dataset_temp_dir}/trees'
+        dtc_stats_dir = f'{dtc_dataset_dir}/stats'
+        dtc_plots_dir = f'{dtc_dataset_dir}/plots'
+        dtc_tables_dir = f'{dtc_dataset_dir}/tables'
+        dtc_trees_dir = f'{dtc_dataset_dir}/trees'
         dt_stats_summary = {}
-        MAX_DEPTH = 20
+        MAX_DEPTH = 5
         dt_summary_name = f'dt_{dataset_name}_md{MAX_DEPTH}_summary'
         dt_summary_file = f'{data_analysis_dir}/{dt_summary_name}.csv'
         for i, (cat_label, cat_num) in enumerate(dataset_mapping.items()):
@@ -480,7 +484,6 @@ def gen_dataset_dtc_analysis(datasets):
         if os.path.exists(dt_summary_tex_file):
             os.remove(dt_summary_tex_file)
         os.system(f'python3 ./script/tably.py {dt_summary_file} -o {dt_summary_tex_file} -l "table:results:dtc:{dataset_name}" -c "Results of the DTC discerning between benign packets and packets of a certain attack type of dataset {dataset_name}"')
-        rm_dir(dtc_dataset_temp_dir)
 
 def gen_loss_plots(plots_dir, table_groups):
     # Generate loss progression graphs
@@ -630,26 +633,23 @@ for model, parameter_file in experiments:
                     f.write(f'Error in run {id}')
                 print(f'An error occured during run {id}')
 
-            gen_tables(table_dir, model, table_groups[model], ids[model], f'groups_{model}.csv', string_replace_list)
-            if model != 'dt':
-                gen_loss_plots(plots_dir, table_groups[model])
+    gen_tables(table_dir, stats_dir, model, table_groups[model], ids[model], f'groups_{model}.csv', string_replace_list)
+    if model != 'dt':
+        gen_loss_plots(plots_dir, table_groups[model])
 
-            # if model == 'LSTM':
-            #     gen_neuron_plots(args.plots_dir, neuron_ids, args.neuron_data_dir)
-            #     gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
+    # if model == 'LSTM':
+    #     gen_neuron_plots(args.plots_dir, neuron_ids, args.neuron_data_dir)
+    #     gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
+
+gen_dataset_dtc_analysis(datasets)
+
+sys.exit(0)
 
 datasets = list(set(datasets))
 
 gen_dataset_dtc_depth_analysis(datasets)
 
-gen_dataset_dtc_analysis(datasets)
-
 gen_dataset_stats_analysis(datasets)
-
-# # Remove and make plots dir
-# plots_dir = f'{base_dir}/plots/'
-# rm_dir(plots_dir)
-# make_dir(plots_dir)
 
 
 

@@ -1,9 +1,26 @@
 \begin{table}[!htbp]
     \centering
-    \scalebox{1.0}{\begin{tabular}{@{}c@{}}
+    \scalebox{1.0}{\begin{tabular}{@{}ccccc@{}}
         \toprule
-         \\
+         & 1.4.1 & 3.4.1 & 3.5.1 & 3.6.1 \\
         \midrule
+        Proxy task &  NONE &  NONE &  NONE &  NONE \\
+        Epochs Supervised &  50 &  50 &  200 &  600 \\
+        Training percentage &  90.00 \% &  10.00 \% &  1.00 \% &  10.00 \% \\
+        Specialized subset &   &   &   &  UNSW15\_10 \\
+         \\
+        Training metrics &  &  &  &  \\
+        Best epoch &  47 &  47 &  191 &  563 \\
+        Time to best epoch &  7h 0m &  1h 5m &  1h 0m &  0h 52m \\
+         \\
+        Performance metrics &  &  &  &  \\
+        Accuracy &  98.743 \% &  98.545 \% &  98.328 \% &  97.684 \% \\
+        Detection rate &  79.300 \% &  88.111 \% &  84.212 \% &  58.910 \% \\
+        Precision &  84.283 \% &  75.079 \% &  72.790 \% &  70.721 \% \\
+        Specificity &  99.457 \% &  98.928 \% &  98.845 \% &  99.106 \% \\
+        F1-Measure &  81.716 \% &  81.075 \% &  78.086 \% &  64.277 \% \\
+        False alarm rate &  15.717 \% &  24.921 \% &  27.210 \% &  29.279 \% \\
+        Missed alarm rate &  20.700 \% &  11.889 \% &  15.788 \% &  41.090 \% \\
         \bottomrule
     \end{tabular}}
     \caption{Experiments 1.4.1-4 with transformer encoder model trained in a purely supervised fashion on dataset UNSW-NB15.}

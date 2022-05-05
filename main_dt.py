@@ -10,11 +10,22 @@ import numpy as np
 from matplotlib import pyplot as plt
 import random
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.tree import export_text, plot_tree
+from sklearn.tree import export_text, plot_tree, export_graphviz
 from timeit import default_timer as timer
 import json
 from classes.utils import make_dir, rm_dir
 import csv
+import graphviz
+
+def plot_tree_graphviz(dtc, feature_names, class_names, file):
+    dot_data = export_graphviz(dtc, out_file=None, 
+        feature_names=feature_names,  
+        class_names=class_names,  
+        filled=True, rounded=True,  
+        special_characters=True)
+    graph = graphviz.Source(dot_data, format='png')
+    print(file)
+    graph.render(filename=file)
 
 
 def main(args):
@@ -202,6 +213,7 @@ def main(args):
 
         # If plot flag is set, plot decision tree
         if args.plot:
+            # plot_tree(dtc, feature_names, ['benign', 'attack'], out_f_plot)
             fig = plt.figure(figsize=(args.x, args.y))
             _ = plot_tree(dtc, 
                             feature_names=feature_names,  

@@ -1,9 +1,26 @@
 \begin{table}[!htbp]
     \centering
-    \scalebox{1.0}{\begin{tabular}{@{}c@{}}
+    \scalebox{1.0}{\begin{tabular}{@{}ccccc@{}}
         \toprule
-         \\
+         & 1.1.1 & 2.1.1 & 2.2.1 & 2.3.1 \\
         \midrule
+        Proxy task &  NONE &  NONE &  NONE &  NONE \\
+        Epochs Supervised &  50 &  50 &  200 &  600 \\
+        Training percentage &  90.00 \% &  10.00 \% &  1.00 \% &  10.00 \% \\
+        Specialized subset &   &   &   &  CIC17\_10 \\
+         \\
+        Training metrics &  &  &  &  \\
+        Best epoch &  45 &  49 &  191 &  593 \\
+        Time to best epoch &  10h 8m &  1h 34m &  1h 14m &  0h 43m \\
+         \\
+        Performance metrics &  &  &  &  \\
+        Accuracy &  99.796 \% &  99.632 \% &  99.385 \% &  95.682 \% \\
+        Detection rate &  99.306 \% &  98.828 \% &  98.408 \% &  90.088 \% \\
+        Precision &  99.885 \% &  99.711 \% &  99.153 \% &  92.624 \% \\
+        Specificity &  99.961 \% &  99.903 \% &  99.716 \% &  97.574 \% \\
+        F1-Measure &  99.595 \% &  99.268 \% &  98.779 \% &  91.338 \% \\
+        False alarm rate &  0.115 \% &  0.289 \% &  0.847 \% &  7.376 \% \\
+        Missed alarm rate &  0.694 \% &  1.172 \% &  1.592 \% &  9.912 \% \\
         \bottomrule
     \end{tabular}}
     \caption{Experiments 1.1.1-4 with \gls{lstm} model trained in a purely supervised fashion on dataset CIC-IDS2017.}

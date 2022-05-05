@@ -1,9 +1,24 @@
 \begin{table}[!htbp]
     \centering
-    \scalebox{1.0}{\begin{tabular}{@{}c@{}}
+    \scalebox{1.0}{\begin{tabular}{@{}cccccc@{}}
         \toprule
-         \\
+         &  & 3.4.1 & 3.4.2 & 3.4.3 & 3.4.4 \\
         \midrule
+        Class &  \# &  NONE &  MASK &  OBSCURE &  AUTO \\
+        Analysis &  0 &  25.000\% &  19.231\% &  100.000\% &  19.231\% \\
+        Backdoors &  1 &  100.000\% &  7.500\% &  85.000\% &  70.000\% \\
+        DoS &  2 &  87.468\% &  18.066\% &  97.222\% &  72.222\% \\
+        Exploits &  3 &  93.899\% &  14.340\% &  98.383\% &  87.880\% \\
+        Fuzzers &  4 &  73.537\% &  31.864\% &  99.517\% &  63.628\% \\
+        Generic &  5 &  96.028\% &  30.374\% &  98.829\% &  90.845\% \\
+        Normal &  6 &  98.928\% &  99.326\% &  98.157\% &  99.151\% \\
+        Reconnaissance &  7 &  97.561\% &  42.617\% &  99.916\% &  97.315\% \\
+        Shellcode &  8 &  98.710\% &  52.903\% &  100.000\% &  99.355\% \\
+        Worms &  9 &  94.737\% &  15.789\% &  100.000\% &  89.474\% \\
+         \\
+        Benign &  6 &  98.928\% &  99.326\% &  98.157\% &  99.151\% \\
+        Attack &  !6 &  88.111\% &  25.951\% &  98.897\% &  81.500\% \\
+        Overall &  ALL &  98.545\% &  96.728\% &  98.184\% &  98.527\% \\
         \bottomrule
     \end{tabular}}
     \caption{Per category accuracy analysis of experiments 3.4.1-6 with transformer encoder model finetuned with 10\% of dataset UNSW-NB15.}

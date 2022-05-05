@@ -296,7 +296,7 @@ class Epoch():
 
     @property
     def f1_measure(self):
-        return 2 * (self.precision * self.recall) / (self.precision + self.recall)
+        return 2 * (self.precision * self.recall) / (self.precision + self.recall + 0.000001)
 
     @property
     def false_alarm_rate(self):
@@ -705,7 +705,7 @@ class NeuronPlot():
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
         label = f'Neurons - means - {self.reverse_mapping[category]}' + (f' - L1 difference {self.means_class_diff[category]:.2f}' if self.compare else '')
         ax.set_xlabel(label)
-        file_name = self.plot_dir_means + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        file_name = self.plot_dir_means + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-").replace(" ", "_")}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
 
@@ -726,7 +726,7 @@ class NeuronPlot():
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
         label = f'Neurons -  latest - {self.reverse_mapping[category]}' + f' - L1 difference {self.latest_class_diff[category]:.2f}' if self.compare else ''
         ax.set_xlabel(label)
-        file_name = self.plot_dir_latest + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-")}'
+        file_name = self.plot_dir_latest + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-").replace(" ", "_")}'
         plt.savefig(file_name, bbox_inches = 'tight', pad_inches = 0.1)
         plt.clf()
 

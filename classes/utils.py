@@ -122,7 +122,7 @@ class DTArgumentParser(ArgumentParser):
         self.add_argument('--val_batch_size', type=int, default=4096, help='Batch size used for validation data loader')
         self.add_argument('--id_only', action='store_true', help='If set only print the ID and return. Used for scripting purposes')
         self.add_argument('--no_cache', action='store_true', help='Flag to ignore existing cache entries')
-        self.add_argument('--plot', action='store_true', help='If set, plots the decision tree')
+        self.add_argument('--plot', default=False, action='store_true', help='If set, plots the decision tree')
         self.add_argument('--depth_analysis', action='store_true', help='If set, fit the tree with depths 1-max depth and save a summary to stats')
         self.add_argument('-x', type=int, default=25, help='X dimension of plot')
         self.add_argument('-y', type=int, default=20, help='Y dimension of plot')
