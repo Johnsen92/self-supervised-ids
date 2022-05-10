@@ -48,8 +48,8 @@ _LOSS_TEMPLATE = '''
 _PDP_TEMPLATE = '''
 \\begin{{figure}}[htbp]
 	\centering
-	\includegraphics[width=1.1\linewidth]{{results/{file}}}
-	\caption{{\gls{{pdp}} showing the influence of value variations of feature {feature_human} on classification of {category_human} attacks of the {model_human} pre-trained with proxy tasks as define in \\ref{{{section}}} finetuned with {subset_human}.}}
+	\includegraphics[width=1.0\linewidth]{{results/{file}}}
+	\caption{{\gls{{pdp}} showing the influence of value variations of feature \\textit{{{feature_human}}} on classification of \\textit{{{category_human}}} attacks of the {model_human} pre-trained with proxy tasks as define in \\ref{{{section}}} finetuned with {subset_human}.}}
 	\label{{fig:appendix:{model}:pdp:{subset}_{feature}_{category}}}
 \end{{figure}}
 '''
@@ -57,15 +57,15 @@ _PDP_TEMPLATE = '''
 _NEURON_TEMPLATE = '''
 \\begin{{figure}}[htbp]
 	\centering
-	\includegraphics[width=1.1\linewidth]{{results/{file}}}
+	\includegraphics[width=1.0\linewidth]{{results/{file}}}
 	\caption{{Neuron activation plot comparing neuron activations of the latest stage of the \gls{{lstm}} model (after the last packet in the sequence has been processed) after pre-training with the ID proxy task and after fine-tuning with flows of the attack categpry {category_human} of dataset {subset_human}.}}
 	\label{{fig:appendix:{model}:neuron:{subset}_{proxy}_{category}}}
 \end{{figure}}
 '''
 
 _TREE_TEMPALTE = '''
-\\begin{{lstlisting}}[captionpos=b, caption={{Decision tree of resulting from a \gls{{dtc}} with depth {depth} fitted on flows of category {category_human} filtered from 90% of dataset {subset_human}. 
-The subset constituted of {benign} benign records and {attack} attack records. The resulting validation accuracy was {accuracy}, tested with the remaining 10% of data not used 
+\\begin{{lstlisting}}[captionpos=b, caption={{Decision tree resulting from a \gls{{dtc}} with depth {depth} fitted on flows of category \\textit{{{category_human}}} filtered from 90\% of dataset \\textit{{{subset_human}}}. 
+The subset constituted of {benign} benign records and {attack} attack records. The resulting validation accuracy was {accuracy}, tested with the remaining 10\% of data not used 
 for training. }},
 label={{lst:appendix:{subset}:tree:{depth}_{category}}}, backgroundcolor=\color{{mygray}}]
 	
@@ -74,6 +74,18 @@ label={{lst:appendix:{subset}:tree:{depth}_{category}}}, backgroundcolor=\color{
 .
 \end{{lstlisting}}
 '''
+
+_TREE_PLOT_TEMPALTE = '''
+\\begin{{figure}}[htbp]
+	\centering
+	\includegraphics[width=1.0\linewidth]{{results/{file}}}
+	\caption{{Decision tree resulting from a \gls{{dtc}} with depth {depth} fitted on flows of category \\textit{{{category_human}}} filtered from 90\% of dataset \\textit{{{subset_human}}}. 
+The subset constituted of {benign} benign records and {attack} attack records. The resulting validation accuracy was {accuracy}, tested with the remaining 10\% of data not used 
+for training.}}
+	\label{{lst:appendix:{subset}:tree:{depth}_{category}}}
+\end{{figure}}
+'''
+
 
 _CLEARPAGE_COUNTER = 20
 
@@ -160,11 +172,10 @@ def gen_neuron_entry(apx_file, file, model):
     if mode == 'means':
         return 0
     _, subset_proxy = os.path.split(head)
-    print(subset_proxy)
     groups = re.match(f'([a-zA-Z0-9]+)_(\w+)', subset_proxy)
     subset = groups[1]
     proxy = groups[2]
-    groups = re.match(f'([0-9]+)_([a-zA-Z_-]+).png', file_sanitised)
+    groups = re.match(f'([0-9]+)_([a-zA-Z_-]+).png', file_name)
     category = groups[1]
     category_human = groups[2].replace('_',' ')
     apx_file.write(
@@ -205,30 +216,48 @@ def gen_trees_entry(apx_file, file, model):
         benign = groups[3]
         attack = groups[4]
         tree = ''
+        line_count = 0
         for line in tree_file.readlines():
             tree += line
-        apx_file.write(
-            _TREE_TEMPALTE.format(
-                depth=depth,
-                benign=benign,
-                attack=attack,
-                accuracy=accuracy,
-                category=category,
-                category_human=category_human,
-                subset=subset,
-                subset_human=human(subset + '_subset'),
-                model=model,
-                tree=tree
+            line_count += 1
+        if line_count > 25:
+            apx_file.write(
+                _TREE_TEMPALTE.format(
+                    depth=depth,
+                    benign=benign.replace('%','\%'),
+                    attack=attack.replace('%','\%'),
+                    accuracy=accuracy.replace('%','\%'),
+                    category=category,
+                    category_human=category_human,
+                    subset=subset,
+                    subset_human=human(subset + '_subset'),
+                    model=model,
+                    tree=tree
+                )
             )
-        )
+        else:
+            apx_file.write(
+                _TREE_PLOT_TEMPALTE.format(
+                    depth=depth,
+                    benign=benign.replace('%','\%'),
+                    attack=attack.replace('%','\%'),
+                    accuracy=accuracy.replace('%','\%'),
+                    category=category,
+                    category_human=category_human,
+                    subset=subset,
+                    subset_human=human(subset + '_subset'),
+                    model=model,
+                    file=file.replace('trees','plots').replace('.txt', '.png')
+                )
+            )
 
 def main(args):
     for section in _SECTIONS:
         for model in _SECTIONS[section]:
             if section == 'dataset':
-                path = f'{args.results_dir}/{section}/{model}/'
+                path = f'{args.results_dir}/{section}/{model}/trees'
             else:
-                path = f'{args.results_dir}/{model}/{section}/trees'
+                path = f'{args.results_dir}/{model}/plots/{section}'
             for root, _, files in os.walk(path):
                 for file in files:
                     item = os.path.join(root, file)
@@ -236,19 +265,19 @@ def main(args):
 
     apx_file_path = os.path.join(args.results_dir, args.appendix)
     with open(apx_file_path, 'w+') as apx_file:
-        apx_file.write('\n\subsection{Training and Validation Loss}\n')
-        print('Generating appendix loss section')
-        gen_loss_section(apx_file, _SECTIONS['losses'])
+        # apx_file.write('\n\section{Training and Validation Loss}\n')
+        # print('Generating appendix loss section')
+        # gen_loss_section(apx_file, _SECTIONS['losses'])
 
-        apx_file.write('\n\subsection{Partial Dependency Plots}\n')
-        print('Generating appendix PDP section')
-        gen_pdp_section(apx_file, _SECTIONS['pdp'])
+        # apx_file.write('\n\section{Partial Dependency Plots}\n')
+        # print('Generating appendix PDP section')
+        # gen_pdp_section(apx_file, _SECTIONS['pdp'])
 
-        apx_file.write('\n\subsection{Neuron Plots}\n')
-        print('Generating appendix neuron plot section')
-        gen_neuron_section(apx_file, _SECTIONS['neuron'])
+        # apx_file.write('\n\section{Neuron Plots}\n')
+        # print('Generating appendix neuron plot section')
+        # gen_neuron_section(apx_file, _SECTIONS['neuron'])
 
-        apx_file.write('\n\subsection{Decision Trees}\n')
+        apx_file.write('\n\section{Decision Trees}\n')
         print('Generating appendix decision tree section')
         gen_trees_section(apx_file, _SECTIONS['dataset'])
 
