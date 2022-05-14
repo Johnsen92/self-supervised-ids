@@ -48,6 +48,9 @@ lstm:
 transformer:
 	python3 main_trans.py -f ${DATASET}
 
+appendix:
+	python3 appendix.py -R ./results/rn500 -a appendix.tex
+
 cycle: lstm_cycle transformer_cycle
 	
 test_cycle: lstm_test_cycle transformer_test_cycle

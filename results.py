@@ -173,6 +173,82 @@ def stats_table(input_files, output_file, headers):
         for row in out_rows:
             writer.writerow(row)
 
+def dt_stats_table(input_files, output_file, headers):
+    out_labels = ['']
+    out_rows = []
+    json_map = {
+        'depth': 'Actual depth',
+        'fitting_time s' : 'Fittings time [s]'
+    }
+    include = ['Accuracy', 'Detection rate', 'Precision', 'Specificity', 'F1-Measure', 'False alarm rate', 'Missed alarm rate']
+
+    first = True
+    for file in input_files:
+        stats_file = file[:-14] + '_stats.txt'
+        stats_file_sanizized = stats_file[:-4] + '.json'
+        with open(stats_file_sanizized, 'w+') as jfs:
+            with open(stats_file, 'r') as sf:
+                jfs.write(sf.read().replace('\'', '"').replace('\n', '').replace('True','\"True\"').replace('False','\"False\"'))
+        with open(stats_file_sanizized) as jf:
+            stats = json.load(jf)
+        i = 0
+        for key, val in json_map.items():
+            out_rows.append([])
+            if first:
+                out_rows[i].append(val)
+            out_rows[i].append(stats[key])
+            i += 1
+        out_rows.append([])
+        i += 1
+        with open(file, 'r') as f:
+            table = csv.reader(f, delimiter=',')
+            for row in table:
+                if len(row) > 0 and row[0] == 'Training percentage':
+                    out_labels.append(row[1])
+                if len(row) > 0 and row[0] in include:
+                    out_rows.append([])
+                    if first:
+                        out_rows[i].append(row[0])
+                    out_rows[i].append(row[1])
+                    i += 1
+        first = False
+
+    print(out_rows)
+    with open(output_file, 'w+') as out_f:
+        writer = csv.writer(out_f, delimiter=',')
+        writer.writerow(out_labels)
+        for row in out_rows[:-20]:
+            writer.writerow(row)
+
+def dt_class_table(input_files, output_file, headers):
+    pass
+    # out_labels = ['']
+    # out_rows = []
+    # first = True
+    # for file in input_files:
+    #     if first:
+    #         out_labels.append('')
+    #     out_labels.append(headers[file])
+    #     with open(file, 'r') as f:
+    #         table = csv.reader(f, delimiter=',')
+    #         for i, row in enumerate(table):
+    #             if first:
+    #                 if len(row) == 5:
+    #                     out_rows.append(row[:2])
+    #                     out_rows[i].append(row[-1])
+    #                 else:
+    #                     out_rows.append(row)
+    #             elif len(row) == 5:
+    #                 out_rows[i].append(row[-1])
+                
+    #         first = False
+
+    # with open(output_file, 'w+') as out_f:
+    #     writer = csv.writer(out_f, delimiter=',')
+    #     writer.writerow(out_labels)
+    #     for row in out_rows:
+    #         writer.writerow(row)
+
 def class_table(input_files, output_file, headers):
     out_labels = ['']
     out_rows = []
@@ -232,12 +308,12 @@ def string_replace(file, string_replace_list):
     for v,k in string_replace_list.items():
         os.system(f"sed -i 's/\<{v}\>/{k}/g' {file}")
 
-def gen_table(entries, mode, data_dir, out_dir, model, order=None):
+def gen_dt_table(entries, mode, data_dir, out_dir, model, order=None):
     regex = {}
     if mode == Mode.STATS or mode == Mode.ALL: 
-        regex[Mode.STATS] = r"^stats_"
+        regex[Mode.STATS] = r"run\_stats.csv"
     if mode == Mode.CLASS or mode == Mode.ALL:
-        regex[Mode.CLASS] = r"(class\_stats)|(stats\_class)"
+        regex[Mode.CLASS] = r"run\_stats\_class.csv"
 
     data = {}
     experiments = {}
@@ -254,6 +330,43 @@ def gen_table(entries, mode, data_dir, out_dir, model, order=None):
                         id = match[1]
                 else:
                     id = root.split('/')[-1]
+                if id in [id for id, _ in entries] and not re.search(rx, file) is None:
+                    path = os.path.join(root, file)
+                    experiments[path] = [exp for i, exp in entries if i == id][0]
+                    data[k].append(path)
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_files = []
+
+    for table, file_list in data.items():
+        files_sorted = sort_files(file_list, order)
+        if table == Mode.STATS:
+            out_file = f'{out_dir}/stats_comparison_{str(mode)}.csv'
+            dt_stats_table(files_sorted, out_file, experiments)
+        elif table == Mode.CLASS:
+            out_file = f'{out_dir}/class_comparison_{str(mode)}.csv'
+            dt_class_table(files_sorted, out_file, experiments)
+        out_files.append(out_file)
+
+    out_files_str = ''
+    for o_f in out_files:
+        out_files_str += o_f + ' '
+
+def gen_table(entries, mode, data_dir, out_dir, model, order=None):
+    regex = {}
+    if mode == Mode.STATS or mode == Mode.ALL: 
+        regex[Mode.STATS] = r"^stats_"
+    if mode == Mode.CLASS or mode == Mode.ALL:
+        regex[Mode.CLASS] = r"class\_stats"
+
+    data = {}
+    experiments = {}
+    for k, rx in regex.items():
+        data[k] = []
+        path = os.walk(data_dir)
+        for root, dir, files in path:
+            for file in files:
+                id = root.split('/')[-1]
                 if id in [id for id, _ in entries] and not re.search(rx, file) is None:
                     path = os.path.join(root, file)
                     experiments[path] = [exp for i, exp in entries if i == id][0]
@@ -320,7 +433,10 @@ def gen_tables(table_dir, stats_dir, model, table_groups, ids, group_description
             continue
         group_dir = f'{table_dir}/{k}'
         print(f'Generating tables for model {model} group {k}...', end='')
-        gen_table(group_entries, Mode.ALL, stats_dir, group_dir, model, order=ids)
+        if model == 'dt':
+            gen_dt_table(group_entries, Mode.ALL, stats_dir, group_dir, model, order=ids)
+        else:
+            gen_table(group_entries, Mode.ALL, stats_dir, group_dir, model, order=ids)
         print('done.')
 
     # Calculate scale factors for latex tables
@@ -501,7 +617,7 @@ def gen_loss_plots(plots_dir, table_groups):
 def gen_neuron_plots(plots_dir, neuron_ids, neuron_data_dir):
     # Generate Neuron Activation Plots
     neuron_dir = f'{plots_dir}/neuron/'
-    make_dir(neuron_dir)
+    remake_dir(neuron_dir)
     if len(neuron_ids) > 0:
         for id, config in neuron_ids:
             plot_neurons([id], neuron_data_dir, neuron_dir, config, 'pre')
@@ -537,7 +653,8 @@ CSV_EXPERIMENT_INDEX = 0
 CSV_GROUP_INDEX = 1
 EXPECTED_RESULTS_FILES = 4
 
-experiments = [('lstm', args.lstm_experiment_file), ('transformer', args.transformer_experiment_file), ('dt', args.dtc_experiment_file)]
+experiments = [('dt', args.dtc_experiment_file), ('lstm', args.lstm_experiment_file), ('transformer', args.transformer_experiment_file)]
+#experiments = [('dt', args.dtc_experiment_file)]
 
 table_groups = {}
 pdp_groups = {}
@@ -566,6 +683,7 @@ for model, parameter_file in experiments:
                 break
             table_groups[model].update(groups)
             i += 1
+    
     pdp_groups[model] = copy.deepcopy(table_groups[model])
     neuron_ids[model] = []
     ids[model] = []
@@ -636,20 +754,18 @@ for model, parameter_file in experiments:
     gen_tables(table_dir, stats_dir, model, table_groups[model], ids[model], f'groups_{model}.csv', string_replace_list)
     if model != 'dt':
         gen_loss_plots(plots_dir, table_groups[model])
-
-    # if model == 'LSTM':
-    #     gen_neuron_plots(args.plots_dir, neuron_ids, args.neuron_data_dir)
-    #     gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
+        #gen_pdp_plots(args.plots_dir, pdp_groups, args.pdp_data_dir)
+        # if model == 'lstm':
+        #     gen_neuron_plots(plots_dir, neuron_ids[model], args.neuron_data_dir)
+        
 
 gen_dataset_dtc_analysis(datasets)
-
-sys.exit(0)
 
 datasets = list(set(datasets))
 
 gen_dataset_dtc_depth_analysis(datasets)
 
-gen_dataset_stats_analysis(datasets)
+#gen_dataset_stats_analysis(datasets)
 
 
 

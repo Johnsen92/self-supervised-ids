@@ -650,7 +650,7 @@ class NeuronData():
         return avg_latest_diff, avg_means_diff, latest_class_diff, means_class_diff
 
 class NeuronPlot():
-    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/', use_titles=False, compare=False, base_name=None):
+    def __init__(self, config, mapping, neuron_data, plot_dir='plots/neurons/', use_titles=False, compare=False, base_name=None, epsilon=0.01):
         if base_name == None:
             self.base_name = ''
         else:
@@ -663,6 +663,7 @@ class NeuronPlot():
         self.plot_dir_latest = self.plot_dir + 'latest/'
         self.plot_dir_means = self.plot_dir + 'means/'
         self.use_titles = use_titles
+        self.epsilon = epsilon
         # If compare is set, two NeuronData rows are expected for the plot which shall be compared. The comparison is not kommutative
         if compare:
             assert len(self.neuron_data) == 2
@@ -701,8 +702,16 @@ class NeuronPlot():
             #latest_means.append(np.mean(nd.means[category], 0))
 
         means_data = np.vstack(means_means)
-        data_latest = pd.DataFrame(data=means_data, index=labels)
-        ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
+        filter_pos = np.all(means_data > self.epsilon, axis = 0)
+        filter_neg = np.all(means_data < -self.epsilon, axis = 0)
+        filter = filter_pos | filter_neg
+        activated_neurons = []
+        for i, flag in enumerate(filter):
+            if flag:
+                activated_neurons.append(str(i))
+        means_data_filtered = means_data[:, filter]
+        data_means = pd.DataFrame(data=means_data_filtered, columns=activated_neurons, index=labels)
+        ax = sns.heatmap(data_means, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
         label = f'Neurons - means - {self.reverse_mapping[category]}' + (f' - L1 difference {self.means_class_diff[category]:.2f}' if self.compare else '')
         ax.set_xlabel(label)
         file_name = self.plot_dir_means + f'{category}_{self.reverse_mapping[category].replace("/", "-").replace(":", "-").replace(" ", "_")}'
@@ -722,7 +731,15 @@ class NeuronPlot():
             #latest_means.append(np.mean(nd.latest[category], 0))
 
         means_data = np.vstack(latest_means)
-        data_latest = pd.DataFrame(data=means_data, index=labels)
+        filter_pos = np.all(means_data > self.epsilon, axis = 0)
+        filter_neg = np.all(means_data < -self.epsilon, axis = 0)
+        filter = filter_pos | filter_neg
+        activated_neurons = []
+        for i, flag in enumerate(filter):
+            if flag:
+                activated_neurons.append(str(i))
+        means_data_filtered = means_data[:, filter]
+        data_latest = pd.DataFrame(data=means_data_filtered, columns=activated_neurons, index=labels)
         ax = sns.heatmap(data_latest, vmin=-1, vmax=1, cmap=self._cmap, linewidth=0.0001)
         label = f'Neurons -  latest - {self.reverse_mapping[category]}' + f' - L1 difference {self.latest_class_diff[category]:.2f}' if self.compare else ''
         ax.set_xlabel(label)

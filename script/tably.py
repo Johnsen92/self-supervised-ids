@@ -276,11 +276,9 @@ def save_content(content, outfile, replace):
     if replace:
         with open(outfile, 'w') as out:
             out.writelines(content)
-        print('The content is written to', outfile)
     else:
         with open(outfile, 'a') as out:
             out.writelines(content)
-        print('The content is appended to', outfile)
 
 
 

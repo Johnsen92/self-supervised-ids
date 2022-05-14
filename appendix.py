@@ -86,7 +86,6 @@ for training.}}
 \end{{figure}}
 '''
 
-
 _CLEARPAGE_COUNTER = 20
 
 def human(string):
@@ -265,17 +264,17 @@ def main(args):
 
     apx_file_path = os.path.join(args.results_dir, args.appendix)
     with open(apx_file_path, 'w+') as apx_file:
-        # apx_file.write('\n\section{Training and Validation Loss}\n')
-        # print('Generating appendix loss section')
-        # gen_loss_section(apx_file, _SECTIONS['losses'])
+        apx_file.write('\n\section{Training and Validation Loss}\n')
+        print('Generating appendix loss section')
+        gen_loss_section(apx_file, _SECTIONS['losses'])
 
-        # apx_file.write('\n\section{Partial Dependency Plots}\n')
-        # print('Generating appendix PDP section')
-        # gen_pdp_section(apx_file, _SECTIONS['pdp'])
+        apx_file.write('\n\section{Partial Dependency Plots}\n')
+        print('Generating appendix PDP section')
+        gen_pdp_section(apx_file, _SECTIONS['pdp'])
 
-        # apx_file.write('\n\section{Neuron Plots}\n')
-        # print('Generating appendix neuron plot section')
-        # gen_neuron_section(apx_file, _SECTIONS['neuron'])
+        apx_file.write('\n\section{Neuron Plots}\n')
+        print('Generating appendix neuron plot section')
+        gen_neuron_section(apx_file, _SECTIONS['neuron'])
 
         apx_file.write('\n\section{Decision Trees}\n')
         print('Generating appendix decision tree section')
